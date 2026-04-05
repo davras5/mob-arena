@@ -18,6 +18,8 @@
       <span id="xp-text">Lv.1</span>
     </div>
     <div id="wave-counter">Wave 1</div>
+    <div id="level-name"></div>
+    <div id="score-display">Score: 0</div>
     <div id="enemy-counter">Enemies: 0</div>
     <div id="boss-hp-container" class="hidden">
       <span id="boss-name"></span>
@@ -44,7 +46,38 @@
   <div id="game-over-screen" class="hidden">
     <h2>Game Over</h2>
     <p id="final-wave">You reached Wave 1</p>
+    <p id="final-score"></p>
+    <p id="best-combo"></p>
+    <div id="kill-breakdown"></div>
     <button id="restart-btn">Play Again</button>
+  </div>
+  <div id="level-clear-screen" class="hidden">
+    <h2 id="level-clear-title">Level Clear!</h2>
+    <div id="level-clear-stats">
+      <div class="clear-stat">
+        <span class="clear-stat-label">Score</span>
+        <span id="clear-score" class="clear-stat-value">0</span>
+      </div>
+      <div class="clear-stat">
+        <span class="clear-stat-label">Best Combo</span>
+        <span id="clear-combo" class="clear-stat-value">x0</span>
+      </div>
+      <div class="clear-stat">
+        <span class="clear-stat-label">Enemies Slain</span>
+        <span id="clear-kills" class="clear-stat-value">0</span>
+      </div>
+    </div>
+    <div id="level-clear-stars">
+      <span class="star" id="star-1">★</span>
+      <span class="star" id="star-2">★</span>
+      <span class="star" id="star-3">★</span>
+    </div>
+    <button id="continue-btn">Continue</button>
+  </div>
+  <div id="world-map" class="hidden">
+    <h2>World Map</h2>
+    <p class="world-map-subtitle">Select your next destination</p>
+    <div id="world-map-nodes"></div>
   </div>
   <script type="module" src="src/main.js"></script>
 </body>

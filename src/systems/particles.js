@@ -33,8 +33,30 @@ export class ParticleSystem {
     });
   }
 
+  levelClear(x, y) {
+    const colors = ['#f1c40f', '#e74c3c', '#3498db', '#2ecc71', '#9b59b6', '#e67e22'];
+    // Big burst
+    this.emit(x, y, 50, null, { speed: 300, size: 5, life: 1.5, colors });
+    // Medium ring
+    this.ring(x, y, '#f1c40f', 120);
+    this.ring(x, y, '#2ecc71', 80);
+    // Outer sparkles
+    this.emit(x, y, 30, null, { speed: 150, size: 3, life: 2.0, colors });
+  }
+
   deathBurst(x, y, color) {
-    this.emit(x, y, 8, color, { speed: 80, size: 3, life: 0.4 });
+    this.emit(x, y, 12, color, { speed: 80, size: 3, life: 0.4 });
+    this.emit(x, y, 6, '#fff', { speed: 60, size: 1.5, life: 0.25 });
+    this.ring(x, y, color);
+  }
+
+  ring(x, y, color, maxRadius = 30) {
+    this.particles.push({
+      x, y, vx: 0, vy: 0,
+      color, size: 0, alpha: 0.6,
+      life: 0.3, maxLife: 0.3,
+      isRing: true, maxRadius
+    });
   }
 
   update(dt) {

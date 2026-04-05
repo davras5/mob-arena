@@ -7,9 +7,9 @@
     "description": "Fire additional projectiles in a spread pattern",
     "maxLevel": 3,
     "levels": [
-      { "extraProjectiles": 1, "spreadAngle": 15 },
-      { "extraProjectiles": 2, "spreadAngle": 20 },
-      { "extraProjectiles": 3, "spreadAngle": 25 }
+      { "extraProjectiles": 1, "spreadAngle": 6 },
+      { "extraProjectiles": 2, "spreadAngle": 8 },
+      { "extraProjectiles": 3, "spreadAngle": 10 }
     ]
   },
   {

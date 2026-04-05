@@ -14,6 +14,11 @@ export class WaveSystem {
     this.blessingsToCollect = 0;
     this.mapWidth = 1600;
     this.mapHeight = 1600;
+    this.levelConfig = null;
+  }
+
+  setLevelConfig(levelConfig) {
+    this.levelConfig = levelConfig;
   }
 
   startWave(waveNum) {
@@ -32,13 +37,31 @@ export class WaveSystem {
     }
 
     // Spawn enemies
+    const speedMul = (this.levelConfig && this.levelConfig.speedMultiplier) || 1.0;
+    const hpMul = (this.levelConfig && this.levelConfig.hpMultiplier) || 1.0;
+
     if (config.enemies) {
       for (const group of config.enemies) {
         const scaledCount = this._scaleCount(group.count, waveNum);
         for (let i = 0; i < scaledCount; i++) {
           const pos = this._randomEdgePosition();
-          this.enemies.push(new Enemy(group.type, pos.x, pos.y, waveNum));
+          const enemy = new Enemy(group.type, pos.x, pos.y, waveNum);
+          if (speedMul !== 1.0) enemy.speed *= speedMul;
+          if (hpMul !== 1.0) {
+            enemy.hp *= hpMul;
+            enemy.maxHP *= hpMul;
+          }
+          this.enemies.push(enemy);
         }
+      }
+    }
+
+    // Apply multipliers to boss
+    if (this.boss) {
+      if (speedMul !== 1.0) this.boss.speed *= speedMul;
+      if (hpMul !== 1.0) {
+        this.boss.hp *= hpMul;
+        this.boss.maxHP *= hpMul;
       }
     }
 

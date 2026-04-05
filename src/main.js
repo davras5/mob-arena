@@ -16,6 +16,7 @@ async function init() {
   // Menu start button
   document.getElementById('start-btn').addEventListener('click', () => {
     if (game.state === 'MENU') {
+      game.audio.buttonClick();
       game.start();
     }
   });

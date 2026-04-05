@@ -9,6 +9,7 @@ import { ParticleSystem } from './systems/particles.js';
 import { HUD } from './ui/hud.js';
 import { BlessingPicker } from './ui/blessingPicker.js';
 import { GameOverUI } from './ui/gameOver.js';
+import { AudioSystem } from './systems/audio.js';
 
 const MAP_WIDTH = 1600;
 const MAP_HEIGHT = 1600;
@@ -26,6 +27,7 @@ export class Game {
     this.hud = new HUD();
     this.blessingPicker = new BlessingPicker();
     this.gameOverUI = new GameOverUI();
+    this.audio = new AudioSystem();
 
     this.state = 'MENU';
     this.player = null;
@@ -246,45 +248,53 @@ export class Game {
       }
     }
 
-    // Collision: player vs blessings
-    if (this.state === 'WAVE_CLEAR' && !this.isPicking) {
-      for (const b of wave.blessings) {
-        if (b.collected) continue;
-        const dx = player.x - b.x;
-        const dy = player.y - b.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+    // Update enemy counter
+    const aliveEnemies = wave.enemies.filter(e => !e.dead).length + (wave.boss && !wave.boss.dead ? 1 : 0);
+    this.hud.updateEnemyCount(aliveEnemies, wave.totalEnemies || 0);
 
-        // Magnet effect
-        if (dist < player.magnetRange) {
-          const pull = 200 * dt;
-          const pdx = player.x - b.x;
-          const pdy = player.y - b.y;
-          const pdist = Math.sqrt(pdx * pdx + pdy * pdy);
-          if (pdist > 1) {
-            b.x += (pdx / pdist) * pull;
-            b.y += (pdy / pdist) * pull;
-          }
-        }
+    // Update blessing timers
+    for (const b of wave.blessings) {
+      b.update(dt);
+    }
+    wave.blessings = wave.blessings.filter(b => !b.expired);
 
-        if (dist < b.radius) {
-          b.collected = true;
-          this.particles.confetti(b.x, b.y);
-          this._pickBlessing();
-        }
+    // Collision: player vs blessings on map (collectible anytime)
+    for (const b of wave.blessings) {
+      if (b.collected) continue;
+      const dx = player.x - b.x;
+      const dy = player.y - b.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      // Magnet pull
+      if (dist < player.magnetRange) {
+        const pull = 200 * dt;
+        const pdist = Math.max(1, dist);
+        b.x += (dx / pdist) * pull;
+        b.y += (dy / pdist) * pull;
+      }
+
+      if (dist < b.radius) {
+        b.collected = true;
+        this.particles.confetti(b.x, b.y);
+        this._pickBlessing();
       }
     }
 
-    // Check wave clear
+    // Check wave clear — all enemies killed → open blessing picker (end-of-round reward)
     if (this.state === 'PLAYING' && wave.checkWaveClear()) {
-      wave.triggerWaveClear();
       this.state = 'WAVE_CLEAR';
       this.hud.hideBossHP();
-      // Confetti in center
-      this.particles.confetti(MAP_WIDTH / 2, MAP_HEIGHT / 2);
+      this.hud.updateEnemyCount(0, wave.totalEnemies || 0);
+      this.particles.confetti(player.x, player.y);
+      this.audio.waveClear();
+      // Spawn blessings on map
+      wave.triggerWaveClear();
+      // Also give end-of-round blessing picker
+      this._pickBlessing();
     }
 
-    // Check all blessings collected
-    if (this.state === 'WAVE_CLEAR' && !this.isPicking && wave.allBlessingsCollected()) {
+    // After blessing is picked, start countdown to next wave
+    if (this.state === 'WAVE_CLEAR' && !this.isPicking) {
       this.state = 'COUNTDOWN';
       wave.startCountdown(3);
     }
@@ -298,6 +308,7 @@ export class Game {
         this.hud.updateWave(nextWave);
         wave.startWave(nextWave);
         this.state = 'PLAYING';
+        if (wave.boss) this.audio.bossAppear();
       }
     }
 
@@ -314,6 +325,7 @@ export class Game {
     // Player death
     if (player.hp <= 0) {
       this.state = 'GAME_OVER';
+      this.audio.gameOver();
       this._showGameOver();
     }
 
@@ -324,6 +336,7 @@ export class Game {
   _playerShoot() {
     const player = this.player;
     player.attack();
+    this.audio.shoot();
 
     const angle = player.aimAngle;
     const speed = 300;
@@ -441,6 +454,7 @@ export class Game {
     if (wave.boss && !wave.boss.dead) targets.push(wave.boss);
 
     this.particles.emit(x, y, 12, '#e67e22', { speed: 120, life: 0.3 });
+    this.audio.explosion();
 
     for (const e of targets) {
       if (sourceProjectile && sourceProjectile.hitEnemies.has(e)) continue;
@@ -454,6 +468,7 @@ export class Game {
   }
 
   _chainLightning(source, chains, damage, range) {
+    this.audio.chainLightning();
     const wave = this.waveSystem;
     const hit = new Set([source]);
     let current = source;
@@ -516,6 +531,7 @@ export class Game {
         const dmg = player.takeDamage(e.damage);
         e.contactCooldown = 0.5;
         this.screenShake = 0.1;
+        this.audio.playerHit();
 
         if (player.thornsDamage > 0) {
           const killed = e.takeDamage(player.thornsDamage);
@@ -527,6 +543,7 @@ export class Game {
 
   _onEnemyDeath(enemy) {
     this.particles.deathBurst(enemy.x, enemy.y, enemy.color);
+    this.audio.enemyDeath();
   }
 
   _handleSplitter(enemy) {
@@ -564,6 +581,7 @@ export class Game {
     const options = shuffled.slice(0, Math.min(3, shuffled.length));
 
     const chosen = await this.blessingPicker.show(options, this.player.abilities);
+    this.audio.blessingPick();
 
     // Apply ability
     this.player.addAbility(chosen.id, chosen);
@@ -602,7 +620,7 @@ export class Game {
 
     const wave = this.waveSystem;
 
-    // Blessings
+    // Blessings on map
     if (wave) {
       r.drawBlessings(wave.blessings.filter(b => !b.collected), this.time);
     }
@@ -647,6 +665,14 @@ export class Game {
 
     // Particles
     r.drawParticles(this.particles.particles);
+
+    // Blessing off-screen indicators
+    if (wave) {
+      const activeBlessings = wave.blessings.filter(b => !b.collected && !b.expired);
+      if (activeBlessings.length > 0) {
+        r.drawBlessingIndicators(activeBlessings, this.player);
+      }
+    }
 
     // Joystick
     r.drawJoystick(this.input);

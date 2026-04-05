@@ -68,10 +68,13 @@ export class Renderer {
       // Bobbing
       const bob = Math.sin(time * 3 + b.x) * 4;
 
+      // Urgency: blink faster as timer runs low
+      const urgency = b.timer < 5 ? (Math.sin(time * 10) > 0 ? 1 : 0.3) : 1;
+
       // Glow
       const glowRadius = 30 + Math.sin(time * 4) * 5;
       const gradient = ctx.createRadialGradient(sx, sy + bob, 0, sx, sy + bob, glowRadius);
-      gradient.addColorStop(0, 'rgba(241, 196, 15, 0.4)');
+      gradient.addColorStop(0, `rgba(241, 196, 15, ${0.4 * urgency})`);
       gradient.addColorStop(1, 'rgba(241, 196, 15, 0)');
       ctx.fillStyle = gradient;
       ctx.beginPath();
@@ -79,6 +82,7 @@ export class Renderer {
       ctx.fill();
 
       // Core
+      ctx.globalAlpha = urgency;
       ctx.fillStyle = '#f1c40f';
       ctx.beginPath();
       ctx.arc(sx, sy + bob, 10, 0, Math.PI * 2);
@@ -88,6 +92,90 @@ export class Renderer {
       ctx.beginPath();
       ctx.arc(sx, sy + bob, 5, 0, Math.PI * 2);
       ctx.fill();
+
+      // Timer text
+      ctx.fillStyle = b.timer < 5 ? '#e74c3c' : '#fff';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(Math.ceil(b.timer) + 's', sx, sy + bob - 18);
+
+      // Timer ring (circular countdown)
+      const timerPct = b.timer / b.maxTimer;
+      ctx.strokeStyle = b.timer < 5 ? '#e74c3c' : '#f1c40f';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(sx, sy + bob, 15, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * timerPct);
+      ctx.stroke();
+
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  drawBlessingIndicators(blessings, player) {
+    // Draw edge-of-screen arrows pointing to off-screen blessings
+    const ctx = this.ctx;
+    const margin = 40;
+    const cw = this.canvas.width;
+    const ch = this.canvas.height;
+
+    for (const b of blessings) {
+      const sx = b.x - this.camera.x;
+      const sy = b.y - this.camera.y;
+
+      // Only draw indicator if blessing is off-screen
+      if (sx >= -10 && sx <= cw + 10 && sy >= -10 && sy <= ch + 10) continue;
+
+      // Direction from screen center to blessing
+      const px = player.x - this.camera.x;
+      const py = player.y - this.camera.y;
+      const dx = sx - px;
+      const dy = sy - py;
+      const angle = Math.atan2(dy, dx);
+
+      // Position the arrow at the edge of the screen
+      let ax, ay;
+      const edgeMargin = margin;
+
+      // Find intersection with screen edges
+      const slopes = [
+        { x: cw - edgeMargin, y: py + dy * (cw - edgeMargin - px) / dx }, // Right
+        { x: edgeMargin, y: py + dy * (edgeMargin - px) / dx },          // Left
+        { x: px + dx * (ch - edgeMargin - py) / dy, y: ch - edgeMargin }, // Bottom
+        { x: px + dx * (edgeMargin - py) / dy, y: edgeMargin },          // Top
+      ];
+
+      ax = px + Math.cos(angle) * 100;
+      ay = py + Math.sin(angle) * 100;
+
+      // Clamp to screen edges
+      ax = Math.max(edgeMargin, Math.min(cw - edgeMargin, ax));
+      ay = Math.max(edgeMargin, Math.min(ch - edgeMargin, ay));
+
+      // Pulsing
+      const pulse = 0.7 + Math.sin(Date.now() / 300) * 0.3;
+
+      // Arrow triangle
+      ctx.save();
+      ctx.translate(ax, ay);
+      ctx.rotate(angle);
+      ctx.globalAlpha = pulse;
+      ctx.fillStyle = b.timer < 5 ? '#e74c3c' : '#f1c40f';
+      ctx.beginPath();
+      ctx.moveTo(12, 0);
+      ctx.lineTo(-6, -8);
+      ctx.lineTo(-6, 8);
+      ctx.closePath();
+      ctx.fill();
+
+      // Distance text
+      const dist = Math.round(Math.sqrt(dx * dx + dy * dy));
+      ctx.rotate(-angle);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(Math.ceil(b.timer) + 's', 0, -14);
+      ctx.globalAlpha = 1;
+      ctx.restore();
     }
   }
 

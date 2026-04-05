@@ -8,6 +8,7 @@ export class HUD {
     this.bossHPBar = document.getElementById('boss-hp-bar');
     this.abilityIcons = document.getElementById('ability-icons');
     this.countdown = document.getElementById('wave-countdown');
+    this.enemyCounter = document.getElementById('enemy-counter');
   }
 
   updateHP(hp, maxHP) {
@@ -47,6 +48,10 @@ export class HUD {
       div.title = `${data.name} Lv.${ab.level}`;
       this.abilityIcons.appendChild(div);
     }
+  }
+
+  updateEnemyCount(alive, total) {
+    this.enemyCounter.textContent = `Enemies: ${alive} / ${total}`;
   }
 
   showCountdown(seconds) {

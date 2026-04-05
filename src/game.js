@@ -588,11 +588,6 @@ export class Game {
     // Particles
     this.particles.update(dt);
 
-    // Environmental hazards
-    if (this.hazardSystem.hazards.length > 0) {
-      this.hazardSystem.update(dt, player, wave.enemies.filter(e => !e.dead));
-    }
-
     // Damage numbers
     this.damageNumbers.update(dt);
 

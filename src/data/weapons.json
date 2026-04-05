@@ -1,0 +1,6 @@
+[
+  { "id": "pistol", "name": "Pistol", "color": "#f1c40f", "icon": "\u2022", "cooldown": 1.0, "damage": 15, "speed": 300, "type": "projectile" },
+  { "id": "shotgun", "name": "Shotgun", "color": "#e67e22", "icon": "\u25c6", "cooldown": 1.5, "damage": 8, "speed": 250, "pellets": 5, "spread": 30, "lifetime": 0.6, "type": "projectile" },
+  { "id": "laser", "name": "Laser", "color": "#e74c3c", "icon": "\u2014", "cooldown": 0.15, "damage": 5, "range": 350, "type": "hitscan" },
+  { "id": "rockets", "name": "Rockets", "color": "#9b59b6", "icon": "\u25c8", "cooldown": 2.0, "damage": 10, "speed": 180, "explosionRadius": 80, "explosionDamage": 25, "radius": 6, "type": "projectile" }
+]

@@ -316,9 +316,10 @@ export class Renderer {
       if (sx < -20 || sx > this.canvas.width + 20 || sy < -20 || sy > this.canvas.height + 20) continue;
 
       if (!p.isEnemy) {
+        const glowColor = p.isRocket ? '155, 89, 182' : '241, 196, 15';
         const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, p.radius * 3);
-        glow.addColorStop(0, 'rgba(241, 196, 15, 0.3)');
-        glow.addColorStop(1, 'rgba(241, 196, 15, 0)');
+        glow.addColorStop(0, `rgba(${glowColor}, 0.3)`);
+        glow.addColorStop(1, `rgba(${glowColor}, 0)`);
         ctx.fillStyle = glow;
         ctx.beginPath();
         ctx.arc(sx, sy, p.radius * 3, 0, Math.PI * 2);
@@ -327,6 +328,8 @@ export class Renderer {
 
       if (p.isEnemy) {
         ctx.fillStyle = '#e74c3c';
+      } else if (p.isRocket) {
+        ctx.fillStyle = '#9b59b6';
       } else {
         ctx.fillStyle = '#f1c40f';
       }
@@ -335,7 +338,8 @@ export class Renderer {
       ctx.fill();
 
       // Trail
-      ctx.fillStyle = p.isEnemy ? 'rgba(231, 76, 60, 0.3)' : 'rgba(241, 196, 15, 0.3)';
+      const trailColor = p.isEnemy ? 'rgba(231, 76, 60, 0.3)' : p.isRocket ? 'rgba(155, 89, 182, 0.3)' : 'rgba(241, 196, 15, 0.3)';
+      ctx.fillStyle = trailColor;
       ctx.beginPath();
       ctx.arc(sx - p.vx * 0.03, sy - p.vy * 0.03, p.radius * 0.7, 0, Math.PI * 2);
       ctx.fill();
@@ -423,6 +427,229 @@ export class Renderer {
       ctx.stroke();
     }
     ctx.globalAlpha = 1;
+  }
+
+  drawWeaponPickups(pickups, time) {
+    const ctx = this.ctx;
+    for (const wp of pickups) {
+      const sx = wp.x - this.camera.x;
+      const sy = wp.y - this.camera.y;
+
+      // Bobbing
+      const bob = Math.sin(time * 3 + wp.x * 0.1) * 5;
+
+      // Urgency blink when timer low
+      const urgency = wp.timer < 3 ? (Math.sin(time * 10) > 0 ? 1 : 0.3) : 1;
+
+      // Glow
+      const glowRadius = 28 + Math.sin(time * 4) * 4;
+      const gradient = ctx.createRadialGradient(sx, sy + bob, 0, sx, sy + bob, glowRadius);
+      gradient.addColorStop(0, wp.weapon.color + '66');
+      gradient.addColorStop(1, wp.weapon.color + '00');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(sx, sy + bob, glowRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Diamond shape
+      ctx.globalAlpha = urgency;
+      ctx.fillStyle = wp.weapon.color;
+      ctx.save();
+      ctx.translate(sx, sy + bob);
+      ctx.rotate(Math.PI / 4);
+      ctx.fillRect(-8, -8, 16, 16);
+      ctx.restore();
+
+      // Icon text
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(wp.weapon.icon, sx, sy + bob);
+
+      // Weapon name label
+      ctx.fillStyle = wp.weapon.color;
+      ctx.font = 'bold 11px sans-serif';
+      ctx.textBaseline = 'alphabetic';
+      ctx.fillText(wp.weapon.name, sx, sy + bob - 20);
+
+      // Timer text
+      ctx.fillStyle = wp.timer < 3 ? '#e74c3c' : '#fff';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.fillText(Math.ceil(wp.timer) + 's', sx, sy + bob + 22);
+
+      ctx.globalAlpha = 1;
+      ctx.textBaseline = 'alphabetic';
+    }
+  }
+
+  drawLaserBeams(beams) {
+    const ctx = this.ctx;
+    for (const b of beams) {
+      const sx1 = b.x1 - this.camera.x;
+      const sy1 = b.y1 - this.camera.y;
+      const sx2 = b.x2 - this.camera.x;
+      const sy2 = b.y2 - this.camera.y;
+
+      ctx.globalAlpha = b.alpha;
+
+      // Outer glow
+      ctx.strokeStyle = b.color || '#e74c3c';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(sx1, sy1);
+      ctx.lineTo(sx2, sy2);
+      ctx.stroke();
+
+      // Inner bright core
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(sx1, sy1);
+      ctx.lineTo(sx2, sy2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  drawWeaponIndicator(player) {
+    if (!player.weaponDef) return;
+    const ctx = this.ctx;
+    const sx = player.x - this.camera.x;
+    const sy = player.y - this.camera.y;
+
+    // Small colored dot below the player
+    ctx.fillStyle = player.weaponDef.color;
+    ctx.beginPath();
+    ctx.arc(sx, sy + player.radius + 6, 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  drawHazards(hazards, time) {
+    const ctx = this.ctx;
+    for (const h of hazards) {
+      const sx = h.x - this.camera.x;
+      const sy = h.y - this.camera.y;
+
+      // Skip if offscreen (generous margin for large hazards)
+      if (sx < -250 || sx > this.canvas.width + 250 || sy < -250 || sy > this.canvas.height + 250) continue;
+
+      switch (h.type) {
+        case 'poison_pool': {
+          // Bubbling animation via varying alpha
+          const pulse = 0.3 + Math.sin(time * 2 + h.x * 0.1) * 0.1;
+          const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, h.radius);
+          grad.addColorStop(0, `rgba(46, 204, 113, ${pulse + 0.1})`);
+          grad.addColorStop(1, `rgba(46, 204, 113, ${pulse * 0.3})`);
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(sx, sy, h.radius, 0, Math.PI * 2);
+          ctx.fill();
+          // Border
+          ctx.strokeStyle = h.borderColor;
+          ctx.lineWidth = 1.5;
+          ctx.globalAlpha = 0.5;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+          // Bubble particles
+          for (let i = 0; i < 3; i++) {
+            const bx = sx + Math.sin(time * 3 + i * 2.1 + h.y) * h.radius * 0.5;
+            const by = sy + Math.cos(time * 2.5 + i * 1.7 + h.x) * h.radius * 0.5;
+            const br = 2 + Math.sin(time * 4 + i) * 1;
+            ctx.fillStyle = `rgba(46, 204, 113, ${0.4 + Math.sin(time * 5 + i) * 0.2})`;
+            ctx.beginPath();
+            ctx.arc(bx, by, br, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+        }
+        case 'shadow_spikes': {
+          if (h.active) {
+            // Draw spiky pattern when active
+            ctx.fillStyle = h.color;
+            ctx.beginPath();
+            const spikes = 8;
+            for (let i = 0; i < spikes; i++) {
+              const angle = (i / spikes) * Math.PI * 2;
+              const outerR = h.radius;
+              const innerR = h.radius * 0.4;
+              const r = i % 2 === 0 ? outerR : innerR;
+              const px = sx + Math.cos(angle) * r;
+              const py = sy + Math.sin(angle) * r;
+              if (i === 0) ctx.moveTo(px, py);
+              else ctx.lineTo(px, py);
+            }
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = h.borderColor;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          } else if (h.warning) {
+            // Flash warning before spikes emerge
+            const flash = Math.sin(time * 20) > 0 ? 0.5 : 0.15;
+            ctx.fillStyle = `rgba(155, 89, 182, ${flash})`;
+            ctx.beginPath();
+            ctx.arc(sx, sy, h.radius * 0.6, 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            // Subtle inactive circle
+            ctx.fillStyle = 'rgba(155, 89, 182, 0.1)';
+            ctx.beginPath();
+            ctx.arc(sx, sy, h.radius * 0.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+        }
+        case 'lava_crack': {
+          ctx.save();
+          ctx.translate(sx, sy);
+          ctx.rotate(h.angle);
+          // Pulsing glow
+          const glow = 0.4 + Math.sin(time * 3 + h.x * 0.05) * 0.15;
+          // Outer glow
+          ctx.fillStyle = `rgba(231, 76, 60, ${glow * 0.3})`;
+          ctx.fillRect(-h.length / 2 - 4, -h.width / 2 - 4, h.length + 8, h.width + 8);
+          // Main crack
+          ctx.fillStyle = `rgba(231, 76, 60, ${glow})`;
+          ctx.fillRect(-h.length / 2, -h.width / 2, h.length, h.width);
+          // Bright core
+          ctx.fillStyle = `rgba(241, 196, 15, ${glow * 0.5})`;
+          ctx.fillRect(-h.length / 2 + 4, -h.width / 4, h.length - 8, h.width / 2);
+          ctx.restore();
+          break;
+        }
+        case 'ice_patch': {
+          // Subtle shimmer
+          const shimmer = 0.2 + Math.sin(time * 1.5 + h.x * 0.1) * 0.05;
+          const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, h.radius);
+          grad.addColorStop(0, `rgba(52, 152, 219, ${shimmer + 0.1})`);
+          grad.addColorStop(0.7, `rgba(52, 152, 219, ${shimmer})`);
+          grad.addColorStop(1, `rgba(52, 152, 219, 0)`);
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.arc(sx, sy, h.radius, 0, Math.PI * 2);
+          ctx.fill();
+          // Border
+          ctx.strokeStyle = h.borderColor;
+          ctx.lineWidth = 1;
+          ctx.globalAlpha = 0.3;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+          // Sparkle dots
+          for (let i = 0; i < 4; i++) {
+            const angle = time * 0.5 + i * Math.PI / 2;
+            const dist = h.radius * 0.5;
+            const sparkX = sx + Math.cos(angle) * dist;
+            const sparkY = sy + Math.sin(angle) * dist;
+            ctx.fillStyle = `rgba(255, 255, 255, ${0.3 + Math.sin(time * 3 + i) * 0.2})`;
+            ctx.beginPath();
+            ctx.arc(sparkX, sparkY, 1.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          break;
+        }
+      }
+    }
   }
 
   drawMinimap(player, enemies, boss, blessings) {

@@ -12,17 +12,21 @@ import { GameOverUI } from './ui/gameOver.js';
 import { WorldMap } from './ui/worldMap.js';
 import { AudioSystem } from './systems/audio.js';
 import { DamageNumbers } from './systems/damageNumbers.js';
+import { HazardSystem } from './systems/hazards.js';
 import { LevelClearUI } from './ui/levelClear.js';
+import { Progression } from './systems/progression.js';
+import { UpgradeShop } from './ui/upgradeShop.js';
 
 const MAP_WIDTH = 1600;
 const MAP_HEIGHT = 1600;
 
 export class Game {
-  constructor(canvas, abilitiesData, wavesData, levelsData) {
+  constructor(canvas, abilitiesData, wavesData, levelsData, weaponsData) {
     this.canvas = canvas;
     this.abilitiesData = abilitiesData;
     this.wavesData = wavesData;
     this.levelsData = levelsData || [];
+    this.weaponsData = weaponsData || [];
 
     this.input = new Input(canvas);
     this.renderer = new Renderer(canvas);
@@ -33,8 +37,11 @@ export class Game {
     this.gameOverUI = new GameOverUI();
     this.audio = new AudioSystem();
     this.damageNumbers = new DamageNumbers();
+    this.hazardSystem = new HazardSystem();
     this.worldMap = new WorldMap();
     this.levelClearUI = new LevelClearUI();
+    this.progression = new Progression();
+    this.upgradeShop = new UpgradeShop();
 
     this.state = 'MENU';
     this.currentLevel = null;
@@ -65,6 +72,10 @@ export class Game {
     // Score & kill tracking
     this.score = 0;
     this.kills = { grunt: 0, rusher: 0, brute: 0, ranged: 0, splitter: 0, boss: 0 };
+
+    // Weapon pickup system
+    this.weaponPickups = [];
+    this.laserBeams = [];
   }
 
   togglePause() {
@@ -93,9 +104,21 @@ export class Game {
     this.comboDisplay = { count: 0, timer: 0 };
     this.score = 0;
     this.kills = { grunt: 0, rusher: 0, brute: 0, ranged: 0, splitter: 0, boss: 0 };
+    this.weaponPickups = [];
+    this.laserBeams = [];
     this.clearedLevels = [];
     this.currentLevel = null;
     this.levelClearTimer = 0;
+
+    // Set default weapon (pistol)
+    const pistol = this.weaponsData.find(w => w.id === 'pistol');
+    if (pistol) {
+      this.player.setWeapon('pistol', pistol);
+      this.hud.updateWeapon(pistol.name, pistol.color);
+    }
+
+    // Apply persistent progression upgrades
+    this.progression.applyToPlayer(this.player);
 
     document.getElementById('menu-screen').classList.add('hidden');
     this.hud.updateHP(this.player.hp, this.player.maxHP);
@@ -134,6 +157,8 @@ export class Game {
     this.chainLightnings = [];
     this.particles.particles = [];
     this.playerTrail = [];
+    this.weaponPickups = [];
+    this.laserBeams = [];
     this.isPicking = false;
     this.pendingLevelUp = false;
 
@@ -143,6 +168,9 @@ export class Game {
     this.waveSystem.mapWidth = mw;
     this.waveSystem.mapHeight = mh;
     this.waveSystem.setLevelConfig(levelConfig);
+
+    // Generate environmental hazards for this level
+    this.hazardSystem.generate(levelConfig);
 
     // Start playing
     this.state = 'PLAYING';
@@ -265,7 +293,7 @@ export class Game {
       const dx = nearestEnemy.x - player.x;
       const dy = nearestEnemy.y - player.y;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const projectileSpeed = 300;
+      const projectileSpeed = (player.weaponDef && player.weaponDef.speed) || 300;
       const timeToHit = dist / projectileSpeed;
 
       // Estimate enemy velocity toward player
@@ -420,6 +448,11 @@ export class Game {
     }
     this.chainLightnings = this.chainLightnings.filter(c => c.timer > 0);
 
+    // Environmental hazards
+    if (this.hazardSystem.hazards.length > 0 && wave) {
+      this.hazardSystem.update(dt, player, wave.enemies.filter(e => !e.dead));
+    }
+
     // Collision: projectiles vs enemies
     this._checkProjectileCollisions();
 
@@ -470,6 +503,32 @@ export class Game {
         this._pickBlessing();
       }
     }
+
+    // Weapon pickup collision + timer decay
+    for (let i = this.weaponPickups.length - 1; i >= 0; i--) {
+      const wp = this.weaponPickups[i];
+      wp.timer -= dt;
+      if (wp.timer <= 0) {
+        this.weaponPickups.splice(i, 1);
+        continue;
+      }
+      const dx = player.x - wp.x;
+      const dy = player.y - wp.y;
+      if (Math.sqrt(dx * dx + dy * dy) < player.radius + 14) {
+        player.setWeapon(wp.weapon.id, wp.weapon);
+        this.hud.updateWeapon(wp.weapon.name, wp.weapon.color);
+        this.particles.confetti(wp.x, wp.y);
+        this.audio.blessingPick();
+        this.weaponPickups.splice(i, 1);
+      }
+    }
+
+    // Laser beam visual decay
+    for (const b of this.laserBeams) {
+      b.timer -= dt;
+      b.alpha = Math.max(0, b.timer / 0.15);
+    }
+    this.laserBeams = this.laserBeams.filter(b => b.timer > 0);
 
     // Check wave clear — all enemies killed → open blessing picker (end-of-round reward)
     if (this.state === 'PLAYING' && wave.checkWaveClear()) {
@@ -529,6 +588,11 @@ export class Game {
     // Particles
     this.particles.update(dt);
 
+    // Environmental hazards
+    if (this.hazardSystem.hazards.length > 0) {
+      this.hazardSystem.update(dt, player, wave.enemies.filter(e => !e.dead));
+    }
+
     // Damage numbers
     this.damageNumbers.update(dt);
 
@@ -555,8 +619,8 @@ export class Game {
     this.audio.shoot();
 
     const angle = player.aimAngle;
-    const speed = 300;
-    const totalProjectiles = 1 + player.extraProjectiles;
+    const wdef = player.weaponDef;
+    const weaponId = player.weapon;
 
     let isCrit = false;
     if (player.critChance > 0 && Math.random() < player.critChance) {
@@ -564,6 +628,138 @@ export class Game {
     }
 
     const dmg = isCrit ? player.damage * 2 : player.damage;
+
+    // --- Laser (hitscan) ---
+    if (weaponId === 'laser' && wdef) {
+      const range = wdef.range || 350;
+      const dx = Math.cos(angle);
+      const dy = Math.sin(angle);
+
+      // Raycast: find the first enemy in line
+      const wave = this.waveSystem;
+      const targets = [...wave.enemies.filter(e => !e.dead)];
+      if (wave.boss && !wave.boss.dead) targets.push(wave.boss);
+
+      let hitTarget = null;
+      let hitDist = range;
+
+      for (const e of targets) {
+        // Project enemy position onto the ray
+        const ex = e.x - player.x;
+        const ey = e.y - player.y;
+        const dot = ex * dx + ey * dy;
+        if (dot < 0 || dot > range) continue;
+        // Perpendicular distance from enemy center to ray
+        const perpX = ex - dx * dot;
+        const perpY = ey - dy * dot;
+        const perpDist = Math.sqrt(perpX * perpX + perpY * perpY);
+        if (perpDist < e.radius + 4 && dot < hitDist) {
+          hitDist = dot;
+          hitTarget = e;
+        }
+      }
+
+      const endX = player.x + dx * hitDist;
+      const endY = player.y + dy * hitDist;
+
+      // Laser beam visual
+      this.laserBeams.push({
+        x1: player.x, y1: player.y,
+        x2: endX, y2: endY,
+        color: wdef.color || '#e74c3c',
+        timer: 0.15, alpha: 1,
+      });
+
+      if (hitTarget) {
+        const killed = hitTarget.takeDamage(dmg);
+        this.damageNumbers.spawn(hitTarget.x, hitTarget.y - hitTarget.radius, dmg, isCrit);
+        if (player.lifestealPercent > 0) {
+          player.hp = Math.min(player.maxHP, player.hp + dmg * player.lifestealPercent);
+        }
+        if (player.chainCount > 0) {
+          this._chainLightning(hitTarget, player.chainCount, player.chainDamage, player.chainRange);
+        }
+        if (killed) this._onEnemyDeath(hitTarget);
+      }
+      return;
+    }
+
+    // --- Shotgun ---
+    if (weaponId === 'shotgun' && wdef) {
+      const pellets = wdef.pellets || 5;
+      const spreadDeg = wdef.spread || 30;
+      const spreadRad = spreadDeg * Math.PI / 180;
+      const speed = wdef.speed || 250;
+      const lifetime = wdef.lifetime || 0.6;
+
+      // Also add extra projectiles from abilities
+      const totalPellets = pellets + player.extraProjectiles;
+
+      for (let i = 0; i < totalPellets; i++) {
+        // Spread pellets evenly across the cone, with a bit of randomness
+        let a;
+        if (totalPellets === 1) {
+          a = angle;
+        } else {
+          const base = (i / (totalPellets - 1) - 0.5) * spreadRad;
+          a = angle + base + (Math.random() - 0.5) * (spreadRad / totalPellets);
+        }
+
+        const p = new Projectile(
+          player.x + Math.cos(a) * player.radius,
+          player.y + Math.sin(a) * player.radius,
+          Math.cos(a) * speed,
+          Math.sin(a) * speed,
+          dmg
+        );
+        p.pierce = player.pierce;
+        p.bounces = player.bounces;
+        p.bounceRange = player.bounceRange;
+        p.lifetime = lifetime;
+        this.projectiles.push(p);
+      }
+      return;
+    }
+
+    // --- Rockets ---
+    if (weaponId === 'rockets' && wdef) {
+      const speed = wdef.speed || 180;
+      const totalProjectiles = 1 + player.extraProjectiles;
+
+      for (let i = 0; i < totalProjectiles; i++) {
+        let a = angle;
+        if (totalProjectiles > 1) {
+          const offset = (i - (totalProjectiles - 1) / 2) * (player.spreadAngle * Math.PI / 180);
+          a = angle + offset;
+        }
+
+        const p = new Projectile(
+          player.x + Math.cos(a) * player.radius,
+          player.y + Math.sin(a) * player.radius,
+          Math.cos(a) * speed,
+          Math.sin(a) * speed,
+          dmg
+        );
+        p.radius = wdef.radius || 6;
+        p.pierce = 0; // Rockets explode on first hit, no pierce
+        p.bounces = 0;
+        p.isRocket = true;
+        p.rocketExplosionRadius = wdef.explosionRadius || 80;
+        p.rocketExplosionDamage = wdef.explosionDamage || 25;
+
+        if (i > 0 && totalProjectiles > 1 && nearestEnemy) {
+          p.homing = 100;
+          p.homingTarget = nearestEnemy;
+        }
+
+        this.projectiles.push(p);
+      }
+      return;
+    }
+
+    // --- Pistol (default) ---
+    const speed = (wdef && wdef.speed) || 300;
+    const totalProjectiles = 1 + player.extraProjectiles;
 
     for (let i = 0; i < totalProjectiles; i++) {
       let a = angle;
@@ -630,7 +826,16 @@ export class Game {
             player.hp = Math.min(player.maxHP, player.hp + p.damage * player.lifestealPercent);
           }
 
-          // Explosion
+          // Rocket explosion (weapon-based AoE)
+          if (p.isRocket) {
+            this._explosion(p.x, p.y, p.rocketExplosionRadius, p.rocketExplosionDamage, p);
+            this.screenShake = 0.15;
+            p.dead = true;
+            if (killed) this._onEnemyDeath(e);
+            break;
+          }
+
+          // Explosion (ability-based)
           if (player.explosionRadius > 0) {
             this._explosion(p.x, p.y, player.explosionRadius, player.explosionDamage, p);
           }
@@ -802,8 +1007,17 @@ export class Game {
     else if (this.combo >= 5) xpMultiplier = 2;
     else if (this.combo >= 3) xpMultiplier = 1.5;
 
+    // Weapon drop (~5% chance)
+    if (Math.random() < 0.05) {
+      const weapons = this.weaponsData.filter(w => w.id !== this.player.weapon);
+      if (weapons.length > 0) {
+        const wp = weapons[Math.floor(Math.random() * weapons.length)];
+        this.weaponPickups.push({ x: enemy.x, y: enemy.y, weapon: wp, timer: 10 });
+      }
+    }
+
     // Award XP
-    const xp = (enemy.xp || 0) * xpMultiplier;
+    const xp = (enemy.xp || 0) * xpMultiplier * this.progression.getXPMultiplier();
     const leveled = this.player.addXP(xp);
     this.hud.updateXP(this.player.xp, this.player.xpToNext, this.player.level);
     this.hud.updateHP(this.player.hp, this.player.maxHP);
@@ -869,11 +1083,18 @@ export class Game {
   }
 
   async _showGameOver() {
-    await this.gameOverUI.show(this.waveSystem.currentWave, this.bestCombo, this.score, this.kills);
+    const coinsEarned = this.progression.addCoins(this.score);
+    await this.gameOverUI.show(this.waveSystem.currentWave, this.bestCombo, this.score, this.kills, coinsEarned);
     document.getElementById('menu-screen').classList.remove('hidden');
+    this._updateMenuCoins();
     this.state = 'MENU';
     this.clearedLevels = [];
     this.currentLevel = null;
+  }
+
+  _updateMenuCoins() {
+    const el = document.getElementById('menu-coins');
+    if (el) el.textContent = `Coins: ${this.progression.coins.toLocaleString()}`;
   }
 
   render() {
@@ -894,6 +1115,11 @@ export class Game {
 
     r.clear();
     r.drawMap();
+
+    // Environmental hazards (drawn right after map, under everything else)
+    if (this.hazardSystem.hazards.length > 0) {
+      r.drawHazards(this.hazardSystem.hazards, this.time);
+    }
 
     if (!this.player) return;
 
@@ -933,6 +1159,11 @@ export class Game {
       }
     }
 
+    // Weapon pickups
+    if (this.weaponPickups.length > 0) {
+      r.drawWeaponPickups(this.weaponPickups, this.time);
+    }
+
     // Projectiles
     r.drawProjectiles(this.projectiles);
 
@@ -941,6 +1172,14 @@ export class Game {
 
     // Player
     r.drawPlayer(this.player);
+
+    // Weapon indicator near player
+    r.drawWeaponIndicator(this.player);
+
+    // Laser beams
+    if (this.laserBeams.length > 0) {
+      r.drawLaserBeams(this.laserBeams);
+    }
 
     // Chain lightning
     r.drawChainLightning(this.chainLightnings);

@@ -25,6 +25,7 @@
       <span id="boss-name"></span>
       <div id="boss-hp-bar"></div>
     </div>
+    <div id="weapon-display"></div>
     <div id="ability-icons"></div>
     <div id="wave-countdown" class="hidden"></div>
   </div>
@@ -37,6 +38,8 @@
     <h1>Wave Survival</h1>
     <p>Survive endless waves of enemies. Collect blessings to grow stronger.</p>
     <button id="start-btn">Start Game</button>
+    <button id="shop-btn">Upgrades</button>
+    <p id="menu-coins"></p>
     <p class="controls-hint">Move: WASD / Left joystick<br>Aim: Auto / Right tap</p>
   </div>
   <div id="blessing-picker" class="hidden">
@@ -78,6 +81,12 @@
     <h2>World Map</h2>
     <p class="world-map-subtitle">Select your next destination</p>
     <div id="world-map-nodes"></div>
+  </div>
+  <div id="upgrade-shop" class="hidden">
+    <h2>Upgrades</h2>
+    <p id="shop-coins">Coins: 0</p>
+    <div id="upgrade-list"></div>
+    <button id="shop-close-btn">Close</button>
   </div>
   <script type="module" src="src/main.js"></script>
 </body>

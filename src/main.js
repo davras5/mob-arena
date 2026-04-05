@@ -4,16 +4,18 @@ async function init() {
   const canvas = document.getElementById('game-canvas');
 
   // Load data
-  const [abilitiesRes, wavesRes, levelsRes] = await Promise.all([
+  const [abilitiesRes, wavesRes, levelsRes, weaponsRes] = await Promise.all([
     fetch('./src/data/abilities.json'),
     fetch('./src/data/waves.json'),
     fetch('./src/data/levels.json'),
+    fetch('./src/data/weapons.json'),
   ]);
   const abilitiesData = await abilitiesRes.json();
   const wavesData = await wavesRes.json();
   const levelsData = await levelsRes.json();
+  const weaponsData = await weaponsRes.json();
 
-  const game = new Game(canvas, abilitiesData, wavesData, levelsData);
+  const game = new Game(canvas, abilitiesData, wavesData, levelsData, weaponsData);
 
   // Menu start button
   document.getElementById('start-btn').addEventListener('click', () => {
@@ -22,6 +24,17 @@ async function init() {
       game.start();
     }
   });
+
+  // Shop button
+  document.getElementById('shop-btn').addEventListener('click', () => {
+    game.audio.buttonClick();
+    game.upgradeShop.show(game.progression, () => {
+      game._updateMenuCoins();
+    });
+  });
+
+  // Show coins on menu
+  game._updateMenuCoins();
 
   // Pause: Escape key
   game.input.onPause = () => game.togglePause();

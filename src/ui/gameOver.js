@@ -8,11 +8,13 @@ export class GameOverUI {
     this.restartBtn = document.getElementById('restart-btn');
   }
 
-  show(wave, bestCombo, score = 0, kills = {}) {
+  show(wave, bestCombo, score = 0, kills = {}, coinsEarned = 0) {
     this.container.classList.remove('hidden');
     this.finalWave.textContent = `You reached Wave ${wave}`;
     if (this.bestComboEl) {
-      this.bestComboEl.textContent = bestCombo > 1 ? `Best Combo: x${bestCombo}` : '';
+      const comboText = bestCombo > 1 ? `Best Combo: x${bestCombo}` : '';
+      const coinText = coinsEarned > 0 ? `  +${coinsEarned} coins` : '';
+      this.bestComboEl.innerHTML = comboText + (coinText ? `<br><span style="color:#f1c40f">${coinText}</span>` : '');
     }
     if (this.finalScore) {
       this.finalScore.textContent = `Score: ${score.toLocaleString()}`;

@@ -13,6 +13,7 @@ export class HUD {
     this.xpText = document.getElementById('xp-text');
     this.scoreDisplay = document.getElementById('score-display');
     this.levelName = document.getElementById('level-name');
+    this.weaponDisplay = document.getElementById('weapon-display');
   }
 
   updateHP(hp, maxHP) {
@@ -72,6 +73,15 @@ export class HUD {
 
   updateEnemyCount(alive, total) {
     this.enemyCounter.textContent = `Enemies: ${alive} / ${total}`;
+  }
+
+  updateWeapon(name, color) {
+    if (this.weaponDisplay) {
+      this.weaponDisplay.textContent = name;
+      this.weaponDisplay.style.color = color;
+      this.weaponDisplay.style.borderColor = color;
+      this.weaponDisplay.classList.add('active');
+    }
   }
 
   showCountdown(seconds) {

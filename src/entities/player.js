@@ -55,10 +55,25 @@ export class Player {
     this.regenAccum = 0;
     this.fireTrailTimer = 0;
 
+    // Weapon system
+    this.weapon = 'pistol';
+    this.weaponDef = null;
+
     // XP / leveling
     this.xp = 0;
     this.level = 1;
     this.xpToNext = 50;
+  }
+
+  setWeapon(weaponId, weaponDef) {
+    this.weapon = weaponId;
+    this.weaponDef = weaponDef;
+    this.baseAttackCooldown = weaponDef.cooldown;
+    this.baseDamage = weaponDef.damage;
+    // Recalc derived stats so ability multipliers apply on new base values
+    this.attackCooldown = this.baseAttackCooldown * this.attackSpeedMult;
+    this.damage = this.baseDamage + this.damageBonus;
+    this.speed = this.baseSpeed * this.speedMult;
   }
 
   addXP(amount) {
@@ -180,8 +195,9 @@ export class Player {
         this.y += this.dashVy * dt * 600;
       }
     } else {
-      this.x += moveVector.x * this.speed * dt;
-      this.y += moveVector.y * this.speed * dt;
+      const speedMult = this._hazardSlowed ? (1 - (this._hazardSlowPercent || 0)) : 1;
+      this.x += moveVector.x * this.speed * speedMult * dt;
+      this.y += moveVector.y * this.speed * speedMult * dt;
     }
 
     // Clamp to map

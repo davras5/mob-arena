@@ -9,6 +9,8 @@ import { ParticleSystem } from './systems/particles.js';
 import { HUD } from './ui/hud.js';
 import { BlessingPicker } from './ui/blessingPicker.js';
 import { GameOverUI } from './ui/gameOver.js';
+import { AudioSystem } from './systems/audio.js';
+import { DamageNumbers } from './systems/damageNumbers.js';
 
 const MAP_WIDTH = 1600;
 const MAP_HEIGHT = 1600;
@@ -26,8 +28,11 @@ export class Game {
     this.hud = new HUD();
     this.blessingPicker = new BlessingPicker();
     this.gameOverUI = new GameOverUI();
+    this.audio = new AudioSystem();
+    this.damageNumbers = new DamageNumbers();
 
     this.state = 'MENU';
+    this.paused = false;
     this.player = null;
     this.projectiles = [];
     this.waveSystem = null;
@@ -36,6 +41,22 @@ export class Game {
     this.chainLightnings = [];
     this.screenShake = 0;
     this.isPicking = false;
+    this.pendingLevelUp = false;
+
+    // Player trail effect
+    this.playerTrail = [];
+
+    // Wave announcement banner
+    this.waveAnnouncement = { wave: 0, timer: 0 };
+  }
+
+  togglePause() {
+    if (this.state === 'MENU' || this.state === 'GAME_OVER') return;
+    this.paused = !this.paused;
+    const overlay = document.getElementById('pause-overlay');
+    if (overlay) {
+      overlay.classList.toggle('hidden', !this.paused);
+    }
   }
 
   start() {
@@ -49,9 +70,13 @@ export class Game {
     this.waveSystem.mapHeight = MAP_HEIGHT;
     this.particles.particles = [];
     this.isPicking = false;
+    this.pendingLevelUp = false;
+    this.playerTrail = [];
+    this.waveAnnouncement = { wave: 1, timer: 2.0 };
 
     document.getElementById('menu-screen').classList.add('hidden');
     this.hud.updateHP(this.player.hp, this.player.maxHP);
+    this.hud.updateXP(0, this.player.xpToNext, 1);
     this.hud.updateWave(1);
     this.hud.hideBossHP();
 
@@ -70,6 +95,22 @@ export class Game {
 
     // Player movement
     player.update(dt, this.input.moveVector, MAP_WIDTH, MAP_HEIGHT);
+
+    // Player trail effect
+    if (this.input.moveVector.x !== 0 || this.input.moveVector.y !== 0) {
+      this.playerTrail.push({ x: player.x, y: player.y, alpha: 0.5 });
+      if (this.playerTrail.length > 10) this.playerTrail.shift();
+    }
+    for (const t of this.playerTrail) {
+      t.alpha -= dt * 1.5;
+    }
+    this.playerTrail = this.playerTrail.filter(t => t.alpha > 0);
+
+    // Wave announcement decay
+    if (this.waveAnnouncement.timer > 0) this.waveAnnouncement.timer -= dt;
+
+    // Flash effect decay
+    this.renderer.updateFlash(dt);
 
     // Auto-aim at nearest enemy
     let nearestEnemy = null;
@@ -213,6 +254,7 @@ export class Game {
           const dy = e.y - t.y;
           if (Math.sqrt(dx * dx + dy * dy) < 15) {
             e.takeDamage(t.damage);
+            this.damageNumbers.spawn(e.x, e.y - e.radius, t.damage, false);
             if (e.dead) this._onEnemyDeath(e);
           }
         }
@@ -246,45 +288,54 @@ export class Game {
       }
     }
 
-    // Collision: player vs blessings
-    if (this.state === 'WAVE_CLEAR' && !this.isPicking) {
-      for (const b of wave.blessings) {
-        if (b.collected) continue;
-        const dx = player.x - b.x;
-        const dy = player.y - b.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+    // Update enemy counter
+    const aliveEnemies = wave.enemies.filter(e => !e.dead).length + (wave.boss && !wave.boss.dead ? 1 : 0);
+    this.hud.updateEnemyCount(aliveEnemies, wave.totalEnemies || 0);
 
-        // Magnet effect
-        if (dist < player.magnetRange) {
-          const pull = 200 * dt;
-          const pdx = player.x - b.x;
-          const pdy = player.y - b.y;
-          const pdist = Math.sqrt(pdx * pdx + pdy * pdy);
-          if (pdist > 1) {
-            b.x += (pdx / pdist) * pull;
-            b.y += (pdy / pdist) * pull;
-          }
-        }
+    // Update blessing timers
+    for (const b of wave.blessings) {
+      b.update(dt);
+    }
+    wave.blessings = wave.blessings.filter(b => !b.expired);
 
-        if (dist < b.radius) {
-          b.collected = true;
-          this.particles.confetti(b.x, b.y);
-          this._pickBlessing();
-        }
+    // Collision: player vs blessings on map (collectible anytime)
+    for (const b of wave.blessings) {
+      if (b.collected) continue;
+      const dx = player.x - b.x;
+      const dy = player.y - b.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+
+      // Magnet pull
+      if (dist < player.magnetRange) {
+        const pull = 200 * dt;
+        const pdist = Math.max(1, dist);
+        b.x += (dx / pdist) * pull;
+        b.y += (dy / pdist) * pull;
+      }
+
+      if (dist < b.radius) {
+        b.collected = true;
+        this.particles.confetti(b.x, b.y);
+        this._pickBlessing();
       }
     }
 
-    // Check wave clear
+    // Check wave clear — all enemies killed → open blessing picker (end-of-round reward)
     if (this.state === 'PLAYING' && wave.checkWaveClear()) {
-      wave.triggerWaveClear();
       this.state = 'WAVE_CLEAR';
       this.hud.hideBossHP();
-      // Confetti in center
-      this.particles.confetti(MAP_WIDTH / 2, MAP_HEIGHT / 2);
+      this.hud.updateEnemyCount(0, wave.totalEnemies || 0);
+      this.particles.confetti(player.x, player.y);
+      this.audio.waveClear();
+      this.renderer.flash('#2ecc71', 0.3);
+      // Spawn blessings on map
+      wave.triggerWaveClear();
+      // Also give end-of-round blessing picker
+      this._pickBlessing();
     }
 
-    // Check all blessings collected
-    if (this.state === 'WAVE_CLEAR' && !this.isPicking && wave.allBlessingsCollected()) {
+    // After blessing is picked, start countdown to next wave
+    if (this.state === 'WAVE_CLEAR' && !this.isPicking) {
       this.state = 'COUNTDOWN';
       wave.startCountdown(3);
     }
@@ -298,6 +349,8 @@ export class Game {
         this.hud.updateWave(nextWave);
         wave.startWave(nextWave);
         this.state = 'PLAYING';
+        this.waveAnnouncement = { wave: nextWave, timer: 2.0 };
+        if (wave.boss) this.audio.bossAppear();
       }
     }
 
@@ -311,19 +364,30 @@ export class Game {
     // Particles
     this.particles.update(dt);
 
+    // Damage numbers
+    this.damageNumbers.update(dt);
+
     // Player death
     if (player.hp <= 0) {
       this.state = 'GAME_OVER';
+      this.audio.gameOver();
       this._showGameOver();
     }
 
     // HUD
     this.hud.updateHP(player.hp, player.maxHP);
+
+    // Level-up blessing picker
+    if (this.pendingLevelUp && !this.isPicking) {
+      this.pendingLevelUp = false;
+      this._pickBlessing();
+    }
   }
 
   _playerShoot() {
     const player = this.player;
     player.attack();
+    this.audio.shoot();
 
     const angle = player.aimAngle;
     const speed = 300;
@@ -371,6 +435,7 @@ export class Game {
           player.takeDamage(p.damage);
           p.dead = true;
           this.screenShake = 0.1;
+          this.renderer.flash('#e74c3c', 0.2);
         }
         continue;
       }
@@ -386,6 +451,7 @@ export class Game {
         if (Math.sqrt(dx * dx + dy * dy) < e.radius + p.radius) {
           const killed = e.takeDamage(p.damage);
           p.hitEnemies.add(e);
+          this.damageNumbers.spawn(e.x, e.y - e.radius, p.damage, p.damage > this.player.damage);
 
           // Lifesteal
           if (player.lifestealPercent > 0) {
@@ -441,6 +507,7 @@ export class Game {
     if (wave.boss && !wave.boss.dead) targets.push(wave.boss);
 
     this.particles.emit(x, y, 12, '#e67e22', { speed: 120, life: 0.3 });
+    this.audio.explosion();
 
     for (const e of targets) {
       if (sourceProjectile && sourceProjectile.hitEnemies.has(e)) continue;
@@ -448,12 +515,14 @@ export class Game {
       const dy = e.y - y;
       if (Math.sqrt(dx * dx + dy * dy) < radius + e.radius) {
         const killed = e.takeDamage(damage);
+        this.damageNumbers.spawn(e.x, e.y - e.radius, damage, false);
         if (killed) this._onEnemyDeath(e);
       }
     }
   }
 
   _chainLightning(source, chains, damage, range) {
+    this.audio.chainLightning();
     const wave = this.waveSystem;
     const hit = new Set([source]);
     let current = source;
@@ -482,6 +551,7 @@ export class Game {
       });
 
       const killed = nearest.takeDamage(damage);
+      this.damageNumbers.spawn(nearest.x, nearest.y - nearest.radius, damage, false);
       if (killed) this._onEnemyDeath(nearest);
       hit.add(nearest);
       current = nearest;
@@ -516,6 +586,8 @@ export class Game {
         const dmg = player.takeDamage(e.damage);
         e.contactCooldown = 0.5;
         this.screenShake = 0.1;
+        this.audio.playerHit();
+        this.renderer.flash('#e74c3c', 0.2);
 
         if (player.thornsDamage > 0) {
           const killed = e.takeDamage(player.thornsDamage);
@@ -527,6 +599,15 @@ export class Game {
 
   _onEnemyDeath(enemy) {
     this.particles.deathBurst(enemy.x, enemy.y, enemy.color);
+    this.audio.enemyDeath();
+
+    // Award XP
+    const leveled = this.player.addXP(enemy.xp || 0);
+    this.hud.updateXP(this.player.xp, this.player.xpToNext, this.player.level);
+    this.hud.updateHP(this.player.hp, this.player.maxHP);
+    if (leveled) {
+      this.pendingLevelUp = true;
+    }
   }
 
   _handleSplitter(enemy) {
@@ -564,6 +645,7 @@ export class Game {
     const options = shuffled.slice(0, Math.min(3, shuffled.length));
 
     const chosen = await this.blessingPicker.show(options, this.player.abilities);
+    this.audio.blessingPick();
 
     // Apply ability
     this.player.addAbility(chosen.id, chosen);
@@ -602,7 +684,7 @@ export class Game {
 
     const wave = this.waveSystem;
 
-    // Blessings
+    // Blessings on map
     if (wave) {
       r.drawBlessings(wave.blessings.filter(b => !b.collected), this.time);
     }
@@ -639,6 +721,9 @@ export class Game {
     // Projectiles
     r.drawProjectiles(this.projectiles);
 
+    // Player trail
+    r.drawPlayerTrail(this.playerTrail);
+
     // Player
     r.drawPlayer(this.player);
 
@@ -647,6 +732,35 @@ export class Game {
 
     // Particles
     r.drawParticles(this.particles.particles);
+
+    // Blessing off-screen indicators
+    if (wave) {
+      const activeBlessings = wave.blessings.filter(b => !b.collected && !b.expired);
+      if (activeBlessings.length > 0) {
+        r.drawBlessingIndicators(activeBlessings, this.player);
+      }
+    }
+
+    // Damage numbers
+    this.damageNumbers.render(r.ctx, r.camera);
+
+    // Minimap
+    if (wave) {
+      r.drawMinimap(
+        this.player,
+        wave.enemies.filter(e => !e.dead),
+        wave.boss && !wave.boss.dead ? wave.boss : null,
+        wave.blessings.filter(b => !b.collected && !b.expired)
+      );
+    }
+
+    // Wave announcement banner
+    if (this.waveAnnouncement.timer > 0) {
+      r.drawWaveAnnouncement(this.waveAnnouncement.wave, this.waveAnnouncement.timer);
+    }
+
+    // Screen flash overlay
+    r.drawFlash();
 
     // Joystick
     r.drawJoystick(this.input);

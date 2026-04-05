@@ -10,6 +10,7 @@ export class Input {
     this.rightHold = false;
     this.joystickId = null;
     this.rightTouchId = null;
+    this.onPause = null;
 
     this._bindKeyboard();
     this._bindTouch();
@@ -19,6 +20,9 @@ export class Input {
   _bindKeyboard() {
     window.addEventListener('keydown', (e) => {
       this.keys[e.key.toLowerCase()] = true;
+      if (e.key === 'Escape' && this.onPause) {
+        this.onPause();
+      }
     });
     window.addEventListener('keyup', (e) => {
       this.keys[e.key.toLowerCase()] = false;

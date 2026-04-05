@@ -43,6 +43,7 @@ export class WaveSystem {
     }
 
     this.blessingsToCollect = config.blessings || 1;
+    this.totalEnemies = this.enemies.length + (this.boss ? 1 : 0);
   }
 
   _getWaveConfig(waveNum) {

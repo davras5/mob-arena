@@ -54,6 +54,24 @@ export class Player {
 
     this.regenAccum = 0;
     this.fireTrailTimer = 0;
+
+    // XP / leveling
+    this.xp = 0;
+    this.level = 1;
+    this.xpToNext = 50;
+  }
+
+  addXP(amount) {
+    this.xp += amount;
+    let leveled = false;
+    while (this.xp >= this.xpToNext) {
+      this.xp -= this.xpToNext;
+      this.level++;
+      this.xpToNext = Math.round(50 * Math.pow(1.3, this.level - 1));
+      this.hp = Math.min(this.maxHP, this.hp + this.maxHP * 0.2);
+      leveled = true;
+    }
+    return leveled;
   }
 
   getAbilityLevel(abilityId) {

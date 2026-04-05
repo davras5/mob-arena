@@ -4,14 +4,16 @@ async function init() {
   const canvas = document.getElementById('game-canvas');
 
   // Load data
-  const [abilitiesRes, wavesRes] = await Promise.all([
+  const [abilitiesRes, wavesRes, levelsRes] = await Promise.all([
     fetch('./src/data/abilities.json'),
     fetch('./src/data/waves.json'),
+    fetch('./src/data/levels.json'),
   ]);
   const abilitiesData = await abilitiesRes.json();
   const wavesData = await wavesRes.json();
+  const levelsData = await levelsRes.json();
 
-  const game = new Game(canvas, abilitiesData, wavesData);
+  const game = new Game(canvas, abilitiesData, wavesData, levelsData);
 
   // Menu start button
   document.getElementById('start-btn').addEventListener('click', () => {
@@ -35,7 +37,7 @@ async function init() {
     const dt = Math.min((now - lastTime) / 1000, 0.05); // Cap at 50ms
     lastTime = now;
 
-    if (game.state !== 'MENU' && game.state !== 'GAME_OVER' && !game.paused) {
+    if (game.state !== 'MENU' && game.state !== 'GAME_OVER' && game.state !== 'WORLD_MAP' && !game.paused) {
       game.update(dt);
     }
     game.render();

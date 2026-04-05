@@ -9,17 +9,20 @@ import { ParticleSystem } from './systems/particles.js';
 import { HUD } from './ui/hud.js';
 import { BlessingPicker } from './ui/blessingPicker.js';
 import { GameOverUI } from './ui/gameOver.js';
+import { WorldMap } from './ui/worldMap.js';
 import { AudioSystem } from './systems/audio.js';
 import { DamageNumbers } from './systems/damageNumbers.js';
+import { LevelClearUI } from './ui/levelClear.js';
 
 const MAP_WIDTH = 1600;
 const MAP_HEIGHT = 1600;
 
 export class Game {
-  constructor(canvas, abilitiesData, wavesData) {
+  constructor(canvas, abilitiesData, wavesData, levelsData) {
     this.canvas = canvas;
     this.abilitiesData = abilitiesData;
     this.wavesData = wavesData;
+    this.levelsData = levelsData || [];
 
     this.input = new Input(canvas);
     this.renderer = new Renderer(canvas);
@@ -30,8 +33,12 @@ export class Game {
     this.gameOverUI = new GameOverUI();
     this.audio = new AudioSystem();
     this.damageNumbers = new DamageNumbers();
+    this.worldMap = new WorldMap();
+    this.levelClearUI = new LevelClearUI();
 
     this.state = 'MENU';
+    this.currentLevel = null;
+    this.clearedLevels = [];
     this.paused = false;
     this.player = null;
     this.projectiles = [];
@@ -70,25 +77,25 @@ export class Game {
   }
 
   start() {
-    this.state = 'PLAYING';
+    // Reset run state
     this.player = new Player(MAP_WIDTH / 2, MAP_HEIGHT / 2);
     this.projectiles = [];
     this.fireTrails = [];
     this.chainLightnings = [];
-    this.waveSystem = new WaveSystem(this.wavesData);
-    this.waveSystem.mapWidth = MAP_WIDTH;
-    this.waveSystem.mapHeight = MAP_HEIGHT;
     this.particles.particles = [];
     this.isPicking = false;
     this.pendingLevelUp = false;
     this.playerTrail = [];
-    this.waveAnnouncement = { wave: 1, timer: 2.0 };
+    this.waveAnnouncement = { wave: 0, timer: 0 };
     this.combo = 0;
     this.comboTimer = 0;
     this.bestCombo = 0;
     this.comboDisplay = { count: 0, timer: 0 };
     this.score = 0;
     this.kills = { grunt: 0, rusher: 0, brute: 0, ranged: 0, splitter: 0, boss: 0 };
+    this.clearedLevels = [];
+    this.currentLevel = null;
+    this.levelClearTimer = 0;
 
     document.getElementById('menu-screen').classList.add('hidden');
     this.hud.updateHP(this.player.hp, this.player.maxHP);
@@ -97,12 +104,98 @@ export class Game {
     this.hud.updateScore(0);
     this.hud.hideBossHP();
 
-    // Start wave 1
+    // Show world map to pick first level
+    this._showWorldMap();
+  }
+
+  _showWorldMap() {
+    this.state = 'WORLD_MAP';
+    this.worldMap.show(this.levelsData, this.clearedLevels, (level) => {
+      this.startLevel(level);
+    });
+  }
+
+  startLevel(levelConfig) {
+    this.currentLevel = levelConfig;
+
+    // Configure renderer theme and map dimensions
+    this.renderer.setTheme(levelConfig);
+
+    const mw = levelConfig.mapWidth || MAP_WIDTH;
+    const mh = levelConfig.mapHeight || MAP_HEIGHT;
+
+    // Reset player position to center of the new map (keep abilities/stats/hp)
+    this.player.x = mw / 2;
+    this.player.y = mh / 2;
+
+    // Clear transient state but keep player abilities/stats/hp/score/kills
+    this.projectiles = [];
+    this.fireTrails = [];
+    this.chainLightnings = [];
+    this.particles.particles = [];
+    this.playerTrail = [];
+    this.isPicking = false;
+    this.pendingLevelUp = false;
+
+    // Create wave system with level-specific wave data
+    const levelWaves = this._generateLevelWaves(levelConfig);
+    this.waveSystem = new WaveSystem(levelWaves);
+    this.waveSystem.mapWidth = mw;
+    this.waveSystem.mapHeight = mh;
+    this.waveSystem.setLevelConfig(levelConfig);
+
+    // Start playing
+    this.state = 'PLAYING';
+    this.waveAnnouncement = { wave: 1, timer: 2.0 };
+    this.hud.updateWave(1);
+    this.hud.updateLevelName(levelConfig.name);
+    this.hud.hideBossHP();
+
     this.waveSystem.startWave(1);
   }
 
+  _generateLevelWaves(levelConfig) {
+    const waves = [];
+    const totalWaves = levelConfig.waves || 5;
+    const types = levelConfig.enemyTypes || ['grunt'];
+
+    for (let w = 1; w <= totalWaves; w++) {
+      const isFinal = w === totalWaves;
+      const enemies = [];
+
+      // Scale enemy count with wave number within the level
+      for (const type of types) {
+        enemies.push({
+          type,
+          count: Math.round(3 + w * 1.2 + (levelConfig.difficulty || 1) * 0.5),
+        });
+      }
+
+      const config = {
+        wave: w,
+        enemies,
+        blessings: isFinal ? 2 : 1,
+      };
+
+      if (isFinal && levelConfig.boss) {
+        config.boss = levelConfig.boss;
+      }
+
+      waves.push(config);
+    }
+
+    return waves;
+  }
+
   update(dt) {
-    if (this.state !== 'PLAYING' && this.state !== 'WAVE_CLEAR' && this.state !== 'COUNTDOWN') return;
+    if (this.state !== 'PLAYING' && this.state !== 'WAVE_CLEAR' && this.state !== 'COUNTDOWN' && this.state !== 'LEVEL_CLEAR') return;
+
+    // Handle LEVEL_CLEAR state - just update visuals while UI is showing
+    if (this.state === 'LEVEL_CLEAR') {
+      if (this.waveAnnouncement.timer > 0) this.waveAnnouncement.timer -= dt;
+      this.particles.update(dt);
+      return;
+    }
 
     this.time += dt;
     this.input.update();
@@ -110,8 +203,12 @@ export class Game {
     const player = this.player;
     const wave = this.waveSystem;
 
+    // Current map dimensions (from level or default)
+    const mapW = this.renderer.mapWidth;
+    const mapH = this.renderer.mapHeight;
+
     // Player movement
-    player.update(dt, this.input.moveVector, MAP_WIDTH, MAP_HEIGHT);
+    player.update(dt, this.input.moveVector, mapW, mapH);
 
     // Player trail effect
     if (this.input.moveVector.x !== 0 || this.input.moveVector.y !== 0) {
@@ -219,13 +316,13 @@ export class Game {
         }
 
         // Clamp enemies to map
-        e.x = Math.max(e.radius, Math.min(MAP_WIDTH - e.radius, e.x));
-        e.y = Math.max(e.radius, Math.min(MAP_HEIGHT - e.radius, e.y));
+        e.x = Math.max(e.radius, Math.min(mapW - e.radius, e.x));
+        e.y = Math.max(e.radius, Math.min(mapH - e.radius, e.y));
       }
 
       // Update boss
       if (wave.boss && !wave.boss.dead) {
-        const action = wave.boss.update(dt, player.x, player.y, MAP_WIDTH, MAP_HEIGHT);
+        const action = wave.boss.update(dt, player.x, player.y, mapW, mapH);
         if (action) {
           if (action.type === 'stomp') {
             const dx = player.x - action.x;
@@ -258,7 +355,7 @@ export class Game {
     // Update projectiles
     for (const p of this.projectiles) {
       p.update(dt);
-      if (p.isOutOfBounds(MAP_WIDTH, MAP_HEIGHT)) p.dead = true;
+      if (p.isOutOfBounds(mapW, mapH)) p.dead = true;
     }
 
     // Frost aura
@@ -399,12 +496,26 @@ export class Game {
       this.hud.showCountdown(wave.countdownTimer);
       if (wave.updateCountdown(dt)) {
         this.hud.hideCountdown();
-        const nextWave = wave.currentWave + 1;
-        this.hud.updateWave(nextWave);
-        wave.startWave(nextWave);
-        this.state = 'PLAYING';
-        this.waveAnnouncement = { wave: nextWave, timer: 2.0 };
-        if (wave.boss) this.audio.bossAppear();
+
+        // Check if this was the last wave of the level
+        if (this.currentLevel && wave.currentWave >= this.currentLevel.waves) {
+          // Level complete!
+          if (!this.clearedLevels.includes(this.currentLevel.id)) {
+            this.clearedLevels.push(this.currentLevel.id);
+          }
+          this.state = 'LEVEL_CLEAR';
+          this.waveAnnouncement = { wave: 0, timer: 2.5, text: 'Level Clear!' };
+          this.renderer.flash('#f1c40f', 0.5);
+          this.particles.levelClear(player.x, player.y);
+          this._showLevelClearUI();
+        } else {
+          const nextWave = wave.currentWave + 1;
+          this.hud.updateWave(nextWave);
+          wave.startWave(nextWave);
+          this.state = 'PLAYING';
+          this.waveAnnouncement = { wave: nextWave, timer: 2.0 };
+          if (wave.boss) this.audio.bossAppear();
+        }
       }
     }
 
@@ -746,10 +857,23 @@ export class Game {
     this.isPicking = false;
   }
 
+  async _showLevelClearUI() {
+    const totalKills = Object.values(this.kills).reduce((a, b) => a + b, 0);
+    let stars = 1;
+    if (this.player.hp > this.player.maxHP * 0.5) stars = 2;
+    if (stars === 2 && this.bestCombo >= 5) stars = 3;
+
+    const levelName = this.currentLevel ? this.currentLevel.name : 'Level';
+    await this.levelClearUI.show(levelName, this.score, this.bestCombo, totalKills, stars);
+    this._showWorldMap();
+  }
+
   async _showGameOver() {
     await this.gameOverUI.show(this.waveSystem.currentWave, this.bestCombo, this.score, this.kills);
     document.getElementById('menu-screen').classList.remove('hidden');
     this.state = 'MENU';
+    this.clearedLevels = [];
+    this.currentLevel = null;
   }
 
   render() {
@@ -852,7 +976,8 @@ export class Game {
 
     // Wave announcement banner
     if (this.waveAnnouncement.timer > 0) {
-      r.drawWaveAnnouncement(this.waveAnnouncement.wave, this.waveAnnouncement.timer);
+      const announcementText = this.waveAnnouncement.text || ('WAVE ' + this.waveAnnouncement.wave);
+      r.drawWaveAnnouncement(announcementText, this.waveAnnouncement.timer);
     }
 
     // Screen flash overlay

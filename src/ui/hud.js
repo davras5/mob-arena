@@ -12,6 +12,7 @@ export class HUD {
     this.xpBar = document.getElementById('xp-bar');
     this.xpText = document.getElementById('xp-text');
     this.scoreDisplay = document.getElementById('score-display');
+    this.levelName = document.getElementById('level-name');
   }
 
   updateHP(hp, maxHP) {
@@ -56,6 +57,12 @@ export class HUD {
       `;
       div.title = `${data.name} Lv.${ab.level}`;
       this.abilityIcons.appendChild(div);
+    }
+  }
+
+  updateLevelName(name) {
+    if (this.levelName) {
+      this.levelName.textContent = name || '';
     }
   }
 

@@ -7,6 +7,12 @@ export class Renderer {
     this.mapHeight = 1600;
     this.tileSize = 64;
 
+    // Theme colors (defaults)
+    this.tilePrimary = '#1a1a1a';
+    this.tileSecondary = '#1e1e1e';
+    this.tileGrid = '#252525';
+    this.borderColor = '#444';
+
     // Screen flash effect
     this.flashColor = null;
     this.flashTimer = 0;
@@ -18,6 +24,15 @@ export class Renderer {
   resize() {
     this.canvas.width = window.innerWidth;
     this.canvas.height = window.innerHeight;
+  }
+
+  setTheme(config) {
+    this.mapWidth = config.mapWidth || 1600;
+    this.mapHeight = config.mapHeight || 1600;
+    this.tilePrimary = config.tilePrimary || '#1a1a1a';
+    this.tileSecondary = config.tileSecondary || '#1e1e1e';
+    this.tileGrid = config.tileGrid || '#252525';
+    this.borderColor = config.borderColor || '#444';
   }
 
   updateCamera(player) {
@@ -47,19 +62,19 @@ export class Renderer {
         const sy = r * this.tileSize - this.camera.y;
 
         // Dark stone tile pattern
-        const shade = ((r + c) % 2 === 0) ? '#1a1a1a' : '#1e1e1e';
+        const shade = ((r + c) % 2 === 0) ? this.tilePrimary : this.tileSecondary;
         ctx.fillStyle = shade;
         ctx.fillRect(sx, sy, this.tileSize, this.tileSize);
 
         // Subtle grid line
-        ctx.strokeStyle = '#252525';
+        ctx.strokeStyle = this.tileGrid;
         ctx.lineWidth = 0.5;
         ctx.strokeRect(sx, sy, this.tileSize, this.tileSize);
       }
     }
 
     // Draw map boundary
-    ctx.strokeStyle = '#444';
+    ctx.strokeStyle = this.borderColor;
     ctx.lineWidth = 3;
     ctx.strokeRect(-this.camera.x, -this.camera.y, this.mapWidth, this.mapHeight);
   }
@@ -576,10 +591,10 @@ export class Renderer {
     ctx.globalAlpha = 1;
   }
 
-  drawWaveAnnouncement(wave, timer) {
+  drawWaveAnnouncement(text, timer) {
     if (timer <= 0) return;
     const ctx = this.ctx;
-    const totalDuration = 2.0;
+    const totalDuration = 2.5;
     // Fade in during first 0.3s, fade out during last 0.5s
     let alpha;
     const elapsed = totalDuration - timer;
@@ -591,11 +606,17 @@ export class Renderer {
       alpha = 1;
     }
     ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 64px sans-serif';
+    const isSpecial = text.includes('Clear') || text.includes('!');
+    ctx.fillStyle = isSpecial ? '#f1c40f' : '#fff';
+    ctx.font = `bold ${isSpecial ? 72 : 64}px sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('WAVE ' + wave, this.canvas.width / 2, this.canvas.height / 2 - 40);
+    if (isSpecial) {
+      ctx.shadowColor = 'rgba(241, 196, 15, 0.5)';
+      ctx.shadowBlur = 20;
+    }
+    ctx.fillText(text, this.canvas.width / 2, this.canvas.height / 2 - 40);
+    ctx.shadowBlur = 0;
     ctx.globalAlpha = 1;
     ctx.textBaseline = 'alphabetic';
   }

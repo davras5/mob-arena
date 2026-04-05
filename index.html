@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>Wave Survival</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
+  <div id="hud">
+    <div id="hp-bar-container">
+      <div id="hp-bar"></div>
+      <span id="hp-text">100 / 100</span>
+    </div>
+    <div id="wave-counter">Wave 1</div>
+    <div id="boss-hp-container" class="hidden">
+      <span id="boss-name"></span>
+      <div id="boss-hp-bar"></div>
+    </div>
+    <div id="ability-icons"></div>
+    <div id="wave-countdown" class="hidden"></div>
+  </div>
+  <div id="menu-screen">
+    <h1>Wave Survival</h1>
+    <p>Survive endless waves of enemies. Collect blessings to grow stronger.</p>
+    <button id="start-btn">Start Game</button>
+    <p class="controls-hint">Move: WASD / Left joystick<br>Aim: Auto / Right tap</p>
+  </div>
+  <div id="blessing-picker" class="hidden">
+    <h2>Choose a Blessing</h2>
+    <div id="blessing-cards"></div>
+  </div>
+  <div id="game-over-screen" class="hidden">
+    <h2>Game Over</h2>
+    <p id="final-wave">You reached Wave 1</p>
+    <button id="restart-btn">Play Again</button>
+  </div>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>

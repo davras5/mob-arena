@@ -1,0 +1,236 @@
+[
+  {
+    "id": "multishot",
+    "name": "Multishot",
+    "icon": "\u2727",
+    "category": "offensive",
+    "description": "Fire additional projectiles in a spread pattern",
+    "maxLevel": 3,
+    "levels": [
+      { "extraProjectiles": 1, "spreadAngle": 15 },
+      { "extraProjectiles": 2, "spreadAngle": 20 },
+      { "extraProjectiles": 3, "spreadAngle": 25 }
+    ]
+  },
+  {
+    "id": "piercing",
+    "name": "Piercing Shots",
+    "icon": "\u2794",
+    "category": "offensive",
+    "description": "Projectiles pass through enemies",
+    "maxLevel": 3,
+    "levels": [
+      { "pierce": 1 },
+      { "pierce": 2 },
+      { "pierce": 3 }
+    ]
+  },
+  {
+    "id": "ricochet",
+    "name": "Ricochet",
+    "icon": "\u27a0",
+    "category": "offensive",
+    "description": "Projectiles bounce to nearby enemies",
+    "maxLevel": 3,
+    "levels": [
+      { "bounces": 1, "bounceRange": 100 },
+      { "bounces": 2, "bounceRange": 120 },
+      { "bounces": 3, "bounceRange": 150 }
+    ]
+  },
+  {
+    "id": "explosive",
+    "name": "Explosive Rounds",
+    "icon": "\u2600",
+    "category": "offensive",
+    "description": "Projectiles explode on hit, dealing area damage",
+    "maxLevel": 3,
+    "levels": [
+      { "explosionRadius": 40, "explosionDamage": 5 },
+      { "explosionRadius": 55, "explosionDamage": 8 },
+      { "explosionRadius": 70, "explosionDamage": 12 }
+    ]
+  },
+  {
+    "id": "chain_lightning",
+    "name": "Chain Lightning",
+    "icon": "\u2607",
+    "category": "offensive",
+    "description": "Attacks chain to nearby enemies",
+    "maxLevel": 3,
+    "levels": [
+      { "chains": 2, "chainDamage": 8, "chainRange": 80 },
+      { "chains": 3, "chainDamage": 12, "chainRange": 100 },
+      { "chains": 4, "chainDamage": 16, "chainRange": 120 }
+    ]
+  },
+  {
+    "id": "rapid_fire",
+    "name": "Rapid Fire",
+    "icon": "\u2689",
+    "category": "offensive",
+    "description": "Increase attack speed",
+    "maxLevel": 3,
+    "levels": [
+      { "attackSpeedMult": 0.85 },
+      { "attackSpeedMult": 0.7 },
+      { "attackSpeedMult": 0.55 }
+    ]
+  },
+  {
+    "id": "damage_up",
+    "name": "Power Strike",
+    "icon": "\u2694",
+    "category": "offensive",
+    "description": "Increase projectile damage",
+    "maxLevel": 3,
+    "levels": [
+      { "damageBonus": 5 },
+      { "damageBonus": 12 },
+      { "damageBonus": 20 }
+    ]
+  },
+  {
+    "id": "shield",
+    "name": "Shield Bubble",
+    "icon": "\u25ce",
+    "category": "defensive",
+    "description": "Periodically gain a shield that absorbs damage",
+    "maxLevel": 3,
+    "levels": [
+      { "shieldHP": 15, "shieldCooldown": 12 },
+      { "shieldHP": 25, "shieldCooldown": 10 },
+      { "shieldHP": 40, "shieldCooldown": 8 }
+    ]
+  },
+  {
+    "id": "regen",
+    "name": "Regeneration",
+    "icon": "\u2764",
+    "category": "defensive",
+    "description": "Slowly regenerate health over time",
+    "maxLevel": 3,
+    "levels": [
+      { "regenRate": 1 },
+      { "regenRate": 2 },
+      { "regenRate": 3.5 }
+    ]
+  },
+  {
+    "id": "thorns",
+    "name": "Thorns",
+    "icon": "\u2740",
+    "category": "defensive",
+    "description": "Reflect damage back to attackers",
+    "maxLevel": 3,
+    "levels": [
+      { "thornsDamage": 5 },
+      { "thornsDamage": 10 },
+      { "thornsDamage": 18 }
+    ]
+  },
+  {
+    "id": "max_hp",
+    "name": "Vitality",
+    "icon": "\u2665",
+    "category": "defensive",
+    "description": "Increase maximum health",
+    "maxLevel": 3,
+    "levels": [
+      { "maxHPBonus": 20 },
+      { "maxHPBonus": 45 },
+      { "maxHPBonus": 75 }
+    ]
+  },
+  {
+    "id": "dash",
+    "name": "Dash",
+    "icon": "\u21dd",
+    "category": "movement",
+    "description": "Double-tap to dash in movement direction",
+    "maxLevel": 3,
+    "levels": [
+      { "dashDistance": 80, "dashCooldown": 3 },
+      { "dashDistance": 110, "dashCooldown": 2.5 },
+      { "dashDistance": 140, "dashCooldown": 2 }
+    ]
+  },
+  {
+    "id": "speed_aura",
+    "name": "Swiftness",
+    "icon": "\u2708",
+    "category": "movement",
+    "description": "Move faster",
+    "maxLevel": 3,
+    "levels": [
+      { "speedMult": 1.15 },
+      { "speedMult": 1.3 },
+      { "speedMult": 1.5 }
+    ]
+  },
+  {
+    "id": "magnet",
+    "name": "Magnet",
+    "icon": "\u2609",
+    "category": "passive",
+    "description": "Blessings are attracted to you from further away",
+    "maxLevel": 3,
+    "levels": [
+      { "magnetRange": 80 },
+      { "magnetRange": 130 },
+      { "magnetRange": 200 }
+    ]
+  },
+  {
+    "id": "lifesteal",
+    "name": "Lifesteal",
+    "icon": "\u2620",
+    "category": "passive",
+    "description": "Recover health when damaging enemies",
+    "maxLevel": 3,
+    "levels": [
+      { "lifestealPercent": 0.05 },
+      { "lifestealPercent": 0.1 },
+      { "lifestealPercent": 0.15 }
+    ]
+  },
+  {
+    "id": "crit",
+    "name": "Critical Strike",
+    "icon": "\u2622",
+    "category": "passive",
+    "description": "Chance to deal double damage",
+    "maxLevel": 3,
+    "levels": [
+      { "critChance": 0.1 },
+      { "critChance": 0.2 },
+      { "critChance": 0.3 }
+    ]
+  },
+  {
+    "id": "frost_aura",
+    "name": "Frost Aura",
+    "icon": "\u2744",
+    "category": "aura",
+    "description": "Slow nearby enemies",
+    "maxLevel": 3,
+    "levels": [
+      { "auraRadius": 80, "slowPercent": 0.2 },
+      { "auraRadius": 110, "slowPercent": 0.3 },
+      { "auraRadius": 140, "slowPercent": 0.4 }
+    ]
+  },
+  {
+    "id": "fire_trail",
+    "name": "Fire Trail",
+    "icon": "\u2668",
+    "category": "aura",
+    "description": "Leave a burning trail that damages enemies",
+    "maxLevel": 3,
+    "levels": [
+      { "trailDamage": 3, "trailDuration": 1.5 },
+      { "trailDamage": 6, "trailDuration": 2 },
+      { "trailDamage": 10, "trailDuration": 2.5 }
+    ]
+  }
+]

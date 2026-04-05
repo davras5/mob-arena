@@ -1,0 +1,17 @@
+[
+  { "wave": 1, "enemies": [{"type":"grunt","count":5}], "blessings": 1 },
+  { "wave": 2, "enemies": [{"type":"grunt","count":8}], "blessings": 1 },
+  { "wave": 3, "enemies": [{"type":"grunt","count":6},{"type":"rusher","count":3}], "blessings": 1 },
+  { "wave": 4, "enemies": [{"type":"grunt","count":8},{"type":"rusher","count":5}], "blessings": 1 },
+  { "wave": 5, "boss": "stoneguard", "enemies": [{"type":"grunt","count":4}], "blessings": 2 },
+  { "wave": 6, "enemies": [{"type":"grunt","count":6},{"type":"rusher","count":4},{"type":"ranged","count":2}], "blessings": 1 },
+  { "wave": 7, "enemies": [{"type":"grunt","count":8},{"type":"brute","count":2},{"type":"ranged","count":3}], "blessings": 1 },
+  { "wave": 8, "enemies": [{"type":"grunt","count":5},{"type":"splitter","count":4},{"type":"rusher","count":4}], "blessings": 1 },
+  { "wave": 9, "enemies": [{"type":"brute","count":4},{"type":"ranged","count":5},{"type":"splitter","count":3}], "blessings": 1 },
+  { "wave": 10, "boss": "voidlord", "enemies": [{"type":"rusher","count":6}], "blessings": 2 },
+  { "wave": 11, "enemies": [{"type":"grunt","count":10},{"type":"brute","count":3},{"type":"ranged","count":4}], "blessings": 1 },
+  { "wave": 12, "enemies": [{"type":"splitter","count":6},{"type":"rusher","count":8}], "blessings": 1 },
+  { "wave": 13, "enemies": [{"type":"brute","count":5},{"type":"ranged","count":6},{"type":"splitter","count":4}], "blessings": 1 },
+  { "wave": 14, "enemies": [{"type":"grunt","count":12},{"type":"brute","count":4},{"type":"rusher","count":6},{"type":"ranged","count":4}], "blessings": 1 },
+  { "wave": 15, "boss": "swarmmother", "enemies": [{"type":"grunt","count":8}], "blessings": 2 }
+]

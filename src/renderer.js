@@ -6,6 +6,11 @@ export class Renderer {
     this.mapWidth = 1600;
     this.mapHeight = 1600;
     this.tileSize = 64;
+
+    // Screen flash effect
+    this.flashColor = null;
+    this.flashTimer = 0;
+    this.flashDuration = 0;
     this.resize();
     window.addEventListener('resize', () => this.resize());
   }
@@ -229,7 +234,8 @@ export class Renderer {
 
       ctx.fillStyle = e.color;
       ctx.beginPath();
-      ctx.arc(sx, sy, e.radius, 0, Math.PI * 2);
+      const drawRadius = e.radius * (e.scale !== undefined ? e.scale : 1);
+      ctx.arc(sx, sy, drawRadius, 0, Math.PI * 2);
       ctx.fill();
 
       // Dark outline
@@ -239,10 +245,10 @@ export class Renderer {
 
       // HP bar for damaged enemies
       if (e.hp < e.maxHP) {
-        const barW = e.radius * 2.5;
+        const barW = drawRadius * 2.5;
         const barH = 4;
         const bx = sx - barW / 2;
-        const by = sy - e.radius - 10;
+        const by = sy - drawRadius - 10;
         ctx.fillStyle = '#333';
         ctx.fillRect(bx, by, barW, barH);
         ctx.fillStyle = '#e74c3c';
@@ -383,6 +389,72 @@ export class Renderer {
     ctx.globalAlpha = 1;
   }
 
+  drawMinimap(player, enemies, boss, blessings) {
+    const ctx = this.ctx;
+    const size = 140;
+    const padding = 10;
+    const mx = padding;
+    const my = this.canvas.height - size - padding;
+    const scale = size / this.mapWidth;
+
+    ctx.save();
+
+    // Background
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(mx, my, size, size);
+
+    // Border
+    ctx.globalAlpha = 0.6;
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(mx, my, size, size);
+
+    ctx.globalAlpha = 0.8;
+
+    // Camera viewport
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(
+      mx + this.camera.x * scale,
+      my + this.camera.y * scale,
+      this.canvas.width * scale,
+      this.canvas.height * scale
+    );
+
+    // Blessings (yellow dots)
+    ctx.fillStyle = '#f1c40f';
+    for (const b of blessings) {
+      ctx.beginPath();
+      ctx.arc(mx + b.x * scale, my + b.y * scale, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Enemies (red dots)
+    ctx.fillStyle = '#e74c3c';
+    for (const e of enemies) {
+      ctx.beginPath();
+      ctx.arc(mx + e.x * scale, my + e.y * scale, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Boss (larger purple dot)
+    if (boss) {
+      ctx.fillStyle = '#9b59b6';
+      ctx.beginPath();
+      ctx.arc(mx + boss.x * scale, my + boss.y * scale, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Player (blue dot)
+    ctx.fillStyle = '#3498db';
+    ctx.beginPath();
+    ctx.arc(mx + player.x * scale, my + player.y * scale, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
   drawJoystick(input) {
     if (!input.joystickStart || !input.joystickCurrent) return;
     const ctx = this.ctx;
@@ -399,5 +471,63 @@ export class Renderer {
     ctx.arc(input.joystickCurrent.x, input.joystickCurrent.y, 20, 0, Math.PI * 2);
     ctx.fill();
     ctx.globalAlpha = 1;
+  }
+
+  flash(color, duration) {
+    this.flashColor = color;
+    this.flashTimer = duration;
+    this.flashDuration = duration;
+  }
+
+  drawFlash() {
+    if (this.flashTimer <= 0 || !this.flashColor) return;
+    const ctx = this.ctx;
+    const alpha = Math.max(0, this.flashTimer / this.flashDuration) * 0.35;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = this.flashColor;
+    ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    ctx.globalAlpha = 1;
+  }
+
+  updateFlash(dt) {
+    if (this.flashTimer > 0) this.flashTimer -= dt;
+  }
+
+  drawPlayerTrail(trail) {
+    const ctx = this.ctx;
+    for (const t of trail) {
+      const sx = t.x - this.camera.x;
+      const sy = t.y - this.camera.y;
+      ctx.globalAlpha = t.alpha;
+      ctx.fillStyle = '#3498db';
+      ctx.beginPath();
+      ctx.arc(sx, sy, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  drawWaveAnnouncement(wave, timer) {
+    if (timer <= 0) return;
+    const ctx = this.ctx;
+    const totalDuration = 2.0;
+    // Fade in during first 0.3s, fade out during last 0.5s
+    let alpha;
+    const elapsed = totalDuration - timer;
+    if (elapsed < 0.3) {
+      alpha = elapsed / 0.3;
+    } else if (timer < 0.5) {
+      alpha = timer / 0.5;
+    } else {
+      alpha = 1;
+    }
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 64px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('WAVE ' + wave, this.canvas.width / 2, this.canvas.height / 2 - 40);
+    ctx.globalAlpha = 1;
+    ctx.textBaseline = 'alphabetic';
   }
 }

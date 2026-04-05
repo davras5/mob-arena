@@ -9,12 +9,20 @@ export class HUD {
     this.abilityIcons = document.getElementById('ability-icons');
     this.countdown = document.getElementById('wave-countdown');
     this.enemyCounter = document.getElementById('enemy-counter');
+    this.xpBar = document.getElementById('xp-bar');
+    this.xpText = document.getElementById('xp-text');
   }
 
   updateHP(hp, maxHP) {
     const pct = Math.max(0, hp / maxHP * 100);
     this.hpBar.style.width = pct + '%';
     this.hpText.textContent = `${Math.ceil(hp)} / ${maxHP}`;
+  }
+
+  updateXP(xp, xpToNext, level) {
+    const pct = Math.max(0, xp / xpToNext * 100);
+    this.xpBar.style.width = pct + '%';
+    this.xpText.textContent = `Lv.${level}`;
   }
 
   updateWave(wave) {

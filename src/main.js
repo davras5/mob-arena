@@ -21,6 +21,13 @@ async function init() {
     }
   });
 
+  // Pause: Escape key
+  game.input.onPause = () => game.togglePause();
+
+  // Pause: button and overlay resume
+  document.getElementById('pause-btn').addEventListener('click', () => game.togglePause());
+  document.getElementById('resume-btn').addEventListener('click', () => game.togglePause());
+
   // Game loop
   let lastTime = performance.now();
 
@@ -28,7 +35,7 @@ async function init() {
     const dt = Math.min((now - lastTime) / 1000, 0.05); // Cap at 50ms
     lastTime = now;
 
-    if (game.state !== 'MENU' && game.state !== 'GAME_OVER') {
+    if (game.state !== 'MENU' && game.state !== 'GAME_OVER' && !game.paused) {
       game.update(dt);
     }
     game.render();

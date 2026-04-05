@@ -76,9 +76,28 @@ export class Enemy {
     this.slowPercent = 0;
     this.dead = false;
     this.contactCooldown = 0;
+
+    // Rusher zigzag
+    this.zigzagOffset = Math.random() * Math.PI * 2;
+
+    // Brute charge
+    this.chargeState = 'idle';
+    this.chargeTimer = 0;
+
+    // Ranged strafe
+    this.strafeTimer = 0;
+    this.strafeDir = 1;
+
+    // Spawn animation
+    this.spawnTimer = 0.3;
+  }
+
+  get scale() {
+    return Math.min(1, 1 - this.spawnTimer / 0.3);
   }
 
   update(dt, playerX, playerY) {
+    if (this.spawnTimer > 0) this.spawnTimer -= dt;
     const dx = playerX - this.x;
     const dy = playerY - this.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -91,12 +110,88 @@ export class Enemy {
       this.speed = this.baseSpeed;
     }
 
-    // Ranged: stop at distance
+    // Ranged: strafe when in attack range instead of standing still
     if (this.attackRange > 0 && dist < this.attackRange) {
       this.shootTimer -= dt;
-      return; // Don't move closer
+      this.strafeTimer += dt;
+      if (this.strafeTimer >= 2) {
+        this.strafeTimer = 0;
+        this.strafeDir *= -1;
+      }
+      // Move perpendicular to player direction
+      if (dist > 1) {
+        const perpX = -dy / dist;
+        const perpY = dx / dist;
+        this.x += perpX * this.strafeDir * this.speed * dt;
+        this.y += perpY * this.strafeDir * this.speed * dt;
+      }
+      if (this.contactCooldown > 0) this.contactCooldown -= dt;
+      return;
     }
 
+    // Splitter: flee when below 50% HP
+    if (this.type === 'splitter' && this.hp < this.maxHP * 0.5) {
+      if (dist > 1) {
+        this.x -= (dx / dist) * this.speed * dt;
+        this.y -= (dy / dist) * this.speed * dt;
+      }
+      if (this.shootTimer > 0) this.shootTimer -= dt;
+      if (this.contactCooldown > 0) this.contactCooldown -= dt;
+      return;
+    }
+
+    // Brute: charge-up when close
+    if (this.type === 'brute') {
+      if (this.chargeState === 'idle' && dist < 100) {
+        this.chargeState = 'winding';
+        this.chargeTimer = 0.3;
+      }
+      if (this.chargeState === 'winding') {
+        this.chargeTimer -= dt;
+        if (this.chargeTimer <= 0) {
+          this.chargeState = 'lunging';
+          this.chargeTimer = 0.2;
+        }
+        // Stand still during wind-up
+        if (this.shootTimer > 0) this.shootTimer -= dt;
+        if (this.contactCooldown > 0) this.contactCooldown -= dt;
+        return;
+      }
+      if (this.chargeState === 'lunging') {
+        this.chargeTimer -= dt;
+        if (dist > 1) {
+          const lungeSpeed = this.speed * 3;
+          this.x += (dx / dist) * lungeSpeed * dt;
+          this.y += (dy / dist) * lungeSpeed * dt;
+        }
+        if (this.chargeTimer <= 0) {
+          this.chargeState = 'idle';
+        }
+        if (this.shootTimer > 0) this.shootTimer -= dt;
+        if (this.contactCooldown > 0) this.contactCooldown -= dt;
+        return;
+      }
+    }
+
+    // Rusher: zigzag movement
+    if (this.type === 'rusher') {
+      this.zigzagOffset += dt * 8;
+      if (dist > 1) {
+        const perpX = -dy / dist;
+        const perpY = dx / dist;
+        const zigzag = Math.sin(this.zigzagOffset) * 0.6;
+        const moveX = (dx / dist) + perpX * zigzag;
+        const moveY = (dy / dist) + perpY * zigzag;
+        const moveLen = Math.sqrt(moveX * moveX + moveY * moveY);
+        this.x += (moveX / moveLen) * this.speed * dt;
+        this.y += (moveY / moveLen) * this.speed * dt;
+      }
+      if (this.shootTimer > 0) this.shootTimer -= dt;
+      if (this.contactCooldown > 0) this.contactCooldown -= dt;
+      return;
+    }
+
+    // Default: direct chase (grunt and others)
     if (dist > 1) {
       this.x += (dx / dist) * this.speed * dt;
       this.y += (dy / dist) * this.speed * dt;

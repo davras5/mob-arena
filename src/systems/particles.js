@@ -34,7 +34,18 @@ export class ParticleSystem {
   }
 
   deathBurst(x, y, color) {
-    this.emit(x, y, 8, color, { speed: 80, size: 3, life: 0.4 });
+    this.emit(x, y, 12, color, { speed: 80, size: 3, life: 0.4 });
+    this.emit(x, y, 6, '#fff', { speed: 60, size: 1.5, life: 0.25 });
+    this.ring(x, y, color);
+  }
+
+  ring(x, y, color, maxRadius = 30) {
+    this.particles.push({
+      x, y, vx: 0, vy: 0,
+      color, size: 0, alpha: 0.6,
+      life: 0.3, maxLife: 0.3,
+      isRing: true, maxRadius
+    });
   }
 
   update(dt) {

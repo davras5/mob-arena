@@ -11,6 +11,7 @@ export class HUD {
     this.enemyCounter = document.getElementById('enemy-counter');
     this.xpBar = document.getElementById('xp-bar');
     this.xpText = document.getElementById('xp-text');
+    this.scoreDisplay = document.getElementById('score-display');
   }
 
   updateHP(hp, maxHP) {
@@ -56,6 +57,10 @@ export class HUD {
       div.title = `${data.name} Lv.${ab.level}`;
       this.abilityIcons.appendChild(div);
     }
+  }
+
+  updateScore(score) {
+    this.scoreDisplay.textContent = `Score: ${score.toLocaleString()}`;
   }
 
   updateEnemyCount(alive, total) {

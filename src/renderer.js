@@ -232,7 +232,7 @@ export class Renderer {
       // Skip if offscreen
       if (sx < -50 || sx > this.canvas.width + 50 || sy < -50 || sy > this.canvas.height + 50) continue;
 
-      ctx.fillStyle = e.color;
+      ctx.fillStyle = e.hitFlashTimer > 0 ? '#fff' : e.color;
       ctx.beginPath();
       const drawRadius = e.radius * (e.scale !== undefined ? e.scale : 1);
       ctx.arc(sx, sy, drawRadius, 0, Math.PI * 2);
@@ -251,8 +251,9 @@ export class Renderer {
         const by = sy - drawRadius - 10;
         ctx.fillStyle = '#333';
         ctx.fillRect(bx, by, barW, barH);
-        ctx.fillStyle = '#e74c3c';
-        ctx.fillRect(bx, by, barW * (e.hp / e.maxHP), barH);
+        const hpPct = e.hp / e.maxHP;
+        ctx.fillStyle = hpPct > 0.6 ? '#2ecc71' : hpPct > 0.3 ? '#f1c40f' : '#e74c3c';
+        ctx.fillRect(bx, by, barW * hpPct, barH);
       }
     }
   }
@@ -299,6 +300,16 @@ export class Renderer {
 
       if (sx < -20 || sx > this.canvas.width + 20 || sy < -20 || sy > this.canvas.height + 20) continue;
 
+      if (!p.isEnemy) {
+        const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, p.radius * 3);
+        glow.addColorStop(0, 'rgba(241, 196, 15, 0.3)');
+        glow.addColorStop(1, 'rgba(241, 196, 15, 0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(sx, sy, p.radius * 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
       if (p.isEnemy) {
         ctx.fillStyle = '#e74c3c';
       } else {
@@ -322,10 +333,20 @@ export class Renderer {
       const sx = p.x - this.camera.x;
       const sy = p.y - this.camera.y;
       ctx.globalAlpha = p.alpha;
-      ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.arc(sx, sy, p.size, 0, Math.PI * 2);
-      ctx.fill();
+      if (p.isRing) {
+        const progress = 1 - p.life / p.maxLife;
+        const radius = p.maxRadius * progress;
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(sx, sy, radius, 0, Math.PI * 2);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(sx, sy, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
     }
     ctx.globalAlpha = 1;
   }
@@ -504,6 +525,54 @@ export class Renderer {
       ctx.arc(sx, sy, 5, 0, Math.PI * 2);
       ctx.fill();
     }
+    ctx.globalAlpha = 1;
+  }
+
+  drawCombo(combo, timer) {
+    if (combo < 3 || timer <= 0) return;
+    const ctx = this.ctx;
+    const maxTimer = 2.0;
+
+    // Fade based on timer
+    const alpha = Math.min(1, timer / (maxTimer * 0.5));
+    ctx.globalAlpha = alpha;
+
+    // Scale text size with combo count
+    const baseSize = 48;
+    const size = Math.min(baseSize + combo * 4, 96);
+
+    // Determine multiplier text
+    let multiplier;
+    if (combo >= 10) multiplier = '3x XP';
+    else if (combo >= 5) multiplier = '2x XP';
+    else multiplier = '1.5x XP';
+
+    // Color: orange for low combos, red for high
+    const color = combo >= 10 ? '#e74c3c' : combo >= 5 ? '#e67e22' : '#f39c12';
+
+    const cx = this.canvas.width / 2;
+    const cy = 100;
+
+    // Shadow for readability
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    // Combo text
+    ctx.font = `bold ${size}px sans-serif`;
+    ctx.fillStyle = '#000';
+    ctx.fillText(`x${combo} COMBO!`, cx + 2, cy + 2);
+    ctx.fillStyle = color;
+    ctx.fillText(`x${combo} COMBO!`, cx, cy);
+
+    // Multiplier text below
+    ctx.font = 'bold 24px sans-serif';
+    ctx.fillStyle = '#000';
+    ctx.fillText(multiplier, cx + 1, cy + size * 0.6 + 1);
+    ctx.fillStyle = '#fff';
+    ctx.fillText(multiplier, cx, cy + size * 0.6);
+
+    ctx.restore();
     ctx.globalAlpha = 1;
   }
 

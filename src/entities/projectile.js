@@ -13,9 +13,28 @@ export class Projectile {
     this.bounceRange = 0;
     this.hitEnemies = new Set();  // Track which enemies already hit (for pierce)
     this.lifetime = 3.0;
+    this.homing = 0;           // 0 = no homing, higher = more tracking
+    this.homingTarget = null;
   }
 
   update(dt) {
+    // Homing behavior: gently curve toward target
+    if (this.homing > 0 && this.homingTarget && !this.homingTarget.dead) {
+      const dx = this.homingTarget.x - this.x;
+      const dy = this.homingTarget.y - this.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist > 1) {
+        const turnRate = this.homing * dt;
+        this.vx += (dx / dist) * turnRate;
+        this.vy += (dy / dist) * turnRate;
+        // Re-normalize speed
+        const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+        const targetSpeed = 300;
+        this.vx = (this.vx / speed) * targetSpeed;
+        this.vy = (this.vy / speed) * targetSpeed;
+      }
+    }
+
     this.x += this.vx * dt;
     this.y += this.vy * dt;
     this.lifetime -= dt;

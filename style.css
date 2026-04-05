@@ -107,9 +107,22 @@ body {
   border-radius: 8px;
 }
 
-#enemy-counter {
+#score-display {
   position: absolute;
   top: 40px;
+  right: 12px;
+  font-size: 15px;
+  font-weight: bold;
+  text-shadow: 2px 2px 4px #000;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 3px 12px;
+  border-radius: 8px;
+  color: #f1c40f;
+}
+
+#enemy-counter {
+  position: absolute;
+  top: 68px;
   right: 12px;
   font-size: 14px;
   font-weight: bold;
@@ -384,7 +397,32 @@ button:active {
 #final-wave {
   font-size: 18px;
   color: #bbb;
-  margin-bottom: 24px;
+  margin-bottom: 8px;
+}
+
+#final-score {
+  font-size: 28px;
+  font-weight: bold;
+  color: #f1c40f;
+  text-shadow: 0 0 12px rgba(241, 196, 15, 0.4);
+  margin-bottom: 8px;
+}
+
+#kill-breakdown {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 20px;
+  max-width: 400px;
+}
+
+#kill-breakdown .kill-entry {
+  font-size: 13px;
+  color: #bbb;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 4px 10px;
+  border-radius: 6px;
 }
 
 /* Pause Button */

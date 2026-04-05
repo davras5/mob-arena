@@ -72,6 +72,7 @@ export class Enemy {
     this.splitsInto = def.splitsInto || null;
     this.splitCount = def.splitCount || 0;
 
+    this.hitFlashTimer = 0;
     this.slowTimer = 0;
     this.slowPercent = 0;
     this.dead = false;
@@ -98,6 +99,7 @@ export class Enemy {
 
   update(dt, playerX, playerY) {
     if (this.spawnTimer > 0) this.spawnTimer -= dt;
+    if (this.hitFlashTimer > 0) this.hitFlashTimer -= dt;
     const dx = playerX - this.x;
     const dy = playerY - this.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -216,6 +218,7 @@ export class Enemy {
 
   takeDamage(amount) {
     this.hp -= amount;
+    this.hitFlashTimer = 0.1;
     if (this.hp <= 0) {
       this.dead = true;
     }

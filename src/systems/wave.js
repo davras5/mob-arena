@@ -15,6 +15,7 @@ export class WaveSystem {
     this.mapWidth = 1600;
     this.mapHeight = 1600;
     this.levelConfig = null;
+    this.layoutManager = null;
   }
 
   setLevelConfig(levelConfig) {
@@ -103,6 +104,11 @@ export class WaveSystem {
   }
 
   _randomEdgePosition() {
+    // Use layout manager if available for valid spawn positions
+    if (this.layoutManager) {
+      return this.layoutManager.getSpawnPosition(this.mapWidth, this.mapHeight);
+    }
+
     const side = Math.floor(Math.random() * 4);
     const margin = 50;
     switch (side) {

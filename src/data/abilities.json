@@ -3,6 +3,7 @@
     "id": "multishot",
     "name": "Multishot",
     "icon": "\u2727",
+    "rarity": "rare",
     "category": "offensive",
     "description": "Fire additional projectiles in a spread pattern",
     "maxLevel": 3,
@@ -16,6 +17,7 @@
     "id": "piercing",
     "name": "Piercing Shots",
     "icon": "\u2794",
+    "rarity": "rare",
     "category": "offensive",
     "description": "Projectiles pass through enemies",
     "maxLevel": 3,
@@ -29,6 +31,7 @@
     "id": "ricochet",
     "name": "Ricochet",
     "icon": "\u27a0",
+    "rarity": "epic",
     "category": "offensive",
     "description": "Projectiles bounce to nearby enemies",
     "maxLevel": 3,
@@ -42,6 +45,7 @@
     "id": "explosive",
     "name": "Explosive Rounds",
     "icon": "\u2600",
+    "rarity": "epic",
     "category": "offensive",
     "description": "Projectiles explode on hit, dealing area damage",
     "maxLevel": 3,
@@ -55,6 +59,7 @@
     "id": "chain_lightning",
     "name": "Chain Lightning",
     "icon": "\u2607",
+    "rarity": "epic",
     "category": "offensive",
     "description": "Attacks chain to nearby enemies",
     "maxLevel": 3,
@@ -68,6 +73,7 @@
     "id": "rapid_fire",
     "name": "Rapid Fire",
     "icon": "\u2689",
+    "rarity": "common",
     "category": "offensive",
     "description": "Increase attack speed",
     "maxLevel": 3,
@@ -81,6 +87,7 @@
     "id": "damage_up",
     "name": "Power Strike",
     "icon": "\u2694",
+    "rarity": "common",
     "category": "offensive",
     "description": "Increase projectile damage",
     "maxLevel": 3,
@@ -94,6 +101,7 @@
     "id": "shield",
     "name": "Shield Bubble",
     "icon": "\u25ce",
+    "rarity": "rare",
     "category": "defensive",
     "description": "Periodically gain a shield that absorbs damage",
     "maxLevel": 3,
@@ -107,6 +115,7 @@
     "id": "regen",
     "name": "Regeneration",
     "icon": "\u2764",
+    "rarity": "common",
     "category": "defensive",
     "description": "Slowly regenerate health over time",
     "maxLevel": 3,
@@ -120,6 +129,7 @@
     "id": "thorns",
     "name": "Thorns",
     "icon": "\u2740",
+    "rarity": "rare",
     "category": "defensive",
     "description": "Reflect damage back to attackers",
     "maxLevel": 3,
@@ -133,6 +143,7 @@
     "id": "max_hp",
     "name": "Vitality",
     "icon": "\u2665",
+    "rarity": "common",
     "category": "defensive",
     "description": "Increase maximum health",
     "maxLevel": 3,
@@ -146,6 +157,7 @@
     "id": "dash",
     "name": "Dash",
     "icon": "\u21dd",
+    "rarity": "rare",
     "category": "movement",
     "description": "Double-tap to dash in movement direction",
     "maxLevel": 3,
@@ -159,6 +171,7 @@
     "id": "speed_aura",
     "name": "Swiftness",
     "icon": "\u2708",
+    "rarity": "common",
     "category": "movement",
     "description": "Move faster",
     "maxLevel": 3,
@@ -172,6 +185,7 @@
     "id": "magnet",
     "name": "Magnet",
     "icon": "\u2609",
+    "rarity": "common",
     "category": "passive",
     "description": "Blessings are attracted to you from further away",
     "maxLevel": 3,
@@ -185,6 +199,7 @@
     "id": "lifesteal",
     "name": "Lifesteal",
     "icon": "\u2620",
+    "rarity": "rare",
     "category": "passive",
     "description": "Recover health when damaging enemies",
     "maxLevel": 3,
@@ -198,6 +213,7 @@
     "id": "crit",
     "name": "Critical Strike",
     "icon": "\u2622",
+    "rarity": "rare",
     "category": "passive",
     "description": "Chance to deal double damage",
     "maxLevel": 3,
@@ -211,6 +227,7 @@
     "id": "frost_aura",
     "name": "Frost Aura",
     "icon": "\u2744",
+    "rarity": "rare",
     "category": "aura",
     "description": "Slow nearby enemies",
     "maxLevel": 3,
@@ -224,6 +241,7 @@
     "id": "fire_trail",
     "name": "Fire Trail",
     "icon": "\u2668",
+    "rarity": "epic",
     "category": "aura",
     "description": "Leave a burning trail that damages enemies",
     "maxLevel": 3,
@@ -231,6 +249,515 @@
       { "trailDamage": 3, "trailDuration": 1.5 },
       { "trailDamage": 6, "trailDuration": 2 },
       { "trailDamage": 10, "trailDuration": 2.5 }
+    ]
+  },
+
+  {
+    "id": "venom_shots",
+    "name": "Venom Shots",
+    "icon": "\u2623",
+    "rarity": "rare",
+    "category": "offensive",
+    "description": "Attacks apply poison that deals damage over time",
+    "maxLevel": 3,
+    "levels": [
+      { "poisonDamage": 2, "poisonDuration": 3 },
+      { "poisonDamage": 4, "poisonDuration": 3.5 },
+      { "poisonDamage": 6, "poisonDuration": 4 }
+    ]
+  },
+  {
+    "id": "homing_salvo",
+    "name": "Homing Salvo",
+    "icon": "\u27b3",
+    "rarity": "epic",
+    "category": "offensive",
+    "description": "Projectiles gently track the nearest enemy",
+    "maxLevel": 3,
+    "levels": [
+      { "homingPower": 150 },
+      { "homingPower": 300 },
+      { "homingPower": 500 }
+    ]
+  },
+  {
+    "id": "graviton_orb",
+    "name": "Graviton Orb",
+    "icon": "\u2b24",
+    "rarity": "legendary",
+    "category": "utility",
+    "description": "Periodically deploy an orb that pulls enemies toward it",
+    "maxLevel": 3,
+    "levels": [
+      { "pullRadius": 100, "pullForce": 60, "orbCooldown": 12, "orbDuration": 3 },
+      { "pullRadius": 130, "pullForce": 90, "orbCooldown": 10, "orbDuration": 4 },
+      { "pullRadius": 160, "pullForce": 120, "orbCooldown": 8, "orbDuration": 5 }
+    ]
+  },
+  {
+    "id": "evasion",
+    "name": "Evasion",
+    "icon": "\u2727",
+    "rarity": "rare",
+    "category": "defensive",
+    "description": "Chance to completely dodge incoming damage",
+    "maxLevel": 3,
+    "levels": [
+      { "dodgeChance": 0.10 },
+      { "dodgeChance": 0.18 },
+      { "dodgeChance": 0.25 }
+    ]
+  },
+  {
+    "id": "frost_nova",
+    "name": "Frost Nova",
+    "icon": "\u2746",
+    "rarity": "epic",
+    "category": "defensive",
+    "description": "Taking damage releases a burst that freezes nearby enemies",
+    "maxLevel": 3,
+    "levels": [
+      { "novaRadius": 80, "novaSlow": 0.5, "novaDuration": 1.5, "novaCooldown": 8 },
+      { "novaRadius": 110, "novaSlow": 0.6, "novaDuration": 2, "novaCooldown": 6 },
+      { "novaRadius": 140, "novaSlow": 0.8, "novaDuration": 2.5, "novaCooldown": 4 }
+    ]
+  },
+  {
+    "id": "spectral_blades",
+    "name": "Spectral Blades",
+    "icon": "\u2720",
+    "rarity": "rare",
+    "category": "offensive",
+    "description": "Orbiting blades damage enemies on contact",
+    "maxLevel": 3,
+    "levels": [
+      { "bladeCount": 2, "bladeDamage": 4, "bladeRadius": 50 },
+      { "bladeCount": 3, "bladeDamage": 7, "bladeRadius": 60 },
+      { "bladeCount": 4, "bladeDamage": 11, "bladeRadius": 70 }
+    ]
+  },
+  {
+    "id": "soul_harvest_passive",
+    "name": "Soul Harvest",
+    "icon": "\u2763",
+    "rarity": "rare",
+    "category": "passive",
+    "description": "Kills grant stacking temporary damage buff",
+    "maxLevel": 3,
+    "levels": [
+      { "harvestDmgPerStack": 1, "harvestMaxStacks": 5, "harvestDuration": 4 },
+      { "harvestDmgPerStack": 2, "harvestMaxStacks": 8, "harvestDuration": 5 },
+      { "harvestDmgPerStack": 3, "harvestMaxStacks": 12, "harvestDuration": 6 }
+    ]
+  },
+  {
+    "id": "iron_skin",
+    "name": "Iron Skin",
+    "icon": "\u2b22",
+    "rarity": "common",
+    "category": "defensive",
+    "description": "Flat damage reduction on all incoming hits",
+    "maxLevel": 3,
+    "levels": [
+      { "flatDamageReduction": 2 },
+      { "flatDamageReduction": 4 },
+      { "flatDamageReduction": 7 }
+    ]
+  },
+  {
+    "id": "chain_reaction",
+    "name": "Chain Reaction",
+    "icon": "\u2622",
+    "rarity": "legendary",
+    "category": "offensive",
+    "description": "Enemies explode on death, potentially causing chain kills",
+    "maxLevel": 3,
+    "levels": [
+      { "deathExplosionRadius": 50, "deathExplosionDamage": 10 },
+      { "deathExplosionRadius": 70, "deathExplosionDamage": 18 },
+      { "deathExplosionRadius": 90, "deathExplosionDamage": 28 }
+    ]
+  },
+  {
+    "id": "phase_shift",
+    "name": "Phase Shift",
+    "icon": "\u2b50",
+    "rarity": "epic",
+    "category": "movement",
+    "description": "After dashing, become ghostly and invulnerable briefly",
+    "maxLevel": 3,
+    "levels": [
+      { "phaseTime": 0.5 },
+      { "phaseTime": 0.8 },
+      { "phaseTime": 1.2 }
+    ]
+  },
+  {
+    "id": "overcharge",
+    "name": "Overcharge",
+    "icon": "\u26a1",
+    "rarity": "rare",
+    "category": "offensive",
+    "description": "Every Nth attack fires a supercharged shot",
+    "maxLevel": 3,
+    "levels": [
+      { "overchargeEvery": 8, "overchargeDamageMult": 2.5, "overchargeSizeMult": 2 },
+      { "overchargeEvery": 6, "overchargeDamageMult": 3.0, "overchargeSizeMult": 2.5 },
+      { "overchargeEvery": 4, "overchargeDamageMult": 4.0, "overchargeSizeMult": 3 }
+    ]
+  },
+  {
+    "id": "mana_siphon",
+    "name": "Mana Siphon",
+    "icon": "\u2b2e",
+    "rarity": "common",
+    "category": "passive",
+    "description": "Gain bonus XP from kills, level up faster",
+    "maxLevel": 3,
+    "levels": [
+      { "xpMultiplier": 1.15 },
+      { "xpMultiplier": 1.30 },
+      { "xpMultiplier": 1.50 }
+    ]
+  },
+  {
+    "id": "temporal_field",
+    "name": "Temporal Field",
+    "icon": "\u29d6",
+    "rarity": "legendary",
+    "category": "utility",
+    "description": "Periodically slow time for all enemies",
+    "maxLevel": 3,
+    "levels": [
+      { "fieldDuration": 2, "fieldCooldown": 20, "fieldSlowPercent": 0.5 },
+      { "fieldDuration": 3, "fieldCooldown": 16, "fieldSlowPercent": 0.6 },
+      { "fieldDuration": 4, "fieldCooldown": 12, "fieldSlowPercent": 0.7 }
+    ]
+  },
+
+  {
+    "id": "whirlwind",
+    "name": "Whirlwind",
+    "icon": "\ud83c\udf00",
+    "class": "warrior",
+    "category": "offensive",
+    "description": "Melee attacks hit in a wider arc around you",
+    "maxLevel": 3,
+    "levels": [
+      { "sweepAngle": 180, "sweepDamageBonus": 3 },
+      { "sweepAngle": 270, "sweepDamageBonus": 6 },
+      { "sweepAngle": 360, "sweepDamageBonus": 10 }
+    ]
+  },
+  {
+    "id": "berserker_rage",
+    "name": "Berserker Rage",
+    "icon": "\ud83d\udd25",
+    "class": "warrior",
+    "category": "offensive",
+    "description": "Deal more damage when at low health",
+    "maxLevel": 3,
+    "levels": [
+      { "berserkThreshold": 0.5, "berserkDamageMult": 1.3 },
+      { "berserkThreshold": 0.6, "berserkDamageMult": 1.5 },
+      { "berserkThreshold": 0.7, "berserkDamageMult": 1.8, "berserkSpeedMult": 1.15 }
+    ]
+  },
+  {
+    "id": "armor_plates",
+    "name": "Armor Plates",
+    "icon": "\ud83d\udee1",
+    "class": "warrior",
+    "category": "defensive",
+    "description": "Reduce all incoming damage by a flat amount",
+    "maxLevel": 3,
+    "levels": [
+      { "damageReduction": 3 },
+      { "damageReduction": 6 },
+      { "damageReduction": 10 }
+    ]
+  },
+  {
+    "id": "ground_slam",
+    "name": "Ground Slam",
+    "icon": "\ud83d\udca5",
+    "class": "warrior",
+    "category": "offensive",
+    "description": "Shield Charge ends with an AoE shockwave",
+    "maxLevel": 3,
+    "levels": [
+      { "slamRadius": 60, "slamDamage": 15 },
+      { "slamRadius": 80, "slamDamage": 25 },
+      { "slamRadius": 100, "slamDamage": 40, "slamStunDuration": 0.5 }
+    ]
+  },
+  {
+    "id": "blood_rage",
+    "name": "Blood Rage",
+    "icon": "\ud83e\ude78",
+    "class": "warrior",
+    "category": "passive",
+    "description": "Killing enemies temporarily increases attack speed",
+    "maxLevel": 3,
+    "levels": [
+      { "killSpeedBuff": 0.85, "killBuffDuration": 3 },
+      { "killSpeedBuff": 0.7, "killBuffDuration": 4 },
+      { "killSpeedBuff": 0.55, "killBuffDuration": 5 }
+    ]
+  },
+  {
+    "id": "titans_grip",
+    "name": "Titan's Grip",
+    "icon": "\u270a",
+    "class": "warrior",
+    "category": "offensive",
+    "description": "Melee attacks have increased range and knockback",
+    "maxLevel": 3,
+    "levels": [
+      { "meleeRangeBonus": 20, "knockbackBonus": 10 },
+      { "meleeRangeBonus": 40, "knockbackBonus": 20 },
+      { "meleeRangeBonus": 60, "knockbackBonus": 35 }
+    ]
+  },
+
+  {
+    "id": "meteor_strike",
+    "name": "Meteor Strike",
+    "icon": "\u2604",
+    "class": "mage",
+    "category": "offensive",
+    "description": "Periodically call down a meteor on enemy clusters",
+    "maxLevel": 3,
+    "levels": [
+      { "meteorCooldown": 8, "meteorRadius": 60, "meteorDamage": 40 },
+      { "meteorCooldown": 6, "meteorRadius": 80, "meteorDamage": 65 },
+      { "meteorCooldown": 4, "meteorRadius": 100, "meteorDamage": 100 }
+    ]
+  },
+  {
+    "id": "spell_echo",
+    "name": "Spell Echo",
+    "icon": "\u2726",
+    "class": "mage",
+    "category": "offensive",
+    "description": "Each attack has a chance to fire twice",
+    "maxLevel": 3,
+    "levels": [
+      { "echoChance": 0.25, "echoDelay": 0.2, "echoDamageMult": 0.7 },
+      { "echoChance": 0.40, "echoDelay": 0.15, "echoDamageMult": 0.7 },
+      { "echoChance": 0.60, "echoDelay": 0.1, "echoDamageMult": 1.0 }
+    ]
+  },
+  {
+    "id": "mana_shield",
+    "name": "Mana Shield",
+    "icon": "\ud83d\udd37",
+    "class": "mage",
+    "category": "defensive",
+    "description": "Absorb damage at the cost of briefly slowing your attacks",
+    "maxLevel": 3,
+    "levels": [
+      { "manaShieldAbsorb": 0.3, "manaShieldCooldownPenalty": 0.3 },
+      { "manaShieldAbsorb": 0.4, "manaShieldCooldownPenalty": 0.2 },
+      { "manaShieldAbsorb": 0.5, "manaShieldCooldownPenalty": 0.1 }
+    ]
+  },
+  {
+    "id": "elemental_mastery",
+    "name": "Elemental Mastery",
+    "icon": "\u26a1",
+    "class": "mage",
+    "category": "offensive",
+    "description": "Bolts cycle through elements with unique effects",
+    "maxLevel": 3,
+    "levels": [
+      { "elementCycle": ["arcane", "fire"] },
+      { "elementCycle": ["arcane", "fire", "ice"] },
+      { "elementCycle": ["arcane", "fire", "ice", "lightning"] }
+    ]
+  },
+  {
+    "id": "arcane_amplification",
+    "name": "Arcane Amplification",
+    "icon": "\ud83d\udcd0",
+    "class": "mage",
+    "category": "passive",
+    "description": "Explosion and AoE effects have increased radius",
+    "maxLevel": 3,
+    "levels": [
+      { "aoeRadiusMult": 1.25 },
+      { "aoeRadiusMult": 1.5 },
+      { "aoeRadiusMult": 1.75, "aoeDamageMult": 1.15 }
+    ]
+  },
+  {
+    "id": "spell_siphon",
+    "name": "Spell Siphon",
+    "icon": "\ud83d\udc9c",
+    "class": "mage",
+    "category": "passive",
+    "description": "Killing enemies reduces all ability cooldowns",
+    "maxLevel": 3,
+    "levels": [
+      { "siphonCooldownReduction": 0.3 },
+      { "siphonCooldownReduction": 0.5 },
+      { "siphonCooldownReduction": 0.8, "siphonAttackSpeedBurst": 0.5 }
+    ]
+  },
+
+  {
+    "id": "marked_for_death",
+    "name": "Marked for Death",
+    "icon": "\ud83c\udfaf",
+    "class": "archer",
+    "category": "offensive",
+    "description": "Repeated hits on the same enemy deal increasing damage",
+    "maxLevel": 3,
+    "levels": [
+      { "markMaxStacks": 3, "markDamagePerStack": 2, "markDuration": 4 },
+      { "markMaxStacks": 5, "markDamagePerStack": 3, "markDuration": 5 },
+      { "markMaxStacks": 7, "markDamagePerStack": 4, "markDuration": 6 }
+    ]
+  },
+  {
+    "id": "rain_of_arrows",
+    "name": "Rain of Arrows",
+    "icon": "\ud83c\udf27",
+    "class": "archer",
+    "category": "offensive",
+    "description": "Periodically rain arrows over a wide area",
+    "maxLevel": 3,
+    "levels": [
+      { "rainCooldown": 10, "rainRadius": 120, "rainArrows": 8, "rainDamage": 8 },
+      { "rainCooldown": 7, "rainRadius": 150, "rainArrows": 12, "rainDamage": 12 },
+      { "rainCooldown": 5, "rainRadius": 180, "rainArrows": 16, "rainDamage": 16 }
+    ]
+  },
+  {
+    "id": "quickdraw",
+    "name": "Quickdraw",
+    "icon": "\u26a1",
+    "class": "archer",
+    "category": "offensive",
+    "description": "After Evasive Roll, fire several instant shots",
+    "maxLevel": 3,
+    "levels": [
+      { "quickdrawShots": 2 },
+      { "quickdrawShots": 3 },
+      { "quickdrawShots": 4, "quickdrawDamageBonus": 5 }
+    ]
+  },
+  {
+    "id": "wind_walk",
+    "name": "Wind Walk",
+    "icon": "\ud83c\udf43",
+    "class": "archer",
+    "category": "movement",
+    "description": "Moving continuously increases speed and attack range",
+    "maxLevel": 3,
+    "levels": [
+      { "windWalkMaxBonus": 0.2, "windWalkRangeBonus": 50, "windWalkBuildTime": 3 },
+      { "windWalkMaxBonus": 0.3, "windWalkRangeBonus": 100, "windWalkBuildTime": 2.5 },
+      { "windWalkMaxBonus": 0.4, "windWalkRangeBonus": 150, "windWalkBuildTime": 2 }
+    ]
+  },
+  {
+    "id": "splitting_arrow",
+    "name": "Splitting Arrow",
+    "icon": "\ud83d\udd31",
+    "class": "archer",
+    "category": "offensive",
+    "description": "Projectiles split into smaller arrows on hit",
+    "maxLevel": 3,
+    "levels": [
+      { "splitCount": 2, "splitDamagePct": 0.4 },
+      { "splitCount": 3, "splitDamagePct": 0.5 },
+      { "splitCount": 4, "splitDamagePct": 0.6 }
+    ]
+  },
+
+  {
+    "id": "skeleton_army",
+    "name": "Skeleton Army",
+    "icon": "\ud83d\udc80",
+    "class": "necromancer",
+    "category": "offensive",
+    "description": "Increase maximum minions and their power",
+    "maxLevel": 3,
+    "levels": [
+      { "maxMinionBonus": 1, "minionDamageBonus": 2, "minionHPBonus": 10 },
+      { "maxMinionBonus": 2, "minionDamageBonus": 4, "minionHPBonus": 25 },
+      { "maxMinionBonus": 3, "minionDamageBonus": 7, "minionHPBonus": 40, "minionDurationBonus": 4 }
+    ]
+  },
+  {
+    "id": "death_explosion",
+    "name": "Death Explosion",
+    "icon": "\u2620",
+    "class": "necromancer",
+    "category": "offensive",
+    "description": "Minions explode on death, damaging nearby enemies",
+    "maxLevel": 3,
+    "levels": [
+      { "minionExplosionRadius": 50, "minionExplosionDamage": 15 },
+      { "minionExplosionRadius": 70, "minionExplosionDamage": 25 },
+      { "minionExplosionRadius": 90, "minionExplosionDamage": 40 }
+    ]
+  },
+  {
+    "id": "soul_link",
+    "name": "Soul Link",
+    "icon": "\ud83d\udd17",
+    "class": "necromancer",
+    "category": "defensive",
+    "description": "Damage you take is partially redirected to your minions",
+    "maxLevel": 3,
+    "levels": [
+      { "soulLinkPercent": 0.25 },
+      { "soulLinkPercent": 0.4 },
+      { "soulLinkPercent": 0.5 }
+    ]
+  },
+  {
+    "id": "corpse_walk",
+    "name": "Corpse Walk",
+    "icon": "\ud83e\uddb4",
+    "class": "necromancer",
+    "category": "movement",
+    "description": "Walking over fallen enemies grants speed and summons minions",
+    "maxLevel": 3,
+    "levels": [
+      { "corpseSpeedBuff": 1.3, "corpseBuffDuration": 2, "corpseSpawnChance": 0.3 },
+      { "corpseSpeedBuff": 1.4, "corpseBuffDuration": 3, "corpseSpawnChance": 0.5 },
+      { "corpseSpeedBuff": 1.5, "corpseBuffDuration": 3, "corpseSpawnChance": 0.75, "corpseHeal": 5 }
+    ]
+  },
+  {
+    "id": "dark_pact",
+    "name": "Dark Pact",
+    "icon": "\ud83e\ude78",
+    "class": "necromancer",
+    "category": "offensive",
+    "description": "Sacrifice a minion to empower your next attack massively",
+    "maxLevel": 3,
+    "levels": [
+      { "pactDamageMult": 3, "pactCooldown": 10 },
+      { "pactDamageMult": 4, "pactCooldown": 8 },
+      { "pactDamageMult": 5, "pactCooldown": 6, "pactAoE": 60 }
+    ]
+  },
+  {
+    "id": "spectral_grasp",
+    "name": "Spectral Grasp",
+    "icon": "\ud83d\udc7b",
+    "class": "necromancer",
+    "category": "offensive",
+    "description": "Minions slow enemies they attack and pull distant foes closer",
+    "maxLevel": 3,
+    "levels": [
+      { "minionSlowPercent": 0.2, "minionSlowDuration": 1 },
+      { "minionSlowPercent": 0.3, "minionSlowDuration": 1.5, "minionPullRange": 100 },
+      { "minionSlowPercent": 0.4, "minionSlowDuration": 2, "minionPullRange": 150, "minionPullStrength": 30 }
     ]
   }
 ]

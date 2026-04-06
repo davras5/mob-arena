@@ -5,6 +5,43 @@ export class WorldMap {
     this.onSelect = null;
   }
 
+  _isUnlocked(level, clearedLevels) {
+    // No requirement = always unlocked
+    if (!level.unlockRequires && !level.unlockRequiresAny) return true;
+
+    // unlockRequiresAny: at least one must be cleared (OR logic)
+    if (level.unlockRequiresAny) {
+      const any = Array.isArray(level.unlockRequiresAny) ? level.unlockRequiresAny : [level.unlockRequiresAny];
+      if (!any.some(id => clearedLevels.includes(id))) return false;
+    }
+
+    // unlockRequires: string = single, array = all must be cleared (AND logic)
+    if (level.unlockRequires) {
+      if (Array.isArray(level.unlockRequires)) {
+        return level.unlockRequires.every(id => clearedLevels.includes(id));
+      }
+      return clearedLevels.includes(level.unlockRequires);
+    }
+
+    return true;
+  }
+
+  _getParentIds(level) {
+    const parents = [];
+    if (level.unlockRequires) {
+      if (Array.isArray(level.unlockRequires)) {
+        parents.push(...level.unlockRequires);
+      } else {
+        parents.push(level.unlockRequires);
+      }
+    }
+    if (level.unlockRequiresAny) {
+      const any = Array.isArray(level.unlockRequiresAny) ? level.unlockRequiresAny : [level.unlockRequiresAny];
+      parents.push(...any);
+    }
+    return parents;
+  }
+
   show(levels, clearedLevels, onSelect) {
     this.container.classList.remove('hidden');
     this.nodesContainer.innerHTML = '';
@@ -17,15 +54,16 @@ export class WorldMap {
     svg.setAttribute('preserveAspectRatio', 'none');
 
     for (const level of levels) {
-      if (level.unlockRequires) {
-        const parent = levels.find(l => l.id === level.unlockRequires);
+      const parentIds = this._getParentIds(level);
+      for (const parentId of parentIds) {
+        const parent = levels.find(l => l.id === parentId);
         if (parent) {
           const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
           line.setAttribute('x1', parent.position.x);
           line.setAttribute('y1', parent.position.y);
           line.setAttribute('x2', level.position.x);
           line.setAttribute('y2', level.position.y);
-          const isUnlocked = !level.unlockRequires || clearedLevels.includes(level.unlockRequires);
+          const isUnlocked = this._isUnlocked(level, clearedLevels);
           line.setAttribute('class', isUnlocked ? 'path-unlocked' : 'path-locked');
           svg.appendChild(line);
         }
@@ -36,7 +74,7 @@ export class WorldMap {
     // Draw level nodes
     for (const level of levels) {
       const isCleared = clearedLevels.includes(level.id);
-      const isUnlocked = !level.unlockRequires || clearedLevels.includes(level.unlockRequires);
+      const isUnlocked = this._isUnlocked(level, clearedLevels);
 
       const node = document.createElement('div');
       node.className = `world-node ${isCleared ? 'cleared' : ''} ${isUnlocked ? 'unlocked' : 'locked'}`;
@@ -46,8 +84,8 @@ export class WorldMap {
       node.innerHTML = `
         <div class="node-icon">${level.icon}</div>
         <div class="node-name">${level.name}</div>
-        ${isCleared ? '<div class="node-check">✓</div>' : ''}
-        ${!isUnlocked ? '<div class="node-lock">🔒</div>' : ''}
+        ${isCleared ? '<div class="node-check">\u2713</div>' : ''}
+        ${!isUnlocked ? '<div class="node-lock">\ud83d\udd12</div>' : ''}
       `;
 
       if (isUnlocked) {
@@ -63,7 +101,8 @@ export class WorldMap {
       }
 
       // Tooltip on hover
-      node.title = `${level.name}\n${level.description}\nWaves: ${level.waves} | Difficulty: ${'★'.repeat(level.difficulty)}`;
+      const diffStars = '\u2605'.repeat(level.difficulty);
+      node.title = `${level.name}\n${level.description}\nWaves: ${level.waves} | Difficulty: ${diffStars}`;
 
       this.nodesContainer.appendChild(node);
     }

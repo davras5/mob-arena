@@ -17,6 +17,10 @@ export class Renderer {
     this.flashColor = null;
     this.flashTimer = 0;
     this.flashDuration = 0;
+
+    // Layout manager reference
+    this.layoutManager = null;
+
     this.resize();
     window.addEventListener('resize', () => this.resize());
   }
@@ -35,6 +39,10 @@ export class Renderer {
     this.borderColor = config.borderColor || '#444';
   }
 
+  setLayout(layoutManager) {
+    this.layoutManager = layoutManager;
+  }
+
   updateCamera(player) {
     this.camera.x = player.x - this.canvas.width / 2;
     this.camera.y = player.y - this.canvas.height / 2;
@@ -51,6 +59,8 @@ export class Renderer {
 
   drawMap() {
     const ctx = this.ctx;
+    const lm = this.layoutManager;
+    const hasRooms = lm && lm.rooms && lm.rooms.length > 0;
     const startCol = Math.floor(this.camera.x / this.tileSize);
     const endCol = Math.ceil((this.camera.x + this.canvas.width) / this.tileSize);
     const startRow = Math.floor(this.camera.y / this.tileSize);
@@ -60,6 +70,14 @@ export class Renderer {
       for (let c = startCol; c <= endCol; c++) {
         const sx = c * this.tileSize - this.camera.x;
         const sy = r * this.tileSize - this.camera.y;
+
+        // If room layout, only draw walkable tiles
+        if (hasRooms && !lm.isTileWalkable(c, r)) {
+          // Draw dark void for non-walkable
+          ctx.fillStyle = '#080808';
+          ctx.fillRect(sx, sy, this.tileSize, this.tileSize);
+          continue;
+        }
 
         // Dark stone tile pattern
         const shade = ((r + c) % 2 === 0) ? this.tilePrimary : this.tileSecondary;
@@ -77,6 +95,93 @@ export class Renderer {
     ctx.strokeStyle = this.borderColor;
     ctx.lineWidth = 3;
     ctx.strokeRect(-this.camera.x, -this.camera.y, this.mapWidth, this.mapHeight);
+
+    // Draw obstacles
+    if (lm) {
+      this._drawObstacles(lm.obstacles);
+    }
+  }
+
+  _drawObstacles(obstacles) {
+    const ctx = this.ctx;
+    for (const obs of obstacles) {
+      const sx = obs.x - this.camera.x;
+      const sy = obs.y - this.camera.y;
+
+      // Skip if offscreen
+      const obsSize = obs.radius || Math.max(obs.width || 0, obs.height || 0);
+      if (sx < -obsSize - 20 || sx > this.canvas.width + obsSize + 20 ||
+          sy < -obsSize - 20 || sy > this.canvas.height + obsSize + 20) continue;
+
+      if (obs.type === 'pillar') {
+        // Stone pillar with 3D bevel
+        const gradient = ctx.createRadialGradient(sx - 4, sy - 4, 0, sx, sy, obs.radius);
+        gradient.addColorStop(0, '#7f8c8d');
+        gradient.addColorStop(0.7, '#5d6d7e');
+        gradient.addColorStop(1, '#2c3e50');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(sx, sy, obs.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Outline
+        ctx.strokeStyle = '#1a252f';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(sx, sy, obs.radius, 0, Math.PI * 2);
+        ctx.stroke();
+
+      } else if (obs.type === 'wall') {
+        // Wall rectangle
+        const wx = obs.x - this.camera.x;
+        const wy = obs.y - this.camera.y;
+        ctx.fillStyle = '#4a5568';
+        ctx.fillRect(wx, wy, obs.width, obs.height);
+        ctx.strokeStyle = '#2d3748';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(wx, wy, obs.width, obs.height);
+
+        // Light edge
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+        ctx.fillRect(wx, wy, obs.width, 2);
+        ctx.fillRect(wx, wy, 2, obs.height);
+
+      } else if (obs.type === 'pit') {
+        // Dark pit with glow
+        const gradient = ctx.createRadialGradient(sx, sy, 0, sx, sy, obs.radius);
+        gradient.addColorStop(0, 'rgba(0, 0, 0, 0.8)');
+        gradient.addColorStop(0.6, 'rgba(0, 0, 0, 0.4)');
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(sx, sy, obs.radius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Danger glow edge
+        const edgeColor = obs.color || '#e74c3c';
+        ctx.strokeStyle = edgeColor;
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = 0.4 + Math.sin(Date.now() / 500) * 0.2;
+        ctx.beginPath();
+        ctx.arc(sx, sy, obs.radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+
+      } else if (obs.type === 'hazard_zone') {
+        // Colored overlay zone
+        const wx = obs.x - this.camera.x;
+        const wy = obs.y - this.camera.y;
+        const color = obs.color || '#e74c3c';
+        ctx.globalAlpha = 0.15 + Math.sin(Date.now() / 800) * 0.05;
+        ctx.fillStyle = color;
+        ctx.fillRect(wx, wy, obs.width, obs.height);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = 0.3;
+        ctx.strokeRect(wx, wy, obs.width, obs.height);
+        ctx.globalAlpha = 1;
+      }
+    }
   }
 
   drawBlessings(blessings, time) {
@@ -203,6 +308,8 @@ export class Renderer {
     const ctx = this.ctx;
     const sx = player.x - this.camera.x;
     const sy = player.y - this.camera.y;
+    const color = player.color || '#3498db';
+    const highlight = player.highlightColor || '#5dade2';
 
     // Shield visual
     if (player.shieldHP > 0) {
@@ -213,27 +320,81 @@ export class Renderer {
       ctx.stroke();
     }
 
+    // Warrior: thicker outline
+    if (player.playerClass === 'warrior') {
+      ctx.strokeStyle = 'rgba(192, 57, 43, 0.5)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(sx, sy, player.radius + 4, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Necromancer: orbiting souls
+    if (player.playerClass === 'necromancer') {
+      const orbitRadius = player.radius + 12;
+      const soulCount = 3;
+      for (let i = 0; i < soulCount; i++) {
+        const angle = (Date.now() / 1500) + (i * Math.PI * 2 / soulCount);
+        const soulX = sx + Math.cos(angle) * orbitRadius;
+        const soulY = sy + Math.sin(angle) * orbitRadius;
+        ctx.globalAlpha = 0.4;
+        ctx.fillStyle = player.highlightColor;
+        ctx.beginPath();
+        ctx.arc(soulX, soulY, 4, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Mage: rotating rune ring
+    if (player.playerClass === 'mage') {
+      const runeRadius = player.radius + 8;
+      const runeCount = 5;
+      ctx.globalAlpha = 0.3;
+      for (let i = 0; i < runeCount; i++) {
+        const angle = (Date.now() / 2000) + (i * Math.PI * 2 / runeCount);
+        const rx = sx + Math.cos(angle) * runeRadius;
+        const ry = sy + Math.sin(angle) * runeRadius;
+        ctx.fillStyle = player.highlightColor;
+        ctx.beginPath();
+        ctx.arc(rx, ry, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
     // Player body
-    ctx.fillStyle = '#3498db';
+    ctx.fillStyle = color;
     ctx.beginPath();
     ctx.arc(sx, sy, player.radius, 0, Math.PI * 2);
     ctx.fill();
 
     // Inner highlight
-    ctx.fillStyle = '#5dade2';
+    ctx.fillStyle = highlight;
     ctx.beginPath();
     ctx.arc(sx - 3, sy - 3, player.radius * 0.5, 0, Math.PI * 2);
     ctx.fill();
 
     // Aim direction indicator
     if (player.aimAngle !== null) {
+      const indicatorLen = player.playerClass === 'archer' ? 20 : 10;
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.moveTo(sx + Math.cos(player.aimAngle) * player.radius,
                  sy + Math.sin(player.aimAngle) * player.radius);
-      ctx.lineTo(sx + Math.cos(player.aimAngle) * (player.radius + 10),
-                 sy + Math.sin(player.aimAngle) * (player.radius + 10));
+      ctx.lineTo(sx + Math.cos(player.aimAngle) * (player.radius + indicatorLen),
+                 sy + Math.sin(player.aimAngle) * (player.radius + indicatorLen));
+      ctx.stroke();
+    }
+
+    // Unique ability cooldown indicator
+    if (player.classConfig && player.uniqueAbilityTimer > 0) {
+      const pct = player.uniqueAbilityTimer / player.uniqueAbilityCooldown;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(sx, sy, player.radius + 2, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - pct));
       ctx.stroke();
     }
   }
@@ -307,35 +468,57 @@ export class Renderer {
     ctx.fill();
   }
 
-  drawProjectiles(projectiles) {
+  drawProjectiles(projectiles, player) {
     const ctx = this.ctx;
+    const ELEMENT_COLORS = {
+      fire: '#e67e22',
+      ice: '#5dade2',
+      lightning: '#f1c40f',
+      arcane: '#a569bd',
+    };
+
     for (const p of projectiles) {
       const sx = p.x - this.camera.x;
       const sy = p.y - this.camera.y;
 
       if (sx < -20 || sx > this.canvas.width + 20 || sy < -20 || sy > this.canvas.height + 20) continue;
 
+      let projColor = '#f1c40f';
+      let glowColor = 'rgba(241, 196, 15, 0.3)';
+      let trailColor = 'rgba(241, 196, 15, 0.3)';
+
+      if (p.isEnemy) {
+        projColor = '#e74c3c';
+        glowColor = 'rgba(231, 76, 60, 0.3)';
+        trailColor = 'rgba(231, 76, 60, 0.3)';
+      } else if (p.element && ELEMENT_COLORS[p.element]) {
+        projColor = ELEMENT_COLORS[p.element];
+        glowColor = projColor.replace(')', ', 0.3)').replace('rgb', 'rgba');
+      } else if (p.isDrain) {
+        projColor = '#2e86c1';
+        glowColor = 'rgba(46, 134, 193, 0.3)';
+        trailColor = 'rgba(46, 134, 193, 0.3)';
+      } else if (player && player.color && player.color !== '#3498db') {
+        projColor = player.color;
+      }
+
       if (!p.isEnemy) {
         const glow = ctx.createRadialGradient(sx, sy, 0, sx, sy, p.radius * 3);
-        glow.addColorStop(0, 'rgba(241, 196, 15, 0.3)');
-        glow.addColorStop(1, 'rgba(241, 196, 15, 0)');
+        glow.addColorStop(0, glowColor);
+        glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
         ctx.fillStyle = glow;
         ctx.beginPath();
         ctx.arc(sx, sy, p.radius * 3, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      if (p.isEnemy) {
-        ctx.fillStyle = '#e74c3c';
-      } else {
-        ctx.fillStyle = '#f1c40f';
-      }
+      ctx.fillStyle = projColor;
       ctx.beginPath();
       ctx.arc(sx, sy, p.radius, 0, Math.PI * 2);
       ctx.fill();
 
       // Trail
-      ctx.fillStyle = p.isEnemy ? 'rgba(231, 76, 60, 0.3)' : 'rgba(241, 196, 15, 0.3)';
+      ctx.fillStyle = trailColor;
       ctx.beginPath();
       ctx.arc(sx - p.vx * 0.03, sy - p.vy * 0.03, p.radius * 0.7, 0, Math.PI * 2);
       ctx.fill();
@@ -448,6 +631,35 @@ export class Renderer {
 
     ctx.globalAlpha = 0.8;
 
+    // Room outlines on minimap
+    if (this.layoutManager && this.layoutManager.rooms.length > 0) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+      for (const room of this.layoutManager.rooms) {
+        ctx.fillRect(
+          mx + room.x * scale,
+          my + room.y * scale,
+          room.width * scale,
+          room.height * scale
+        );
+      }
+    }
+
+    // Obstacle dots on minimap
+    if (this.layoutManager) {
+      for (const obs of this.layoutManager.obstacles) {
+        if (obs.type === 'pillar' || obs.type === 'wall') {
+          ctx.fillStyle = 'rgba(127, 140, 141, 0.4)';
+          if (obs.type === 'pillar') {
+            ctx.beginPath();
+            ctx.arc(mx + obs.x * scale, my + obs.y * scale, Math.max(1, obs.radius * scale), 0, Math.PI * 2);
+            ctx.fill();
+          } else {
+            ctx.fillRect(mx + obs.x * scale, my + obs.y * scale, Math.max(1, obs.width * scale), Math.max(1, obs.height * scale));
+          }
+        }
+      }
+    }
+
     // Camera viewport
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
     ctx.lineWidth = 1;
@@ -482,8 +694,8 @@ export class Renderer {
       ctx.fill();
     }
 
-    // Player (blue dot)
-    ctx.fillStyle = '#3498db';
+    // Player dot (class-colored)
+    ctx.fillStyle = player.color || '#3498db';
     ctx.beginPath();
     ctx.arc(mx + player.x * scale, my + player.y * scale, 3, 0, Math.PI * 2);
     ctx.fill();
@@ -529,13 +741,14 @@ export class Renderer {
     if (this.flashTimer > 0) this.flashTimer -= dt;
   }
 
-  drawPlayerTrail(trail) {
+  drawPlayerTrail(trail, color) {
     const ctx = this.ctx;
+    const trailColor = color || '#3498db';
     for (const t of trail) {
       const sx = t.x - this.camera.x;
       const sy = t.y - this.camera.y;
       ctx.globalAlpha = t.alpha;
-      ctx.fillStyle = '#3498db';
+      ctx.fillStyle = trailColor;
       ctx.beginPath();
       ctx.arc(sx, sy, 5, 0, Math.PI * 2);
       ctx.fill();
@@ -589,6 +802,252 @@ export class Renderer {
 
     ctx.restore();
     ctx.globalAlpha = 1;
+  }
+
+  drawMinions(minions) {
+    const ctx = this.ctx;
+    for (const m of minions) {
+      const sx = m.x - this.camera.x;
+      const sy = m.y - this.camera.y;
+      if (sx < -30 || sx > this.canvas.width + 30 || sy < -30 || sy > this.canvas.height + 30) continue;
+
+      const drawRadius = m.radius * m.scale;
+      ctx.fillStyle = m.hitFlashTimer > 0 ? '#fff' : m.color;
+      ctx.beginPath();
+      ctx.arc(sx, sy, drawRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Ghostly inner
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.beginPath();
+      ctx.arc(sx, sy, drawRadius * 0.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Lifetime ring
+      const pct = m.timer / m.duration;
+      ctx.strokeStyle = 'rgba(46, 134, 193, 0.5)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(sx, sy, drawRadius + 3, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * pct);
+      ctx.stroke();
+
+      // HP bar if damaged
+      if (m.hp < m.maxHP) {
+        const barW = drawRadius * 2.5;
+        const barH = 3;
+        const bx = sx - barW / 2;
+        const by = sy - drawRadius - 8;
+        ctx.fillStyle = '#333';
+        ctx.fillRect(bx, by, barW, barH);
+        ctx.fillStyle = '#2e86c1';
+        ctx.fillRect(bx, by, barW * (m.hp / m.maxHP), barH);
+      }
+    }
+  }
+
+  drawMeleeSweep(sweep, color) {
+    const ctx = this.ctx;
+    const sx = sweep.x - this.camera.x;
+    const sy = sweep.y - this.camera.y;
+    const halfArc = (sweep.arc / 2) * (Math.PI / 180);
+
+    ctx.save();
+    ctx.globalAlpha = sweep.timer / 0.15 * 0.4;
+    ctx.fillStyle = color || '#c0392b';
+    ctx.beginPath();
+    ctx.moveTo(sx, sy);
+    ctx.arc(sx, sy, sweep.range, sweep.angle - halfArc, sweep.angle + halfArc);
+    ctx.closePath();
+    ctx.fill();
+
+    // White edge
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(sx, sy, sweep.range, sweep.angle - halfArc, sweep.angle + halfArc);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  drawDecoy(decoy, player) {
+    const ctx = this.ctx;
+    const sx = decoy.x - this.camera.x;
+    const sy = decoy.y - this.camera.y;
+    const alpha = Math.min(0.4, decoy.timer / 1.5 * 0.4);
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
+    // Wavering size effect
+    const sizeOsc = 1 + Math.sin(Date.now() / 100) * 0.05;
+
+    ctx.fillStyle = player.color || '#8e44ad';
+    ctx.beginPath();
+    ctx.arc(sx, sy, player.radius * sizeOsc, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = player.highlightColor || '#a569bd';
+    ctx.beginPath();
+    ctx.arc(sx - 2, sy - 2, player.radius * 0.4, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  drawSoulHarvest(x, y, radius, color) {
+    const ctx = this.ctx;
+    const sx = x - this.camera.x;
+    const sy = y - this.camera.y;
+
+    ctx.save();
+    ctx.globalAlpha = 0.2;
+    const gradient = ctx.createRadialGradient(sx, sy, 0, sx, sy, radius);
+    gradient.addColorStop(0, color || '#1a5276');
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.arc(sx, sy, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Swirling edge
+    ctx.strokeStyle = color || '#1a5276';
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.4;
+    const time = Date.now() / 500;
+    ctx.beginPath();
+    ctx.arc(sx, sy, radius, time, time + Math.PI * 1.2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(sx, sy, radius, time + Math.PI, time + Math.PI * 2.2);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  drawMeteorWarning(x, y, radius, timer) {
+    const ctx = this.ctx;
+    const sx = x - this.camera.x;
+    const sy = y - this.camera.y;
+
+    ctx.save();
+    const flash = Math.sin(Date.now() / 50) * 0.5 + 0.5;
+    ctx.globalAlpha = 0.15 + flash * 0.15;
+    ctx.fillStyle = '#e74c3c';
+    ctx.beginPath();
+    ctx.arc(sx, sy, radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#e74c3c';
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.5 + flash * 0.3;
+    ctx.beginPath();
+    ctx.arc(sx, sy, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  drawRainArrows(arrows) {
+    const ctx = this.ctx;
+    for (const r of arrows) {
+      const sx = r.x - this.camera.x;
+      const sy = r.y - this.camera.y;
+      ctx.globalAlpha = r.timer / 0.3;
+      ctx.fillStyle = '#27ae60';
+      ctx.beginPath();
+      ctx.arc(sx, sy, 3, 0, Math.PI * 2);
+      ctx.fill();
+      // Impact ring
+      const ringRadius = (1 - r.timer / 0.3) * 12;
+      ctx.strokeStyle = 'rgba(39, 174, 96, 0.5)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(sx, sy, ringRadius, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  drawCorpses(corpses) {
+    const ctx = this.ctx;
+    for (const c of corpses) {
+      const sx = c.x - this.camera.x;
+      const sy = c.y - this.camera.y;
+      ctx.globalAlpha = Math.min(0.3, c.timer / 5 * 0.3);
+      ctx.fillStyle = '#2e86c1';
+      ctx.beginPath();
+      ctx.arc(sx, sy, 6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  drawGravitonOrbs(orbs) {
+    const ctx = this.ctx;
+    for (const orb of orbs) {
+      const sx = orb.x - this.camera.x;
+      const sy = orb.y - this.camera.y;
+      const pct = orb.timer / 5; // normalized
+
+      // Pulsing dark orb
+      ctx.save();
+      ctx.globalAlpha = 0.3 + Math.sin(Date.now() / 200) * 0.1;
+      const gradient = ctx.createRadialGradient(sx, sy, 0, sx, sy, orb.pullRadius);
+      gradient.addColorStop(0, 'rgba(100, 50, 150, 0.4)');
+      gradient.addColorStop(0.7, 'rgba(100, 50, 150, 0.1)');
+      gradient.addColorStop(1, 'rgba(100, 50, 150, 0)');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(sx, sy, orb.pullRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Core
+      ctx.fillStyle = '#9b59b6';
+      ctx.globalAlpha = 0.6;
+      ctx.beginPath();
+      ctx.arc(sx, sy, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  drawSpectralBlades(player, time) {
+    const ctx = this.ctx;
+    const count = player.bladeCount;
+    const radius = player.bladeRadius;
+    const sx = player.x - this.camera.x;
+    const sy = player.y - this.camera.y;
+    const step = (Math.PI * 2) / count;
+    const speed = 2;
+
+    ctx.save();
+    ctx.globalAlpha = 0.6;
+    ctx.strokeStyle = '#ecf0f1';
+    ctx.lineWidth = 2;
+
+    for (let i = 0; i < count; i++) {
+      const angle = (time * speed) + i * step;
+      const bx = sx + Math.cos(angle) * radius;
+      const by = sy + Math.sin(angle) * radius;
+
+      // Blade shape (small rotated line)
+      ctx.save();
+      ctx.translate(bx, by);
+      ctx.rotate(angle + Math.PI / 2);
+      ctx.beginPath();
+      ctx.moveTo(0, -6);
+      ctx.lineTo(0, 6);
+      ctx.stroke();
+      ctx.restore();
+
+      // Glow dot
+      ctx.fillStyle = 'rgba(236, 240, 241, 0.4)';
+      ctx.beginPath();
+      ctx.arc(bx, by, 4, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   drawWaveAnnouncement(text, timer) {

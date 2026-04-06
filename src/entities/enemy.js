@@ -44,6 +44,46 @@ const ENEMY_TYPES = {
     splitsInto: 'grunt',
     splitCount: 2,
   },
+  necromancer_enemy: {
+    color: '#6c3483',
+    radius: 13,
+    baseHP: 18,
+    baseSpeed: 35,
+    damage: 10,
+    xp: 20,
+    attackRange: 180,
+    shootCooldown: 2.5,
+    projectileSpeed: 160,
+    resurrects: true,
+  },
+  burrower: {
+    color: '#784212',
+    radius: 12,
+    baseHP: 30,
+    baseSpeed: 60,
+    damage: 15,
+    xp: 18,
+    burrowCycle: 3.0,
+  },
+  shielder: {
+    color: '#5d6d7e',
+    radius: 16,
+    baseHP: 45,
+    baseSpeed: 30,
+    damage: 12,
+    xp: 22,
+    shieldAngle: true,
+  },
+  bomber: {
+    color: '#c0392b',
+    radius: 10,
+    baseHP: 10,
+    baseSpeed: 70,
+    damage: 25,
+    xp: 15,
+    explodeOnDeath: true,
+    explosionRadius: 50,
+  },
 };
 
 export class Enemy {
@@ -89,6 +129,26 @@ export class Enemy {
     this.strafeTimer = 0;
     this.strafeDir = 1;
 
+    // Burrower state
+    this.burrowCycle = def.burrowCycle || 0;
+    this.burrowTimer = this.burrowCycle * (0.5 + Math.random() * 0.5);
+    this.isBurrowed = false;
+    this.burrowSurfaceTimer = 0;
+
+    // Shielder: directional shield
+    this.hasShieldAngle = def.shieldAngle || false;
+    this.shieldFacing = 0; // angle facing player
+
+    // Bomber
+    this.explodeOnDeath = def.explodeOnDeath || false;
+    this.explosionRadius = def.explosionRadius || 0;
+
+    // Necromancer enemy resurrects
+    this.resurrects = def.resurrects || false;
+
+    // Stun (from warrior slam etc)
+    this._stunTimer = 0;
+
     // Spawn animation
     this.spawnTimer = 0.3;
   }
@@ -100,6 +160,7 @@ export class Enemy {
   update(dt, playerX, playerY) {
     if (this.spawnTimer > 0) this.spawnTimer -= dt;
     if (this.hitFlashTimer > 0) this.hitFlashTimer -= dt;
+    if (this._stunTimer > 0) { this._stunTimer -= dt; return; }
     const dx = playerX - this.x;
     const dy = playerY - this.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -110,6 +171,33 @@ export class Enemy {
       this.speed = this.baseSpeed * (1 - this.slowPercent);
     } else {
       this.speed = this.baseSpeed;
+    }
+
+    // Burrower: cycle between burrowed (invulnerable) and surfaced
+    if (this.burrowCycle > 0) {
+      this.burrowTimer -= dt;
+      if (this.isBurrowed) {
+        // Move toward player while underground (faster)
+        if (dist > 1) {
+          this.x += (dx / dist) * this.speed * 1.5 * dt;
+          this.y += (dy / dist) * this.speed * 1.5 * dt;
+        }
+        if (this.burrowTimer <= 0) {
+          this.isBurrowed = false;
+          this.burrowTimer = this.burrowCycle;
+        }
+        if (this.contactCooldown > 0) this.contactCooldown -= dt;
+        return;
+      } else if (this.burrowTimer <= 0) {
+        this.isBurrowed = true;
+        this.burrowTimer = 1.5; // underground for 1.5s
+        return;
+      }
+    }
+
+    // Shielder: face player with shield, absorbs frontal projectiles
+    if (this.hasShieldAngle) {
+      this.shieldFacing = Math.atan2(dy, dx); // face toward player
     }
 
     // Ranged: strafe when in attack range instead of standing still
@@ -216,7 +304,21 @@ export class Enemy {
     this.slowTimer = Math.max(this.slowTimer, duration);
   }
 
-  takeDamage(amount) {
+  takeDamage(amount, fromAngle) {
+    // Burrower is invulnerable while underground
+    if (this.isBurrowed) return false;
+
+    // Shielder: block frontal damage (within ~90 degrees of facing)
+    if (this.hasShieldAngle && fromAngle !== undefined) {
+      let angleDiff = fromAngle - this.shieldFacing;
+      while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+      while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+      if (Math.abs(angleDiff) < Math.PI / 4) {
+        // Blocked by shield - take reduced damage
+        amount = Math.round(amount * 0.2);
+      }
+    }
+
     this.hp -= amount;
     this.hitFlashTimer = 0.1;
     if (this.hp <= 0) {

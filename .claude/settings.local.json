@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const fs = require\\('fs'\\); JSON.parse\\(fs.readFileSync\\('src/data/classes.json', 'utf8'\\)\\); JSON.parse\\(fs.readFileSync\\('src/data/abilities.json', 'utf8'\\)\\); console.log\\('JSON valid'\\)\")",
+      "Bash(node -e ':*)",
+      "Bash(cp -r c:/Users/DavidRasner/Documents/GitHub/mob-arena c:/Users/DavidRasner/Documents/GitHub/dungeon-crawler)",
+      "Read(//c/Users/DavidRasner/Documents/GitHub/**)"
+    ]
+  }
+}

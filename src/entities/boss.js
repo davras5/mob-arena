@@ -37,6 +37,74 @@ const BOSS_DEFS = {
     summonCooldown: 4,
     summonCount: 3,
   },
+  plagueking: {
+    name: 'Plague King',
+    color: '#27ae60',
+    radius: 34,
+    hp: 500,
+    speed: 35,
+    damage: 18,
+    abilities: ['poison_cloud', 'summon'],
+    poisonCloudCooldown: 6,
+    poisonCloudRadius: 80,
+    poisonCloudDamage: 4,
+    poisonCloudDuration: 4,
+    summonCooldown: 8,
+    summonCount: 2,
+    summonType: 'bomber',
+  },
+  frostlich: {
+    name: 'Frost Lich',
+    color: '#85c1e9',
+    radius: 30,
+    hp: 400,
+    speed: 38,
+    damage: 16,
+    abilities: ['freeze_ray', 'teleport'],
+    freezeRayCooldown: 5,
+    freezeRayRadius: 120,
+    freezeRaySlow: 0.7,
+    freezeRayDuration: 2,
+    teleportCooldown: 7,
+  },
+  infernalwyrm: {
+    name: 'Infernal Wyrm',
+    color: '#e74c3c',
+    radius: 38,
+    hp: 600,
+    speed: 25,
+    damage: 22,
+    abilities: ['fire_breath', 'charge', 'summon'],
+    fireBreathCooldown: 6,
+    fireBreathRadius: 100,
+    fireBreathDamage: 12,
+    fireBreathDuration: 1.5,
+    chargeCooldown: 8,
+    chargeSpeed: 300,
+    summonCooldown: 10,
+    summonCount: 2,
+    summonType: 'burrower',
+  },
+  hollow_king: {
+    name: 'The Hollow King',
+    color: '#1a1a2e',
+    radius: 40,
+    hp: 800,
+    speed: 35,
+    damage: 30,
+    abilities: ['charge', 'stomp', 'teleport', 'rift', 'summon'],
+    chargeCooldown: 6,
+    chargeSpeed: 280,
+    stompCooldown: 8,
+    stompRadius: 120,
+    stompDamage: 25,
+    teleportCooldown: 10,
+    riftCooldown: 7,
+    riftDamage: 18,
+    riftRadius: 70,
+    summonCooldown: 12,
+    summonCount: 4,
+  },
 };
 
 export class Boss {
@@ -83,6 +151,19 @@ export class Boss {
     this.summonCooldown = def.summonCooldown || 99;
     this.summonTimer = this.summonCooldown;
     this.summonCount = def.summonCount || 0;
+    this.summonType = def.summonType || 'grunt';
+
+    // Plague King: poison clouds
+    this.poisonCloudCooldown = def.poisonCloudCooldown || 99;
+    this.poisonCloudTimer = this.poisonCloudCooldown * 0.5;
+
+    // Frost Lich: freeze ray
+    this.freezeRayCooldown = def.freezeRayCooldown || 99;
+    this.freezeRayTimer = this.freezeRayCooldown * 0.5;
+
+    // Infernal Wyrm: fire breath
+    this.fireBreathCooldown = def.fireBreathCooldown || 99;
+    this.fireBreathTimer = this.fireBreathCooldown * 0.5;
 
     this.contactCooldown = 0;
     this.dead = false;
@@ -101,6 +182,9 @@ export class Boss {
       this.teleportCooldown *= 0.7;
       this.riftCooldown *= 0.7;
       this.summonCooldown *= 0.7;
+      this.poisonCloudCooldown *= 0.7;
+      this.freezeRayCooldown *= 0.7;
+      this.fireBreathCooldown *= 0.7;
     }
 
     // Slow effect
@@ -145,6 +229,9 @@ export class Boss {
     this.teleportTimer -= dt;
     this.riftTimer -= dt;
     this.summonTimer -= dt;
+    this.poisonCloudTimer -= dt;
+    this.freezeRayTimer -= dt;
+    this.fireBreathTimer -= dt;
     if (this.contactCooldown > 0) this.contactCooldown -= dt;
 
     // Update rifts
@@ -194,7 +281,42 @@ export class Boss {
 
     if (this.abilities.includes('summon') && this.summonTimer <= 0) {
       this.summonTimer = this.summonCooldown;
-      action = { type: 'summon', x: this.x, y: this.y, count: this.summonCount };
+      action = { type: 'summon', x: this.x, y: this.y, count: this.summonCount, summonType: this.summonType };
+    }
+
+    if (this.abilities.includes('poison_cloud') && this.poisonCloudTimer <= 0) {
+      this.poisonCloudTimer = this.poisonCloudCooldown;
+      this.rifts.push({
+        x: playerX + (Math.random() - 0.5) * 80,
+        y: playerY + (Math.random() - 0.5) * 80,
+        radius: this.def.poisonCloudRadius || 80,
+        damage: this.def.poisonCloudDamage || 4,
+        timer: this.def.poisonCloudDuration || 4,
+        color: '#27ae60',
+      });
+    }
+
+    if (this.abilities.includes('freeze_ray') && this.freezeRayTimer <= 0 && dist < 200) {
+      this.freezeRayTimer = this.freezeRayCooldown;
+      action = {
+        type: 'freeze_ray',
+        x: this.x, y: this.y,
+        radius: this.def.freezeRayRadius || 120,
+        slow: this.def.freezeRaySlow || 0.7,
+        duration: this.def.freezeRayDuration || 2,
+      };
+    }
+
+    if (this.abilities.includes('fire_breath') && this.fireBreathTimer <= 0 && dist < 150) {
+      this.fireBreathTimer = this.fireBreathCooldown;
+      action = {
+        type: 'fire_breath',
+        x: this.x, y: this.y,
+        angle: Math.atan2(dy, dx),
+        radius: this.def.fireBreathRadius || 100,
+        damage: this.def.fireBreathDamage || 12,
+        duration: this.def.fireBreathDuration || 1.5,
+      };
     }
 
     return action;

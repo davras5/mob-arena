@@ -1,0 +1,68 @@
+[
+  {
+    "id": "shrapnel_storm",
+    "name": "Shrapnel Storm",
+    "icon": "\ud83d\udca5",
+    "requires": ["piercing", "explosive"],
+    "description": "Projectiles explode at every pierce point",
+    "bonusEffect": "pierce_explode"
+  },
+  {
+    "id": "chain_barrage",
+    "name": "Chain Barrage",
+    "icon": "\u26a1",
+    "requires": ["multishot", "ricochet"],
+    "description": "Each multishot projectile gets +1 bonus bounce",
+    "bonusEffect": "extra_bounce"
+  },
+  {
+    "id": "frozen_inferno",
+    "name": "Frozen Inferno",
+    "icon": "\u2744",
+    "requires": ["frost_aura", "fire_trail"],
+    "description": "Enemies affected by both slow and fire take 50% more damage",
+    "bonusEffect": "thermal_shock"
+  },
+  {
+    "id": "undying_fury",
+    "name": "Undying Fury",
+    "icon": "\ud83d\udd25",
+    "requiresAll": ["berserker_rage"],
+    "requiresAny": ["regen", "lifesteal"],
+    "description": "Below 30% HP: regen triples, lifesteal doubles",
+    "bonusEffect": "low_hp_sustain"
+  },
+  {
+    "id": "bullet_hell",
+    "name": "Bullet Hell",
+    "icon": "\u2b24",
+    "requires": ["rapid_fire", "multishot", "homing_salvo"],
+    "description": "Additional 15% attack speed increase",
+    "bonusEffect": "bonus_attack_speed"
+  },
+  {
+    "id": "deaths_cascade",
+    "name": "Death's Cascade",
+    "icon": "\u2620",
+    "requires": ["chain_reaction", "chain_lightning"],
+    "description": "Death explosions trigger chain lightning arcs",
+    "bonusEffect": "death_chain_lightning"
+  },
+  {
+    "id": "phantom_dancer",
+    "name": "Phantom Dancer",
+    "icon": "\ud83d\udc7b",
+    "requiresAll": ["dash"],
+    "requiresAny": ["phase_shift", "evasion"],
+    "description": "Dash cooldown -25%, dodge procs grant speed boost",
+    "bonusEffect": "dash_dodge_synergy"
+  },
+  {
+    "id": "soul_engine",
+    "name": "Soul Engine",
+    "icon": "\u2728",
+    "requires": ["soul_harvest_passive", "mana_siphon"],
+    "description": "Each harvest stack grants +5% bonus XP",
+    "bonusEffect": "harvest_xp_bonus"
+  }
+]

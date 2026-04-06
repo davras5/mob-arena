@@ -384,6 +384,65 @@ button:active {
   font-weight: bold;
 }
 
+.blessing-card .card-rarity {
+  font-size: 9px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+/* Rarity styles */
+.blessing-card.rarity-common {
+  border-color: #aaaaaa;
+}
+.blessing-card.rarity-common .card-rarity {
+  color: #aaaaaa;
+}
+
+.blessing-card.rarity-rare {
+  border-color: #3498db;
+  box-shadow: 0 0 8px rgba(52, 152, 219, 0.2);
+}
+.blessing-card.rarity-rare .card-rarity {
+  color: #3498db;
+}
+
+.blessing-card.rarity-epic {
+  border-color: #9b59b6;
+  box-shadow: 0 0 12px rgba(155, 89, 182, 0.3);
+}
+.blessing-card.rarity-epic .card-rarity {
+  color: #9b59b6;
+}
+
+.blessing-card.rarity-legendary {
+  border-color: #f39c12;
+  box-shadow: 0 0 16px rgba(243, 156, 18, 0.4);
+  animation: legendaryShimmer 2s ease-in-out infinite;
+}
+.blessing-card.rarity-legendary .card-rarity {
+  color: #f39c12;
+}
+
+@keyframes legendaryShimmer {
+  0%, 100% { box-shadow: 0 0 12px rgba(243, 156, 18, 0.3); }
+  50% { box-shadow: 0 0 24px rgba(243, 156, 18, 0.6); }
+}
+
+.blessing-card.rarity-rare:hover,
+.blessing-card.rarity-rare:active {
+  border-color: #5dade2;
+}
+.blessing-card.rarity-epic:hover,
+.blessing-card.rarity-epic:active {
+  border-color: #bb8fce;
+}
+.blessing-card.rarity-legendary:hover,
+.blessing-card.rarity-legendary:active {
+  border-color: #f5b041;
+}
+
 /* Game Over */
 #game-over-screen {
   position: absolute;
@@ -536,9 +595,9 @@ button:active {
 #world-map-nodes {
   position: relative;
   width: 90%;
-  max-width: 600px;
-  height: 60vh;
-  max-height: 500px;
+  max-width: 700px;
+  height: 70vh;
+  max-height: 600px;
 }
 
 .world-map-lines {
@@ -719,4 +778,122 @@ button:active {
 
 #continue-btn:active {
   transform: scale(0.96);
+}
+
+/* Class Picker */
+#class-picker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(ellipse at center, #1a1a2e 0%, #0a0a15 100%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 95;
+}
+
+#class-picker.hidden {
+  display: none;
+}
+
+#class-picker h2 {
+  font-size: 32px;
+  margin-bottom: 28px;
+  text-shadow: 0 0 15px rgba(241, 196, 15, 0.5);
+  color: #f1c40f;
+}
+
+#class-cards {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 800px;
+  padding: 0 16px;
+}
+
+.class-card {
+  width: 170px;
+  background: linear-gradient(135deg, #1a1a2e, #16213e);
+  border: 2px solid #555;
+  border-radius: 14px;
+  padding: 18px 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  pointer-events: auto;
+}
+
+.class-card:hover, .class-card:active {
+  transform: scale(1.06);
+  box-shadow: 0 0 20px rgba(255, 255, 255, 0.1);
+}
+
+.class-icon {
+  font-size: 42px;
+  margin-bottom: 6px;
+}
+
+.class-name {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 6px;
+}
+
+.class-desc {
+  font-size: 11px;
+  color: #aaa;
+  margin-bottom: 12px;
+  line-height: 1.3;
+}
+
+.class-stats {
+  margin-bottom: 10px;
+}
+
+.class-stat-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 10px;
+  font-weight: bold;
+  color: #888;
+  width: 28px;
+  text-align: right;
+}
+
+.stat-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.stat-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.stat-value {
+  font-size: 10px;
+  color: #aaa;
+  width: 28px;
+  text-align: left;
+}
+
+.class-ability {
+  font-size: 10px;
+  color: #f1c40f;
+  line-height: 1.3;
+  padding-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }

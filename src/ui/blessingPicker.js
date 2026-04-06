@@ -13,11 +13,12 @@ export class BlessingPicker {
       for (const opt of options) {
         const currentLevel = playerAbilities.find(a => a.id === opt.id)?.level || 0;
         const nextLevel = currentLevel + 1;
-        const nextLevelData = opt.levels[nextLevel - 1];
+        const rarity = opt.rarity || 'common';
 
         const card = document.createElement('div');
-        card.className = 'blessing-card';
+        card.className = `blessing-card rarity-${rarity}`;
         card.innerHTML = `
+          <div class="card-rarity">${rarity}</div>
           <div class="card-icon">${opt.icon}</div>
           <div class="card-name">${opt.name}</div>
           <div class="card-desc">${opt.description}</div>

@@ -1039,8 +1039,8 @@ export class Player {
     this.resourceOnHitTake = resourceConfig.onHitTake || 0;
     this.resourceOnKill = resourceConfig.onKill || 0;
     this.resourceOnMinionKill = resourceConfig.onMinionKill || 0;
-    this.resourceColor = resourceConfig.color || '#3498db';
-    this.resourceBarGradient = resourceConfig.barGradient || [resourceConfig.color, resourceConfig.color];
+    this.resourceColor = resourceConfig.colors?.text || resourceConfig.color || '#3498db';
+    this.resourceBarGradient = resourceConfig.colors?.bar || resourceConfig.barGradient || ['#3498db', '#3498db'];
     this._resourceConfig = resourceConfig;
     // Apply attribute-based scaling
     this._updateResourceFromAttributes();

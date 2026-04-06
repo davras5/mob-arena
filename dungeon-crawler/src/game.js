@@ -22,10 +22,12 @@ import { CampManager } from './systems/camp.js';
 import { WaystoneUI } from './ui/waystoneUI.js';
 import { SkillManager } from './systems/skillManager.js';
 import { SkillBookUI } from './ui/skillBookUI.js';
+import { SkillVendorUI } from './ui/skillVendorUI.js';
 import { FloorConfig } from './systems/floorConfig.js';
-import { ItemGenerator } from './systems/itemGenerator.js';
-import { Inventory } from './systems/inventory.js';
-import { LootSystem } from './systems/lootSystem.js';
+// Stage 3 imports (uncomment when implemented):
+// import { ItemGenerator } from './systems/itemGenerator.js';
+// import { Inventory } from './systems/inventory.js';
+// import { LootSystem } from './systems/lootSystem.js';
 import { StatusEffectManager } from './systems/statusEffects.js';
 
 const MAP_WIDTH = 1600;
@@ -63,10 +65,11 @@ export class Game {
     this.waystoneUI = new WaystoneUI();
     // ShopUI removed (replaced by itemVendorUI)
     this.skillBookUI = new SkillBookUI();
+    this.skillVendorUI = new SkillVendorUI();
     this.campManager = null;
     this.skillManager = null;
     this.itemGenerator = null;
-    this.inventory = new Inventory();
+    this.inventory = null; // Stage 3: new Inventory()
     this.lootSystem = null;
 
     this.state = 'MENU';
@@ -142,7 +145,7 @@ export class Game {
     this.player = new Player(MAP_WIDTH / 2, MAP_HEIGHT / 2, this.selectedClass);
 
     // Load persisted progress
-    const progress = this.persistence.getClassProgress(this.selectedClass.id);
+    const progress = this.persistence.getCharacter();
     this.player.loadFromSave(progress);
     this.gold = this.persistence.getGold();
 
@@ -150,24 +153,33 @@ export class Game {
     const resConfig = this.resourcesData[this.selectedClass.id];
     if (resConfig) {
       this.player.initResource(resConfig);
-      this.hud.setResourceColor(resConfig.barGradient);
+      this.hud.setResourceColor(resConfig.colors?.bar || [resConfig.color || '#3498db', resConfig.color || '#3498db']);
     }
 
     // Initialize item generator and loot system
-    this.itemGenerator = new ItemGenerator(this.itemBasesData, this.affixesData);
-    this.lootSystem = new LootSystem(this.itemGenerator);
+    // Stage 3: Item & Loot systems
+    // this.itemGenerator = new ItemGenerator(this.itemBasesData, this.affixesData);
+    // this.lootSystem = new LootSystem(this.itemGenerator);
 
-    // Load inventory
-    if (this.persistence.data.inventoryData) {
+    // Load inventory (Stage 3)
+    if (this.inventory && this.persistence.data.inventoryData) {
       this.inventory.loadFromSave(this.persistence.data.inventoryData);
     }
 
     // Initialize skill manager
     if (this.skillsData) {
       this.skillManager = new SkillManager(this.skillsData, this.selectedClass.id);
-      // Load persisted skill data
-      const skillSave = progress.activeSkills;
+      // Load persisted skill data (full skill manager state)
+      const skillSave = this.persistence.data.skillManagerData;
       if (skillSave) this.skillManager.loadFromSave(skillSave);
+
+      // Sync skill state to player
+      this.player.learnedSkills = { ...this.skillManager.learnedSkills };
+      this.player.activeSkills = { leftClick: this.skillManager.leftSlot, rightClick: this.skillManager.rightSlot };
+      this.player.passiveSkills = { ...this.skillManager.passiveRanks };
+
+      // Apply passive effects to stats
+      this._applyPassives();
     }
 
     // _applySkillTree() removed — stats now handled by recalcAllStats() in player.js
@@ -177,9 +189,10 @@ export class Game {
     this.hud.hideBossHP();
 
     // Check if intro is needed
-    if (!this.persistence.isIntroComplete()) {
+    if (!this.persistence.data.introComplete) {
       await this._showIntro();
-      this.persistence.setIntroComplete();
+      this.persistence.data.introComplete = true;
+      this.persistence.save();
     }
 
     // Go to base camp
@@ -235,7 +248,7 @@ export class Game {
     // Setup camp
     this.campManager = new CampManager(this.campData);
     this.layoutManager = this.campManager.layoutManager;
-    this.renderer.setTheme(this.campData);
+    this.renderer.setTheme({ ...this.campData, ...this.campData.theme });
     this.renderer.setLayout(this.layoutManager);
     this.renderer.mapWidth = this.campData.mapWidth;
     this.renderer.mapHeight = this.campData.mapHeight;
@@ -256,20 +269,25 @@ export class Game {
   }
 
   _saveProgress() {
-    const skillData = this.skillManager ? this.skillManager.toSaveData() : null;
-    this.persistence.saveClassProgress(
-      this.selectedClass.id,
-      this.player.level,
-      this.player.xp,
-      this.player.passivePointsAvailable,
-      this.player.passiveSkills,
-      skillData
-    );
-    // Persist inventory
-    if (this.inventory) {
-      this.persistence.data.inventoryData = this.inventory.toSaveData();
+    this.persistence.saveCharacter({
+      class: this.selectedClass?.id,
+      level: this.player.level,
+      xp: this.player.xp,
+      xpToNext: this.player.xpToNext,
+      attributes: { ...this.player.attributes },
+      attributePointsAvailable: this.player.attributePointsAvailable,
+      gold: this.persistence.getGold(),
+      activeSkills: { leftClick: this.skillManager?.leftSlot, rightClick: this.skillManager?.rightSlot },
+      learnedSkills: this.skillManager ? { ...this.skillManager.learnedSkills } : {},
+      passiveSkills: { ...this.player.passiveSkills },
+      passivePointsAvailable: this.player.passivePointsAvailable,
+      summonToggles: this.skillManager ? { ...this.skillManager.summonStates } : {},
+    });
+    this.persistence.saveEquipment(JSON.parse(JSON.stringify(this.player.equipment)));
+    if (this.skillManager) {
+      this.persistence.data.skillManagerData = this.skillManager.toSaveData();
+      this.persistence.save();
     }
-    this.persistence.save();
   }
 
   startLevel(levelConfig) {
@@ -361,7 +379,7 @@ export class Game {
     const totalFloors = this.floorConfig.getTotalFloors();
 
     // Unlock waystone for the new floor
-    this.persistence.unlockWaystone(`floor_${this.currentFloor}`);
+    this.persistence.discoverFloor(this.currentFloor);
     this._saveProgress();
 
     if (this.currentFloor > totalFloors) {
@@ -525,6 +543,10 @@ export class Game {
       // TODO: open inventory UI panel
       this.waveAnnouncement = { wave: 0, timer: 1.0, text: 'Inventory (coming soon)' };
     }
+    // Skill Book (K key)
+    if (this.input.consumeSkillBook() && (this.state === 'PLAYING' || this.state === 'BASE_CAMP')) {
+      this._openSkillBook();
+    }
     // Boss chest interaction
     if (this.input.consumeInteract() && this.lootSystem && this.lootSystem.bossChest && !this.lootSystem.bossChest.opened) {
       const chest = this.lootSystem.bossChest;
@@ -534,7 +556,7 @@ export class Game {
         chest.opened = true;
         this.persistence.addGold(chest.gold);
         for (const item of chest.items) {
-          if (!this.inventory.isFull()) {
+          if (this.inventory && !this.inventory.isFull()) {
             this.inventory.addToBag(item);
             this.waveAnnouncement = { wave: 0, timer: 1.5, text: `${item.name}!` };
           } else {
@@ -555,6 +577,16 @@ export class Game {
     // Update skill cooldowns
     if (this.skillManager) {
       this.skillManager.update(dt, this.player);
+
+      // Process pending summons from summon toggles (Necromancer)
+      if (this.skillManager.pendingSummons && this.skillManager.pendingSummons.length > 0) {
+        for (const summon of this.skillManager.pendingSummons) {
+          this.skillManager.confirmSummon(summon.id, this.player);
+          // Actually spawn the minion
+          this._spawnMinionFromSummon(summon);
+        }
+        this.skillManager.pendingSummons = [];
+      }
     }
 
     // Player movement (runs regardless of wave state)
@@ -1034,7 +1066,7 @@ export class Game {
           this.persistence.addGold(goldAmount);
         },
         (item) => {
-          if (this.inventory.isFull()) return false;
+          if (!this.inventory || this.inventory.isFull()) return false;
           this.inventory.addToBag(item);
           this.waveAnnouncement = { wave: 0, timer: 1.0, text: `${item.name}` };
           return true;
@@ -1707,6 +1739,25 @@ export class Game {
     this.particles.emit(x, y, 8, '#2e86c1', { speed: 60, life: 0.3 });
   }
 
+  _spawnMinionFromSummon(summonInfo) {
+    const player = this.player;
+    const data = summonInfo.data;
+    if (!data) return;
+    if (this.minions.length >= (player.maxMinions || 5)) return;
+
+    const x = player.x + (Math.random() - 0.5) * 40;
+    const y = player.y + (Math.random() - 0.5) * 40;
+    const config = {
+      hp: data.petHP || 30,
+      damage: data.petDamage || 5,
+      speed: data.petSpeed || 80,
+      duration: data.petDuration || 15,
+    };
+
+    this.minions.push(new Minion(x, y, config));
+    this.particles.emit(x, y, 10, '#8e44ad', { speed: 50, life: 0.4 });
+  }
+
   _updateCorpses(dt) {
     const player = this.player;
     if (player.corpseBuffDuration <= 0) return;
@@ -2258,10 +2309,12 @@ export class Game {
     // Loot drops
     if (this.lootSystem) {
       const isBoss = enemy.constructor.name === 'Boss';
-      if (isBoss) {
-        this.lootSystem.createBossChest(enemy.x, enemy.y, this.currentFloor || 1, this.player.playerClass);
-      } else {
-        this.lootSystem.rollEnemyDrop(enemy, this.currentFloor || 1, this.player.playerClass);
+      if (this.lootSystem) {
+        if (isBoss) {
+          this.lootSystem.createBossChest(enemy.x, enemy.y, this.currentFloor || 1, this.player.playerClass);
+        } else {
+          this.lootSystem.rollEnemyDrop(enemy, this.currentFloor || 1, this.player.playerClass);
+        }
       }
     }
 
@@ -2356,7 +2409,7 @@ export class Game {
 
     // Mark dungeon as cleared
     if (this.currentLevel) {
-      this.persistence.markDungeonCleared(this.currentLevel.id, 1);
+      this.persistence.saveFloorState(this.currentFloor, { cleared: true });
       if (!this.clearedLevels.includes(this.currentLevel.id)) {
         this.clearedLevels.push(this.currentLevel.id);
       }
@@ -2380,10 +2433,12 @@ export class Game {
   async _interactWithNPC(npc) {
     switch (npc.type) {
       case 'trainer':
-        await this._openSkillBook();
+      case 'skill_vendor':
+        await this._openSkillVendor();
         break;
       case 'vendor':
-        // await this._openShop(); // removed — replaced by itemVendorUI
+      case 'item_vendor':
+        // await this._openItemVendor(); // Stage 3: item vendor UI
         break;
       case 'waystone':
         await this._openWaystone();
@@ -2391,31 +2446,55 @@ export class Game {
     }
   }
 
-  // _openSkillTree() removed — replaced by skillVendorUI
-
   async _openSkillBook() {
     if (!this.skillManager) return;
-    let result = 'refresh';
-    while (result === 'refresh') {
-      result = await this.skillBookUI.show(
-        this.skillManager,
-        this.player.level,
-        this.persistence.getGold(),
-        (skillId) => {
-          // Learn/upgrade skill
-          const check = this.skillManager.learnSkill(skillId, this.player.level, this.persistence.getGold());
-          if (check.success) {
-            this.persistence.spendGold(check.cost);
-            this.skillManager.applyLearnSkill(skillId);
-            this._saveProgress();
-          }
-        },
-        (skillId) => { this.skillManager.equipToLeft(skillId); this._saveProgress(); },
-        (skillId) => { this.skillManager.equipToRight(skillId); this._saveProgress(); }
-      );
+    this.paused = true;
+    await this.skillBookUI.show(this.skillManager, this.selectedClass.id);
+    // Sync skill assignments back to player
+    this.player.activeSkills = { leftClick: this.skillManager.leftSlot, rightClick: this.skillManager.rightSlot };
+    this._saveProgress();
+    this.paused = false;
+  }
+
+  async _openSkillVendor() {
+    if (!this.skillManager) return;
+    this.paused = true;
+    await this.skillVendorUI.show(
+      this.skillManager,
+      this.player,
+      (amount) => { this.persistence.spendGold(amount); }, // onSpendGold
+      () => { // onRespecPassives
+        const refunded = this.skillManager.respecPassives();
+        this.player.passivePointsAvailable += refunded;
+        this.player.passiveSkills = {};
+      },
+      () => { // onRespecAttributes
+        const totalPoints = Object.values(this.player.attributes).reduce((a, b) => a + b, 0);
+        this.player.attributePointsAvailable += totalPoints;
+        this.player.attributes = { str: 0, int: 0, agi: 0, sta: 0 };
+        this.player.recalcAllStats();
+      }
+    );
+    // Sync after vendor closes
+    this.player.learnedSkills = { ...this.skillManager.learnedSkills };
+    this.player.activeSkills = { leftClick: this.skillManager.leftSlot, rightClick: this.skillManager.rightSlot };
+    // Apply passive effects
+    this._applyPassives();
+    this._saveProgress();
+    this.paused = false;
+  }
+
+  _applyPassives() {
+    if (!this.skillManager) return;
+    // Sync passive ranks from skill manager to player
+    const passiveRanks = {};
+    for (const p of this.skillManager.getPassives()) {
+      if (p.currentRank > 0) passiveRanks[p.id] = p.currentRank;
     }
-    // Update HUD skill slots
-    this._updateSkillSlotHUD();
+    this.player.passiveSkills = passiveRanks;
+    // Recalc stats with passives
+    this.player.recalcAllStats();
+    this.player.applyPassiveEffects(this.skillManager.passives);
   }
 
   _updateSkillSlotHUD() {
@@ -2435,15 +2514,16 @@ export class Game {
     const floorList = [];
     for (let f = 1; f <= this.floorConfig.getTotalFloors(); f++) {
       const fc = this.floorConfig.getFloor(f);
-      const unlocked = f === 1 || this.persistence.isWaystoneUnlocked(`floor_${f}`);
+      const dungeon = this.persistence.getDungeon();
+      const unlocked = f === 1 || (dungeon.discoveredFloors && dungeon.discoveredFloors.includes(f));
       floorList.push({
         id: `floor_${f}`,
-        icon: f % 5 === 0 ? '\u2b50' : '\u25aa',
-        name: `Floor ${f} - ${fc.biomeName}`,
-        description: `Level ${fc.levelReq} required${fc.isMilestone ? ' (Boss Floor)' : ''}`,
+        icon: fc.icon || (f === 10 ? '\u2b50' : '\u25aa'),
+        name: `Floor ${f} - ${fc.name || 'Unknown'}`,
+        description: `Level ${fc.playerLevelReq || f} required`,
         unlocked,
         floor: f,
-        levelReq: fc.levelReq,
+        levelReq: fc.playerLevelReq || f,
       });
     }
 
@@ -2451,13 +2531,14 @@ export class Game {
     const result = await this._showFloorPicker(floorList);
     if (result && result.floor) {
       const fc = this.floorConfig.getFloor(result.floor);
-      if (this.player.level < fc.levelReq) {
-        this.waveAnnouncement = { wave: 0, timer: 2.0, text: `Requires Level ${fc.levelReq}!` };
+      const reqLevel = fc.playerLevelReq || fc.levelReq || result.floor;
+      if (this.player.level < reqLevel) {
+        this.waveAnnouncement = { wave: 0, timer: 2.0, text: `Requires Level ${reqLevel}!` };
         return;
       }
 
       // Unlock floor 1 waystone
-      this.persistence.unlockWaystone('floor_1');
+      this.persistence.discoverFloor(1);
 
       // Reset dungeon run state
       this.kills = { grunt: 0, rusher: 0, brute: 0, ranged: 0, splitter: 0, necromancer_enemy: 0, burrower: 0, shielder: 0, bomber: 0, boss: 0 };

@@ -20,13 +20,14 @@ export class ClassPicker {
         card.style.borderColor = cls.color;
 
         const stats = cls.baseStats;
-        const abilityDesc = cls.uniqueAbility.name + ' - ' + cls.uniqueAbility.description;
+        const resourceName = cls.resourceType ? cls.resourceType.charAt(0).toUpperCase() + cls.resourceType.slice(1) : '';
 
-        // Stat bars relative to max values
-        const hpPct = Math.round((stats.maxHP / 140) * 100);
-        const spdPct = Math.round((stats.speed / 140) * 100);
-        const dmgPct = Math.round((stats.damage / 22) * 100);
-        const atkSpd = Math.round((1 / stats.attackCooldown) / (1 / 0.6) * 100);
+        // Stat bars using statBars config (1-5 scale) or computed from base stats
+        const bars = cls.statBars || {};
+        const hpPct = (bars.hp || Math.round((stats.maxHP / 140) * 5)) * 20;
+        const dmgPct = (bars.damage || Math.round((stats.damage / 22) * 5)) * 20;
+        const spdPct = (bars.speed || Math.round((stats.speed / 140) * 5)) * 20;
+        const defPct = (bars.defense || 2) * 20;
 
         card.innerHTML = `
           <div class="class-icon" style="color:${cls.color}">${cls.icon}</div>
@@ -36,25 +37,21 @@ export class ClassPicker {
             <div class="class-stat-row">
               <span class="stat-label">HP</span>
               <div class="stat-bar"><div class="stat-fill" style="width:${hpPct}%;background:${cls.color}"></div></div>
-              <span class="stat-value">${stats.maxHP}</span>
-            </div>
-            <div class="class-stat-row">
-              <span class="stat-label">SPD</span>
-              <div class="stat-bar"><div class="stat-fill" style="width:${spdPct}%;background:${cls.color}"></div></div>
-              <span class="stat-value">${stats.speed}</span>
             </div>
             <div class="class-stat-row">
               <span class="stat-label">DMG</span>
               <div class="stat-bar"><div class="stat-fill" style="width:${dmgPct}%;background:${cls.color}"></div></div>
-              <span class="stat-value">${stats.damage}</span>
             </div>
             <div class="class-stat-row">
-              <span class="stat-label">ATK</span>
-              <div class="stat-bar"><div class="stat-fill" style="width:${atkSpd}%;background:${cls.color}"></div></div>
-              <span class="stat-value">${stats.attackCooldown}s</span>
+              <span class="stat-label">SPD</span>
+              <div class="stat-bar"><div class="stat-fill" style="width:${spdPct}%;background:${cls.color}"></div></div>
+            </div>
+            <div class="class-stat-row">
+              <span class="stat-label">DEF</span>
+              <div class="stat-bar"><div class="stat-fill" style="width:${defPct}%;background:${cls.color}"></div></div>
             </div>
           </div>
-          <div class="class-ability">${abilityDesc}</div>
+          <div class="class-ability" style="opacity:0.7">Resource: ${resourceName}</div>
         `;
 
         card.addEventListener('click', () => {

@@ -16,6 +16,10 @@ export class Input {
     this.tabPressed = false;      // Tab (skill book)
     this.inventoryPressed = false; // I (inventory)
     this.potionPressed = false;   // Q (potion)
+    this.skillBookPressed = false; // K (skill book)
+    this.characterPressed = false; // C (character panel)
+    this.hotbarPressed = [false, false, false, false]; // 1-4 (potion hotbar)
+    this.altHeld = false;          // Alt (show loot labels, hold)
 
     // Mouse position (screen coords)
     this.mouseX = 0;
@@ -41,10 +45,18 @@ export class Input {
       if (k === 'tab') { e.preventDefault(); this.tabPressed = true; }
       if (k === 'i') this.inventoryPressed = true;
       if (k === 'q') this.potionPressed = true;
+      if (k === 'k') this.skillBookPressed = true;
+      if (k === 'c') this.characterPressed = true;
+      if (k === '1') this.hotbarPressed[0] = true;
+      if (k === '2') this.hotbarPressed[1] = true;
+      if (k === '3') this.hotbarPressed[2] = true;
+      if (k === '4') this.hotbarPressed[3] = true;
+      if (e.key === 'Alt') { e.preventDefault(); this.altHeld = true; }
       if (e.key === 'Escape' && this.onPause) this.onPause();
     });
     window.addEventListener('keyup', (e) => {
       this.keys[e.key.toLowerCase()] = false;
+      if (e.key === 'Alt') this.altHeld = false;
     });
   }
 
@@ -208,6 +220,24 @@ export class Input {
   consumePotion() {
     const val = this.potionPressed;
     this.potionPressed = false;
+    return val;
+  }
+
+  consumeSkillBook() {
+    const val = this.skillBookPressed;
+    this.skillBookPressed = false;
+    return val;
+  }
+
+  consumeCharacter() {
+    const val = this.characterPressed;
+    this.characterPressed = false;
+    return val;
+  }
+
+  consumeHotbar(slot) {
+    const val = this.hotbarPressed[slot];
+    this.hotbarPressed[slot] = false;
     return val;
   }
 }

@@ -6,17 +6,17 @@
   "mapHeight": 832,
   "layout": {
     "rooms": [
-      { "x": 64, "y": 64, "w": 1088, "h": 704 }
+      { "x": 64, "y": 64, "width": 1088, "height": 704 }
     ],
     "obstacles": [
       { "type": "pillar", "x": 200, "y": 200, "radius": 24 },
       { "type": "pillar", "x": 1016, "y": 200, "radius": 24 },
       { "type": "pillar", "x": 200, "y": 600, "radius": 24 },
       { "type": "pillar", "x": 1016, "y": 600, "radius": 24 },
-      { "type": "wall", "x": 64, "y": 64, "w": 1088, "h": 16 },
-      { "type": "wall", "x": 64, "y": 752, "w": 1088, "h": 16 },
-      { "type": "wall", "x": 64, "y": 64, "w": 16, "h": 704 },
-      { "type": "wall", "x": 1136, "y": 64, "w": 16, "h": 704 }
+      { "type": "wall", "x": 64, "y": 64, "width": 1088, "height": 16 },
+      { "type": "wall", "x": 64, "y": 752, "width": 1088, "height": 16 },
+      { "type": "wall", "x": 64, "y": 64, "width": 16, "height": 704 },
+      { "type": "wall", "x": 1136, "y": 64, "width": 16, "height": 704 }
     ]
   },
   "npcs": [

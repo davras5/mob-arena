@@ -35,18 +35,8 @@ export class SkillManager {
     // Pending summons for game.js to process each frame
     this.pendingSummons = [];
 
-    // Auto-learn default skills at level 1
-    for (const skill of this.actives) {
-      if (skill.isDefault) {
-        this.learnedSkills[skill.id] = 1;
-        // Auto-equip first default to left slot
-        if (!this.leftSlot) {
-          this.leftSlot = skill.id;
-        } else if (!this.rightSlot) {
-          this.rightSlot = skill.id;
-        }
-      }
-    }
+    // Auto-learn default skills at level 1 and equip to LMB
+    this._ensureDefaultsLearned();
   }
 
   // ---------------------------------------------------------------------------
@@ -210,7 +200,7 @@ export class SkillManager {
 
     // Resource generation (e.g. basic attacks that generate rage)
     if (info.skill.resourceGeneration) {
-      player.addResource(info.skill.resourceGeneration);
+      player.gainResource(info.skill.resourceGeneration);
     }
 
     return info;
@@ -396,5 +386,28 @@ export class SkillManager {
     this.summonStates = data.summonStates || {};
     this.passiveRanks = data.passiveRanks || {};
     this.passivePoints = data.passivePoints || 0;
+
+    // Always ensure the class default skill is learned and equipped to LMB.
+    // This protects against old saves or any state where the basic attack got lost.
+    this._ensureDefaultsLearned();
+  }
+
+  /**
+   * Make sure every isDefault active skill is at least level 1, and that
+   * the first default is equipped to LMB if no skill is currently equipped there.
+   * Called from the constructor and from loadFromSave().
+   */
+  _ensureDefaultsLearned() {
+    for (const skill of this.actives) {
+      if (!skill.isDefault) continue;
+      if (!this.learnedSkills[skill.id] || this.learnedSkills[skill.id] < 1) {
+        this.learnedSkills[skill.id] = 1;
+      }
+      // Auto-equip the first default to LMB if LMB is empty or points to an unlearned skill
+      const leftValid = this.leftSlot && this.learnedSkills[this.leftSlot] > 0;
+      if (!leftValid) {
+        this.leftSlot = skill.id;
+      }
+    }
   }
 }

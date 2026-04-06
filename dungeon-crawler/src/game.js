@@ -34,6 +34,7 @@ import { CharacterUI } from './ui/characterUI.js';
 import { TrapManager } from './systems/traps.js';
 import { DeathScreen } from './ui/deathScreen.js';
 import { GameWindow } from './ui/gameWindow.js';
+import { HelpOverlay } from './ui/helpOverlay.js';
 
 const MAP_WIDTH = 1600;
 const MAP_HEIGHT = 1600;
@@ -60,6 +61,7 @@ export class Game {
     this.statusEffects = new StatusEffectManager();
     this.hud = new HUD(canvas);
     this.hud.onPanelClick = (panel) => {
+      if (panel === 'help') { this.helpOverlay.toggle(); return; }
       if (this.state !== 'PLAYING' && this.state !== 'BASE_CAMP') return;
       if (panel === 'character') this._openCharacterPanel();
       else if (panel === 'skillBook') this._openSkillBook();
@@ -91,6 +93,7 @@ export class Game {
     // ShopUI removed (replaced by itemVendorUI)
     this.skillBookUI = new SkillBookUI();
     this.skillVendorUI = new SkillVendorUI();
+    this.helpOverlay = new HelpOverlay();
     this.campManager = null;
     this.skillManager = null;
     this.itemGenerator = null;
@@ -135,6 +138,7 @@ export class Game {
 
     // Wave announcement banner
     this.waveAnnouncement = { wave: 0, timer: 0 };
+    this._noWeaponMsgTimer = 0;
 
     // Combo/score system removed for ARPG redesign
 
@@ -160,6 +164,13 @@ export class Game {
     this.bladeHitTimers = new Map();
 
     this.potionCooldowns = { shared: 0, stamina_tonic: 0, rage_tonic: 0 };
+
+    // Active game-time buffs (pause-aware; replaces setTimeout-based buffs)
+    this._activeBuffs = [];
+
+    this._campTutorialShown = false;
+    this._combatHintsShown = { lmb: false, resource: false };
+    this._saveIndicatorTimer = 0;
   }
 
   togglePause() {
@@ -171,19 +182,28 @@ export class Game {
     }
   }
 
-  async start() {
+  async start(presetClassId = null) {
     document.getElementById('menu-screen').classList.add('hidden');
 
-    // Show class picker
-    this.selectedClass = await this.classPicker.show(this.classesData);
+    // Use preset class (Continue) or show class picker (New Game)
+    if (presetClassId && this.classesData[presetClassId]) {
+      this.selectedClass = this.classesData[presetClassId];
+    } else {
+      this.selectedClass = await this.classPicker.show(this.classesData);
+    }
 
     // Create player with chosen class
     this.player = new Player(MAP_WIDTH / 2, MAP_HEIGHT / 2, this.selectedClass);
 
-    // Load persisted progress
+    // Load persisted progress (character + equipment)
     const progress = this.persistence.getCharacter();
-    this.player.loadFromSave(progress);
+    const savedEquipment = this.persistence.getEquipment();
+    this.player.loadFromSave({ ...progress, equipment: savedEquipment });
     this.gold = this.persistence.getGold();
+    // Restore last visited floor (so waystone UI shows correct in-progress state)
+    if (progress && progress.currentFloor) {
+      this.currentFloor = progress.currentFloor;
+    }
 
     // Initialize resource system
     const resConfig = this.resourcesData[this.selectedClass.id];
@@ -200,6 +220,11 @@ export class Game {
     const savedInv = this.persistence.getInventory();
     if (this.inventory && savedInv && Object.keys(savedInv.items || {}).length > 0) {
       this.inventory.loadFromSave(savedInv);
+    }
+
+    // Give starter gear if no main hand weapon (new character or broken save)
+    if (!this.player.equipment.mainHand) {
+      this._giveStarterGear(this.selectedClass.id);
     }
 
     // Initialize skill manager
@@ -258,30 +283,51 @@ export class Game {
     introEl.classList.add('hidden');
   }
 
-  _enterBaseCamp() {
+  _enterBaseCamp(preserveDungeon = false) {
     this.state = 'BASE_CAMP';
     this.hud.setVisible(true);
     this.dungeonMode = false;
-    this.waveSystem = null;
-    this._waveShim = null;
-    this.dungeonManager = null;
-    this.dungeon = null;
 
-    // Reset transient state
-    this.projectiles = [];
-    this.minions = [];
-    this.corpses = [];
-    this.fireTrails = [];
-    this.chainLightnings = [];
-    this.particles.particles = [];
-    this.playerTrail = [];
-    this.meleeSweep = null;
-    this.meteorWarning = null;
-    this.rainArrows = [];
-    this.gravitonOrbs = [];
-    this.bladeHitTimers = new Map();
-    if (this.lootSystem) this.lootSystem.clear();
-    if (this.trapManager) this.trapManager.clear();
+    if (preserveDungeon) {
+      // Stash dungeon state for return-via-portal
+      this._savedDungeonState = {
+        dungeon: this.dungeon,
+        dungeonManager: this.dungeonManager,
+        layoutManager: this.layoutManager,
+        currentFloor: this.currentFloor,
+        playerX: this.player.x,
+        playerY: this.player.y,
+        renderTheme: { ...this.currentLevel },
+        mapWidth: this.renderer.mapWidth,
+        mapHeight: this.renderer.mapHeight,
+        projectiles: this.projectiles,
+        minions: this.minions,
+        corpses: this.corpses,
+        fireTrails: this.fireTrails,
+        trapManager: this.trapManager,
+      };
+    } else {
+      // Normal entry: clear all dungeon state
+      this._savedDungeonState = null;
+      this.waveSystem = null;
+      this._waveShim = null;
+      this.dungeonManager = null;
+      this.dungeon = null;
+      this.projectiles = [];
+      this.minions = [];
+      this.corpses = [];
+      this.fireTrails = [];
+      this.chainLightnings = [];
+      this.particles.particles = [];
+      this.playerTrail = [];
+      this.meleeSweep = null;
+      this.meteorWarning = null;
+      this.rainArrows = [];
+      this.gravitonOrbs = [];
+      this.bladeHitTimers = new Map();
+      if (this.lootSystem) this.lootSystem.clear();
+      if (this.trapManager) this.trapManager.clear();
+    }
 
     // Setup camp
     this.campManager = new CampManager(this.campData);
@@ -303,7 +349,85 @@ export class Game {
     this.hud.updateHP(this.player.hp, this.player.maxHP);
     this.hud.updateLevelName('Base Camp');
     this.hud.hideBossHP();
-    this.waveAnnouncement = { wave: 0, timer: 2.0, text: 'Base Camp' };
+    if (this.skillManager) this._updateSkillSlotHUD();
+    this.waveAnnouncement = { wave: 0, timer: 2.0, text: preserveDungeon ? 'Teleported to Camp' : 'Base Camp' };
+
+    // First-time camp tutorial
+    if (!this.persistence.data.tutorialComplete && !this._campTutorialShown) {
+      this._campTutorialShown = true;
+      this._showCampTutorial();
+    }
+  }
+
+  _showCampTutorial() {
+    const hints = [
+      { title: 'Welcome to the Base Camp', body: 'Your sanctuary between dungeon runs. Heal at the campfire, train skills, buy gear, and travel to dungeons.' },
+      { title: 'Enter the Dungeon', body: 'Walk to the <b style="color:#5dade2">Way Stone</b> in the center and press <b>E</b> to choose a floor.' },
+      { title: 'Visit the NPCs', body: 'The <b style="color:#e67e22">Trainer</b> teaches skills. The <b style="color:#27ae60">Vendor</b> sells gear and potions. Both accept the <b>E</b> key when you walk close.' },
+    ];
+    let idx = 0;
+    const overlay = document.createElement('div');
+    Object.assign(overlay.style, {
+      position: 'fixed', top: '0', left: '0', right: '0', bottom: '0',
+      background: 'rgba(0,0,0,0.6)', zIndex: '99998',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: '"Segoe UI", Arial, sans-serif',
+    });
+    const card = document.createElement('div');
+    Object.assign(card.style, {
+      width: '480px',
+      background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)',
+      border: '2px solid #c9a84c',
+      borderRadius: '8px',
+      boxShadow: '0 0 40px rgba(201,168,76,0.3)',
+      padding: '24px 28px',
+      color: '#e8d3a8',
+    });
+    const titleEl = document.createElement('div');
+    Object.assign(titleEl.style, { color: '#c9a84c', fontSize: '20px', fontWeight: 'bold', marginBottom: '12px', letterSpacing: '1px' });
+    const bodyEl = document.createElement('div');
+    Object.assign(bodyEl.style, { fontSize: '14px', lineHeight: '1.6', marginBottom: '20px' });
+    const counterEl = document.createElement('div');
+    Object.assign(counterEl.style, { fontSize: '11px', color: '#a89c80', marginBottom: '12px' });
+    const btnRow = document.createElement('div');
+    Object.assign(btnRow.style, { display: 'flex', justifyContent: 'space-between', gap: '12px' });
+
+    const skipBtn = document.createElement('button');
+    skipBtn.textContent = 'Skip Tutorial';
+    Object.assign(skipBtn.style, { background: 'transparent', border: '1px solid #555', color: '#888', padding: '8px 16px', cursor: 'pointer', borderRadius: '4px', fontFamily: 'inherit', fontSize: '12px' });
+
+    const nextBtn = document.createElement('button');
+    Object.assign(nextBtn.style, { background: 'rgba(201,168,76,0.15)', border: '1px solid #c9a84c', color: '#c9a84c', padding: '8px 20px', cursor: 'pointer', borderRadius: '4px', fontFamily: 'inherit', fontSize: '13px', fontWeight: 'bold' });
+
+    const finish = () => {
+      this.persistence.data.tutorialComplete = true;
+      this.persistence.save();
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    };
+    skipBtn.addEventListener('click', finish);
+    nextBtn.addEventListener('click', () => {
+      idx++;
+      if (idx >= hints.length) { finish(); return; }
+      render();
+    });
+
+    const render = () => {
+      const h = hints[idx];
+      titleEl.textContent = h.title;
+      bodyEl.innerHTML = h.body;
+      counterEl.textContent = `${idx + 1} / ${hints.length}`;
+      nextBtn.textContent = idx === hints.length - 1 ? 'Got it!' : 'Next';
+    };
+
+    btnRow.appendChild(skipBtn);
+    btnRow.appendChild(nextBtn);
+    card.appendChild(titleEl);
+    card.appendChild(bodyEl);
+    card.appendChild(counterEl);
+    card.appendChild(btnRow);
+    overlay.appendChild(card);
+    document.body.appendChild(overlay);
+    render();
   }
 
   _saveProgress() {
@@ -320,6 +444,7 @@ export class Game {
       passiveSkills: { ...this.player.passiveSkills },
       passivePointsAvailable: this.player.passivePointsAvailable,
       summonToggles: this.skillManager ? { ...this.skillManager.summonStates } : {},
+      currentFloor: this.currentFloor || 1,
     });
     this.persistence.saveEquipment(JSON.parse(JSON.stringify(this.player.equipment)));
     this.persistence.saveInventory(this.inventory.toSaveData());
@@ -327,6 +452,7 @@ export class Game {
       this.persistence.data.skillManagerData = this.skillManager.toSaveData();
       this.persistence.save();
     }
+    this._saveIndicatorTimer = 1.8; // 1.8s of "Saved" toast
   }
 
   startLevel(levelConfig) {
@@ -339,6 +465,7 @@ export class Game {
 
   _startDungeonFloor(levelConfig, floor) {
     this.persistence.discoverFloor(floor);
+    this.dungeonMode = true; // Always in dungeon mode when starting a floor
     // Configure renderer theme
     this.renderer.setTheme(levelConfig);
 
@@ -427,6 +554,16 @@ export class Game {
     this.waveAnnouncement = { wave: 0, timer: 2.0, text: `Floor ${floor} - ${levelConfig.name}` };
     this.hud.updateLevelName(`${levelConfig.name} - Floor ${floor}`);
     this.hud.hideBossHP();
+
+    // First-time combat hints
+    if (!this.persistence.data.combatTutorialComplete && !this._combatHintsShown.lmb) {
+      setTimeout(() => {
+        if (this.state === 'PLAYING' && !this._combatHintsShown.lmb) {
+          this._combatHintsShown.lmb = true;
+          this.waveAnnouncement = { wave: 0, timer: 4.0, text: 'Hold LMB to attack' };
+        }
+      }, 2000);
+    }
   }
 
   _transitionToNextFloor() {
@@ -466,6 +603,13 @@ export class Game {
     this.time += dt;
     this.input.update();
 
+    // F1 — toggle help overlay
+    if (this.input.consumeHelp()) {
+      this.helpOverlay.toggle();
+    }
+
+    if (this._saveIndicatorTimer > 0) this._saveIndicatorTimer -= dt;
+
     // === BASE_CAMP UPDATE ===
     if (this.state === 'BASE_CAMP') {
       const player = this.player;
@@ -499,9 +643,50 @@ export class Game {
       // NPC proximity
       const nearestNPC = this.campManager.update(player.x, player.y);
 
+      // Return portal proximity (after teleport scroll)
+      this._nearReturnPortal = false;
+      if (this._returnPortalPos && this._teleportPortal) {
+        const rdx = player.x - this._returnPortalPos.x;
+        const rdy = player.y - this._returnPortalPos.y;
+        if (Math.sqrt(rdx * rdx + rdy * rdy) < 50) {
+          this._nearReturnPortal = true;
+          if (this.input.consumeInteract()) {
+            this._returnFromTeleportPortal();
+            return;
+          }
+        }
+      }
+
       // NPC interaction
       if (nearestNPC && this.input.consumeInteract()) {
         this._interactWithNPC(nearestNPC);
+      }
+
+      // Campfire auto-heal (proximity-based)
+      const cf = this.campData.campfire;
+      if (cf) {
+        const cdx = player.x - cf.x;
+        const cdy = player.y - cf.y;
+        const cDist = Math.sqrt(cdx * cdx + cdy * cdy);
+        const healRadius = cf.healRadius || 80;
+        if (cDist < healRadius) {
+          // Heal HP and resource over time near campfire
+          const healRate = player.maxHP * 0.5; // 50% max HP per second
+          if (player.hp < player.maxHP) {
+            player.hp = Math.min(player.maxHP, player.hp + healRate * dt);
+            // Sparkle particles
+            if (Math.random() < 0.4) {
+              this.particles.emit(
+                player.x + (Math.random() - 0.5) * player.radius * 2,
+                player.y + (Math.random() - 0.5) * player.radius * 2,
+                1, '#f1c40f', { speed: 30, life: 0.6 }
+              );
+            }
+          }
+          if (player.resource < player.maxResource) {
+            player.resource = Math.min(player.maxResource, player.resource + player.maxResource * 0.5 * dt);
+          }
+        }
       }
 
       // Update HUD state in camp (same data as dungeon)
@@ -510,6 +695,9 @@ export class Game {
       this.hud.updateGold(this.persistence.getGold());
       this.hud.updateXP(player.xp, player.xpToNext, player.level);
       this.hud.updateLevelName('Base Camp');
+      // Skill slot icons (LMB/RMB) — must be refreshed in camp too,
+      // otherwise the slots are blank until the player enters a dungeon.
+      this._updateSkillSlotHUD();
 
       // Announcement decay
       if (this.waveAnnouncement.timer > 0) this.waveAnnouncement.timer -= dt;
@@ -559,6 +747,7 @@ export class Game {
           this.waveAnnouncement = { wave: 0, timer: 1.0, text: 'Room Cleared!' };
           this.renderer.flash('#2ecc71', 0.2);
         }
+        this.audio.doorUnlock();
       }
 
       // Dungeon waystone interaction
@@ -658,7 +847,7 @@ export class Game {
         this.persistence.addGold(chest.gold);
         for (const item of chest.items) {
           if (this.inventory && !this.inventory.isFull()) {
-            this.inventory.addToBag(item);
+            this.inventory.addItem(item);
             this.waveAnnouncement = { wave: 0, timer: 1.5, text: `${item.name}!` };
           } else {
             this.lootSystem.spawnGroundItem(chest.x, chest.y, item);
@@ -711,6 +900,59 @@ export class Game {
       }
     }
 
+    // Player <-> enemy collision (push out of overlapping mobs).
+    // Skipped while dashing so the dash isn't visually halted on contact.
+    if (!player.isDashing) {
+      const enemyList = (this.waveSystem || this._waveShim)?.enemies;
+      if (enemyList && enemyList.length > 0) {
+        for (const e of enemyList) {
+          if (!e || e.dead) continue;
+          const dx = player.x - e.x;
+          const dy = player.y - e.y;
+          const minDist = (player.radius || 14) + (e.radius || 14);
+          const distSq = dx * dx + dy * dy;
+          if (distSq < minDist * minDist && distSq > 0.0001) {
+            const dist = Math.sqrt(distSq);
+            const overlap = minDist - dist;
+            const nx = dx / dist;
+            const ny = dy / dist;
+            // Player takes 70% of the push, enemy 30% — feels solid without
+            // letting the player shove tanks across the room.
+            player.x += nx * overlap * 0.7;
+            player.y += ny * overlap * 0.7;
+            e.x      -= nx * overlap * 0.3;
+            e.y      -= ny * overlap * 0.3;
+          }
+        }
+        // Re-clamp player after pushback so collision can't shove them through walls.
+        if (this.layoutManager) {
+          const c2 = this.layoutManager.clampPosition(player.x, player.y, player.radius, playerPrevX, playerPrevY);
+          player.x = c2.x;
+          player.y = c2.y;
+        }
+      }
+      // Also collide with the boss if present
+      const boss = this.dungeonManager?.boss || this.waveSystem?.boss;
+      if (boss && !boss.dead) {
+        const dx = player.x - boss.x;
+        const dy = player.y - boss.y;
+        const minDist = (player.radius || 14) + (boss.radius || 30);
+        const distSq = dx * dx + dy * dy;
+        if (distSq < minDist * minDist && distSq > 0.0001) {
+          const dist = Math.sqrt(distSq);
+          const overlap = minDist - dist;
+          // Boss is heavy — player gets pushed out fully.
+          player.x += (dx / dist) * overlap;
+          player.y += (dy / dist) * overlap;
+          if (this.layoutManager) {
+            const c3 = this.layoutManager.clampPosition(player.x, player.y, player.radius, playerPrevX, playerPrevY);
+            player.x = c3.x;
+            player.y = c3.y;
+          }
+        }
+      }
+    }
+
     // === MOUSE-BASED AIMING (ARPG style) ===
     // Player always faces the mouse cursor — runs before wave check so it works even without enemies
     const mouseWorldX = this.input.mouseX + this.renderer.camera.x;
@@ -742,6 +984,7 @@ export class Game {
 
     // Wave announcement decay
     if (this.waveAnnouncement.timer > 0) this.waveAnnouncement.timer -= dt;
+    if (this._noWeaponMsgTimer > 0) this._noWeaponMsgTimer -= dt;
 
     // Flash effect decay
     this.renderer.updateFlash(dt);
@@ -802,7 +1045,7 @@ export class Game {
     // LMB: primary skill (fires toward cursor while held)
     if (this.input.leftHold && this.skillManager) {
       const leftInfo = this.skillManager.getLeftSkill();
-      if (leftInfo && this.skillManager.canUseSkill(this.skillManager.leftSlot, player)) {
+      if (leftInfo && this._canExecuteSkill(leftInfo) && this.skillManager.canUseSkill(this.skillManager.leftSlot, player)) {
         const info = this.skillManager.useSkill(this.skillManager.leftSlot, player);
         if (info) this._executeSkill(info, nearestEnemy, nearestDist);
       }
@@ -811,7 +1054,7 @@ export class Game {
     // RMB: secondary skill (single press, fires toward cursor)
     if (this.input.consumeRightClick() && this.skillManager) {
       const rightInfo = this.skillManager.getRightSkill();
-      if (rightInfo && this.skillManager.canUseSkill(this.skillManager.rightSlot, player)) {
+      if (rightInfo && this._canExecuteSkill(rightInfo) && this.skillManager.canUseSkill(this.skillManager.rightSlot, player)) {
         const info = this.skillManager.useSkill(this.skillManager.rightSlot, player);
         if (info) this._executeSkill(info, nearestEnemy, nearestDist);
       }
@@ -969,11 +1212,17 @@ export class Game {
         }
       }
 
-      // Tile-based wall collision (dungeon walls)
+      // Tile-based wall collision (dungeon walls) — only after projectile has moved away from spawn
       if (!p.dead && this.layoutManager && this.layoutManager.rooms.length > 0) {
-        if (!this.layoutManager.isWalkable(p.x, p.y)) {
-          p.dead = true;
-          this.particles.emit(p.x, p.y, '#888', 4);
+        // Skip check if projectile just spawned (within 1 frame of spawn)
+        const distFromOrigin = Math.sqrt((p.x - oldX) ** 2 + (p.y - oldY) ** 2);
+        if (distFromOrigin > 0 && !this.layoutManager.isWalkable(p.x, p.y)) {
+          // Double-check by also testing the previous position — only kill if both are unwalkable
+          if (!this.layoutManager.isWalkable(oldX, oldY)) {
+            // Both old and new are unwalkable — projectile spawned in wall, ignore
+          } else {
+            p.dead = true;
+          }
         }
       }
     }
@@ -1152,14 +1401,21 @@ export class Game {
       const triggered = this.trapManager.update(dt, player.x, player.y);
       for (const t of triggered) {
         const result = this.trapManager.applyTrigger(t.trap, this.currentFloor);
+        // Trap audio
+        this.audio.trapTrigger(t.trap.type);
         if (result.damage > 0) {
           this.player.takeDamage(result.damage, 0, { environmental: true });
           this.damageNumbers.spawn(player.x, player.y - player.radius, Math.round(result.damage), false);
           this.audio.playerHit();
         }
+        // Screen shake on explosive traps
+        if (t.trap.type === 'explosive') {
+          this.screenShake = Math.max(this.screenShake || 0, 0.4);
+        }
         if (result.status) {
           const totalSta = (this.player.baseAttributes?.sta || 0) + (this.player.attributes?.sta || 0);
           this.statusEffects.apply(result.status.type, result.status.duration, result.status.magnitude || 1, 'trap', totalSta);
+          this.audio.statusApplied(result.status.type);
         }
         if (result.knockback) {
           // Push player away from trap
@@ -1169,7 +1425,7 @@ export class Game {
           player.x += (dx / dist) * result.knockback;
           player.y += (dy / dist) * result.knockback;
         }
-        this.particles.emit(t.trap.x, t.trap.y, t.trap.trapDef?.visual?.color || '#ff0000', 8);
+        this.particles.emit(t.trap.x, t.trap.y, 8, t.trap.trapDef?.visual?.color || '#ff0000', { speed: 80, life: 0.4 });
       }
       this.trapManager.removeActivated();
     }
@@ -1223,10 +1479,12 @@ export class Game {
       this.lootSystem.update(dt, player.x, player.y, player.radius, player.magnetRange,
         (goldAmount) => {
           this.persistence.addGold(goldAmount);
+          this.audio.goldPickup();
         },
         (item) => {
           if (!this.inventory || this.inventory.isFull()) return false;
-          this.inventory.addToBag(item);
+          this.inventory.addItem(item);
+          this.audio.itemPickup();
           this.waveAnnouncement = { wave: 0, timer: 1.0, text: `${item.name}` };
           return true;
         }
@@ -1266,11 +1524,24 @@ export class Game {
       const leftCd = leftId ? { remaining: this.skillManager.cooldowns[leftId] || 0, total: this.skillManager.getSkill(leftId)?.cooldown || 1 } : null;
       const rightCd = rightId ? { remaining: this.skillManager.cooldowns[rightId] || 0, total: this.skillManager.getSkill(rightId)?.cooldown || 1 } : null;
       this.hud.setSkillCooldowns(leftCd, rightCd);
+      // Update skill icons every frame
+      this._updateSkillSlotHUD();
     }
 
     // Potion cooldowns
     for (const key of Object.keys(this.potionCooldowns)) {
       if (this.potionCooldowns[key] > 0) this.potionCooldowns[key] -= dt;
+    }
+
+    // Buff timers (game-time)
+    if (this._activeBuffs && this._activeBuffs.length > 0) {
+      for (let i = this._activeBuffs.length - 1; i >= 0; i--) {
+        this._activeBuffs[i].remaining -= dt;
+        if (this._activeBuffs[i].remaining <= 0) {
+          if (this._activeBuffs[i].remove) this._activeBuffs[i].remove();
+          this._activeBuffs.splice(i, 1);
+        }
+      }
     }
 
     // Status effects
@@ -2118,13 +2389,151 @@ export class Game {
     player.pactReady = true;
   }
 
+  // === SCROLL OF TELEPORTATION ===
+  // Teleport player to camp, leaving an open portal at the dungeon location.
+  // The player can return through the camp portal to the saved dungeon location.
+  _useScrollOfTeleportation() {
+    if (!this.dungeon || !this.layoutManager) {
+      // Not in a dungeon — no-op
+      this.waveAnnouncement = { wave: 0, timer: 1.5, text: 'Cannot teleport from here' };
+      return;
+    }
+
+    // Save dungeon position
+    const dungeonPortal = {
+      x: this.player.x,
+      y: this.player.y,
+      floor: this.currentFloor,
+    };
+
+    // Add a portal obstacle at the player's current dungeon position
+    this.layoutManager.obstacles.push({
+      type: 'teleport_portal',
+      x: dungeonPortal.x,
+      y: dungeonPortal.y,
+      radius: 28,
+    });
+
+    // Audio + visual
+    this.audio.waystoneTravel();
+    this.particles.emit(this.player.x, this.player.y, 30, '#9b59b6', { speed: 200, life: 0.6 });
+
+    // Enter camp WITH dungeon state preserved
+    this._teleportPortal = dungeonPortal;
+    this._enterBaseCamp(true);
+
+    // Add a return portal obstacle in the camp near the campfire
+    if (this.layoutManager) {
+      const cf = this.campData.campfire;
+      const portalX = (cf?.x || 608) + 100;
+      const portalY = (cf?.y || 550);
+      this.layoutManager.obstacles.push({
+        type: 'teleport_portal',
+        x: portalX,
+        y: portalY,
+        radius: 28,
+        _isReturnPortal: true,
+      });
+      this._returnPortalPos = { x: portalX, y: portalY };
+    }
+  }
+
+  // Return to dungeon via the camp portal
+  _returnFromTeleportPortal() {
+    if (!this._savedDungeonState || !this._teleportPortal) return;
+    const s = this._savedDungeonState;
+
+    // Restore dungeon state
+    this.state = 'PLAYING';
+    this.dungeonMode = true;
+    this.dungeon = s.dungeon;
+    this.dungeonManager = s.dungeonManager;
+    this.layoutManager = s.layoutManager;
+    this.currentFloor = s.currentFloor;
+    this.projectiles = s.projectiles || [];
+    this.minions = s.minions || [];
+    this.corpses = s.corpses || [];
+    this.fireTrails = s.fireTrails || [];
+    this.trapManager = s.trapManager;
+
+    // Restore renderer
+    this.renderer.setLayout(this.layoutManager);
+    this.renderer.mapWidth = s.mapWidth;
+    this.renderer.mapHeight = s.mapHeight;
+    this.renderer.setTheme(s.renderTheme);
+
+    // Place player at the saved teleport location
+    this.player.x = this._teleportPortal.x;
+    this.player.y = this._teleportPortal.y;
+
+    // Remove BOTH portals (used up — round trip)
+    this.layoutManager.obstacles = this.layoutManager.obstacles.filter(o => o.type !== 'teleport_portal');
+
+    // Audio + visual
+    this.audio.waystoneTravel();
+    this.particles.emit(this.player.x, this.player.y, 30, '#9b59b6', { speed: 200, life: 0.6 });
+
+    // Clear teleport state
+    this._teleportPortal = null;
+    this._savedDungeonState = null;
+    this._returnPortalPos = null;
+
+    this.waveAnnouncement = { wave: 0, timer: 1.5, text: `Returned to Floor ${this.currentFloor}` };
+  }
+
+  // === STARTER GEAR ===
+  // Give a new character a low-quality starter weapon matching their class
+  _giveStarterGear(classId) {
+    if (!this.itemGenerator) return;
+    // Generate a common (lowest stat) main-hand weapon for this class at iLvl 1
+    const weapon = this.itemGenerator.generate(1, classId, {
+      forceRarity: 'common',
+      forceSlot: 'mainHand',
+    });
+    if (weapon) {
+      this.player.equipment.mainHand = weapon;
+      this.player.recalcAllStats();
+    }
+  }
+
   // === SKILL EXECUTION ===
+
+  // Pre-check: can this skill be used right now? (weapon requirement etc.)
+  // Returns true if executable, false if blocked. Shows feedback message on block.
+  _canExecuteSkill(skillInfo) {
+    if (!skillInfo) return false;
+    const skill = skillInfo.skill;
+    if (!skill) return false;
+
+    // Weapon requirement check (default basic attack skills)
+    if (skill.requiresWeapon && skill.requiresWeapon.length > 0) {
+      const weapon = this.player.equipment && this.player.equipment.mainHand;
+      if (!weapon || !skill.requiresWeapon.includes(weapon.baseType)) {
+        // Throttle the announcement so it doesn't spam every frame while LMB held
+        if (!this._noWeaponMsgTimer || this._noWeaponMsgTimer <= 0) {
+          this.waveAnnouncement = { wave: 0, timer: 1.2, text: 'No weapon equipped!' };
+          this._noWeaponMsgTimer = 1.2;
+        }
+        return false;
+      }
+    }
+
+    return true;
+  }
+
   _executeSkill(info, nearestEnemy, nearestDist) {
     const { skill, level, data } = info;
     const player = this.player;
     const damage = (data.damage || 0) + player.damageBonus + Math.round(player.getWeaponDamage());
 
-    this.audio.shoot();
+    // Skill cast audio based on attack type
+    if (skill.attackType === 'melee' || skill.attackType === 'melee_aoe') {
+      this.audio.skillCast('melee');
+    } else if (skill.attackType === 'projectile' || skill.attackType === 'projectile_aoe') {
+      this.audio.skillCast('arrow');
+    } else {
+      this.audio.skillCast('spell');
+    }
 
     switch (skill.attackType) {
       case 'melee':
@@ -2290,9 +2699,17 @@ export class Game {
   _skillBuff(data) {
     const player = this.player;
     if (data.damageBonus) {
-      player._buffDamage = (player._buffDamage || 0) + data.damageBonus;
-      const dur = data.duration || 6;
-      setTimeout(() => { player._buffDamage = Math.max(0, (player._buffDamage || 0) - data.damageBonus); }, dur * 1000);
+      const damageBonus = data.damageBonus;
+      const duration = data.duration || 6;
+      this._activeBuffs.push({
+        type: 'damage',
+        amount: damageBonus,
+        remaining: duration,
+        apply: () => { player.damageBonus += damageBonus; },
+        remove: () => { player.damageBonus -= damageBonus; },
+      });
+      // Apply immediately
+      player.damageBonus += damageBonus;
     }
     if (data.shieldPercent) {
       player.shieldHP = player.maxHP * data.shieldPercent / 100;
@@ -2496,6 +2913,19 @@ export class Game {
       this.kills[enemy.type]++;
     }
 
+    // Show resource hint after first kill (one-time)
+    if (!this.persistence.data.combatTutorialComplete && !this._combatHintsShown.resource) {
+      this._combatHintsShown.resource = true;
+      const resName = this.player.resourceName || 'Resource';
+      const resHint = this.player.resourceType === 'rage' ? `${resName} builds on hit. Spend it on skills!`
+                    : this.player.resourceType === 'stamina' ? `${resName} regenerates. Spend it on skills!`
+                    : `${resName} regenerates over time. Spend it on skills!`;
+      this.waveAnnouncement = { wave: 0, timer: 4.0, text: resHint };
+      // Mark tutorial complete after both hints shown
+      this.persistence.data.combatTutorialComplete = true;
+      this.persistence.save();
+    }
+
     // Resource on kill
     if (this.player.resourceOnKill > 0) {
       this.player.gainResource(this.player.resourceOnKill);
@@ -2527,7 +2957,11 @@ export class Game {
     this.hud.updateXP(this.player.xp, this.player.xpToNext, this.player.level);
     this.hud.updateHP(this.player.hp, this.player.maxHP);
     if (leveled) {
-      this.waveAnnouncement = { wave: 0, timer: 1.5, text: `Level Up! (${this.player.level}) +1 Attribute, +1 Passive` };
+      this.waveAnnouncement = { wave: 0, timer: 2.5, text: `LEVEL UP!  Level ${this.player.level}` };
+      this.audio.levelUp();
+      // Particle burst at player position
+      this.particles.emit(this.player.x, this.player.y, 30, '#f1c40f', { speed: 250, life: 0.9, size: 4 });
+      this.screenShake = 0.2;
       this.renderer.flash('#f1c40f', 0.2);
       // _applySkillTree() removed — stats now handled by recalcAllStats() in player.js
     }
@@ -2553,8 +2987,8 @@ export class Game {
 
     // Bomber: explode on death, damaging player and nearby enemies
     if (enemy.explodeOnDeath && enemy.explosionRadius > 0) {
-      const bdx = player.x - enemy.x;
-      const bdy = player.y - enemy.y;
+      const bdx = this.player.x - enemy.x;
+      const bdy = this.player.y - enemy.y;
       if (Math.sqrt(bdx * bdx + bdy * bdy) < enemy.explosionRadius) {
         this._applyDamageToPlayer(enemy.damage, enemy.level || 1);
         this.screenShake = 0.2;
@@ -2636,6 +3070,17 @@ export class Game {
 
     // Show death screen
     const floorName = this.floorConfig.getFloor(this.currentFloor)?.name || 'Unknown';
+    // Death animation: emit particles around player
+    for (let i = 0; i < 30; i++) {
+      this.particles.emit(
+        this.player.x, this.player.y, 1,
+        this.player.color || '#cc2222',
+        { speed: 200, life: 0.8, size: 4 }
+      );
+    }
+    this.screenShake = 0.5;
+    // Brief delay so player sees the death effect before screen shows
+    await new Promise(resolve => setTimeout(resolve, 800));
     await this.deathScreen.show(
       this.currentFloor,
       floorName,
@@ -2694,10 +3139,12 @@ export class Game {
   async _openSkillVendor() {
     if (!this.skillManager) return;
     this.paused = true;
+    // Sync gold from persistence to player object so the UI can read it
+    this.player.gold = this.persistence.getGold();
     await this.skillVendorUI.show(
       this.skillManager,
       this.player,
-      (amount) => { this.persistence.spendGold(amount); }, // onSpendGold
+      (amount) => { this.persistence.spendGold(amount); this.player.gold = this.persistence.getGold(); }, // onSpendGold
       () => { // onRespecPassives
         const refunded = this.skillManager.respecPassives();
         this.player.passivePointsAvailable += refunded;
@@ -2737,6 +3184,24 @@ export class Game {
       this.inventoryUI.buildInto(el, this.player, this.inventory, this.skillManager, {
         atVendor: false,
         onEquip: (item, slot) => {
+          // If equipping a 2H weapon to mainHand, auto-unequip the off-hand
+          if (slot === 'mainHand' && item.twoHanded) {
+            const offHand = this.player.equipment.offHand;
+            if (offHand) {
+              if (this.inventory.addItem(offHand)) {
+                this.player.equipment.offHand = null;
+              } else {
+                // Inventory full — abort the equip and warn
+                this.waveAnnouncement = { wave: 0, timer: 1.5, text: 'Inventory full — cannot unequip off-hand' };
+                return;
+              }
+            }
+          }
+          // If equipping an off-hand while a 2H weapon is equipped, block it
+          if (slot === 'offHand' && this.player.equipment.mainHand && this.player.equipment.mainHand.twoHanded) {
+            this.waveAnnouncement = { wave: 0, timer: 1.5, text: 'Two-handed weapon equipped — unequip first' };
+            return;
+          }
           const current = this.player.equipment[slot];
           if (current) this.inventory.addItem(current);
           this.inventory.remove(item.id);
@@ -2756,7 +3221,7 @@ export class Game {
         },
         onDrop: (item) => {
           this.inventory.remove(item.id);
-          if (this.lootSystem) this.lootSystem.spawnGroundItem(this.player.x, this.player.y, item);
+          if (this.lootSystem) this.lootSystem.spawnGroundItem(this.player.x, this.player.y, item, { pickupDelay: 2000 });
           buildContent();
         },
         onAssignHotbar: (itemId, slot) => {
@@ -2771,6 +3236,8 @@ export class Game {
   }
 
   async _openItemVendor() {
+    // Sync gold from persistence so vendor UI can read it
+    this.player.gold = this.persistence.getGold();
     // Generate vendor stock (6-8 items appropriate to player level)
     const stock = [];
     for (let i = 0; i < 7; i++) {
@@ -2785,7 +3252,15 @@ export class Game {
       for (const pt of this.potionsData.potionTypes) {
         if (pt.classRestriction && !pt.classRestriction.includes(this.selectedClass.id)) continue;
         const bracket = this.potionsData.pricingBrackets.find(b => this.player.level >= b.minLevel && this.player.level <= b.maxLevel);
-        const price = pt.id.includes('potion') ? (bracket?.hpMana || 10) : (bracket?.tonic || 15);
+        // Pricing: HP/Mana potions = hpMana, tonics = tonic, scrolls = 4x tonic
+        let price;
+        if (pt.id.includes('scroll')) {
+          price = (bracket?.tonic || 15) * 4;
+        } else if (pt.id.includes('potion')) {
+          price = bracket?.hpMana || 10;
+        } else {
+          price = bracket?.tonic || 15;
+        }
         stock.push({
           id: `vendor_${pt.id}`,
           baseType: pt.id,
@@ -2797,14 +3272,17 @@ export class Game {
           gridW: 1, gridH: 1,
           isConsumable: true,
           isStackable: true,
+          stackable: true,
           maxStack: pt.maxStack,
           stackCount: 1,
           effect: pt.effect,
           cooldownGroup: pt.cooldownGroup,
           cooldown: pt.cooldown,
+          classRestriction: pt.classRestriction || null,
           sellValue: Math.floor(price / 2),
           buyPrice: price,
           description: pt.description,
+          rarityColor: pt.color || '#cccccc',
         });
       }
     }
@@ -2820,18 +3298,26 @@ export class Game {
           const buyItem = { ...item, id: `item_${Date.now()}_${Math.random().toString(36).substr(2,5)}` };
           delete buyItem.buyPrice;
           this.inventory.addItem(buyItem);
+          this.player.gold = this.persistence.getGold();
+          this.audio.vendorBuy();
         }
       },
       (itemId) => { // onSell
         const info = this.inventory.findItemById(itemId);
         if (info) {
-          this.persistence.addGold(info.item.sellValue || 1);
+          const sellPrice = info.item.sellValue || 1;
+          this.persistence.addGold(sellPrice);
+          this.player.gold = this.persistence.getGold();
           this.inventory.remove(itemId);
+          this.audio.vendorBuy();
         }
       },
       () => { // onSellJunk
         const value = this.inventory.removeAllJunk();
-        if (value > 0) this.persistence.addGold(value);
+        if (value > 0) {
+          this.persistence.addGold(value);
+          this.player.gold = this.persistence.getGold();
+        }
       }
     );
     this._saveProgress();
@@ -2866,8 +3352,12 @@ export class Game {
         this.player.resource = this.player.maxResource;
       } else if (effect.type === 'add_resource') {
         this.player.gainResource(effect.value);
+      } else if (effect.type === 'teleport_to_camp') {
+        this._useScrollOfTeleportation();
+        return;
       }
     }
+    this.audio.potionUse();
 
     // Start cooldown
     this.potionCooldowns[cdGroup] = item.cooldown || 3;
@@ -2875,7 +3365,6 @@ export class Game {
       // Shared cooldown also blocks other shared items
     }
 
-    this.audio.shoot(); // placeholder potion sound
     this.hud.updateHP(this.player.hp, this.player.maxHP);
   }
 
@@ -2963,6 +3452,7 @@ export class Game {
     this.paused = false;
 
     if (result.action === 'travel') {
+      this.audio.waystoneTravel();
       const fc = this.floorConfig.getFloor(result.floor);
       const reqLevel = fc.playerLevelReq || result.floor;
       if (this.player.level < reqLevel) {
@@ -3027,7 +3517,11 @@ export class Game {
       r.drawFlash();
 
       // Full HUD in camp (same as dungeon)
-      this.hud.render({ canvasWidth: this.canvas.width, canvasHeight: this.canvas.height });
+      this.hud.render({
+        canvasWidth: this.canvas.width,
+        canvasHeight: this.canvas.height,
+        saveIndicatorTimer: this._saveIndicatorTimer,
+      });
 
       // Crosshair handled below (no early return)
     }
@@ -3079,6 +3573,27 @@ export class Game {
         ctx.beginPath();
         ctx.arc(sx, sy, (t.trapDef?.visual?.idleRadius || 16) * 1.5, 0, Math.PI * 2);
         ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    // Screen-edge trap warning shimmer
+    if (this.trapManager) {
+      const allTraps = this.trapManager.activeTraps || [];
+      let nearbyTrapCount = 0;
+      for (const trap of allTraps) {
+        const dx = trap.x - this.player.x;
+        const dy = trap.y - this.player.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 250) nearbyTrapCount++;
+      }
+      if (nearbyTrapCount > 0) {
+        const ctx = r.ctx;
+        ctx.save();
+        const pulse = 0.3 + 0.2 * Math.sin(performance.now() / 300);
+        ctx.strokeStyle = `rgba(255, 100, 100, ${pulse * Math.min(1, nearbyTrapCount / 3)})`;
+        ctx.lineWidth = 4;
+        ctx.strokeRect(2, 2, this.canvas.width - 4, this.canvas.height - 4);
         ctx.restore();
       }
     }
@@ -3177,14 +3692,32 @@ export class Game {
       }
     }
 
-    // Minimap
-    if (this.dungeonMode && this.dungeon && this.dungeonManager) {
+    // Return portal interaction prompt (in camp after teleport scroll)
+    if (this._nearReturnPortal && this._returnPortalPos) {
+      const px = this._returnPortalPos.x - r.camera.x;
+      const py = this._returnPortalPos.y - r.camera.y;
+      r.ctx.font = 'bold 13px "Segoe UI", sans-serif';
+      r.ctx.fillStyle = '#d6a8ff';
+      r.ctx.textAlign = 'center';
+      r.ctx.fillText('[E] Return to Dungeon', px, py + 45);
+    }
+
+    // Minimap — show whenever player is in a dungeon (PLAYING state)
+    if (this.state === 'PLAYING' && this.dungeon && this.dungeonManager && r.drawDungeonMinimap) {
       r.drawDungeonMinimap(
         this.player,
         this.dungeon,
         this.dungeonManager,
-        this.dungeonManager.getActiveEnemies(),
-        this.dungeonManager.boss
+        this.dungeonManager.getActiveEnemies ? this.dungeonManager.getActiveEnemies() : [],
+        this.dungeonManager.boss || null
+      );
+    } else if (this.state === 'PLAYING' && this.dungeon && this.dungeonManager) {
+      // Fallback: use generic drawMinimap with dungeon enemies/boss
+      r.drawMinimap(
+        this.player,
+        (this.dungeonManager.getActiveEnemies ? this.dungeonManager.getActiveEnemies() : []).filter(e => !e.dead),
+        this.dungeonManager.boss && !this.dungeonManager.boss.dead ? this.dungeonManager.boss : null,
+        []
       );
     } else if (wave) {
       r.drawMinimap(
@@ -3206,10 +3739,32 @@ export class Game {
 
     } // end if (state !== 'BASE_CAMP') — dungeon rendering
 
+    // Low HP vignette overlay
+    if (this.player && this.player.hp > 0) {
+      const hpPct = this.player.hp / this.player.maxHP;
+      if (hpPct < 0.30) {
+        const ctx = r.ctx;
+        const intensity = (1 - hpPct / 0.30); // 0 at 30% hp, 1 at 0 hp
+        const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 200);
+        const alpha = intensity * 0.4 * (0.7 + pulse * 0.3);
+        ctx.save();
+        const grad = ctx.createRadialGradient(
+          this.canvas.width / 2, this.canvas.height / 2, this.canvas.width * 0.3,
+          this.canvas.width / 2, this.canvas.height / 2, this.canvas.width * 0.7
+        );
+        grad.addColorStop(0, 'rgba(255, 0, 0, 0)');
+        grad.addColorStop(1, `rgba(180, 0, 0, ${alpha})`);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        ctx.restore();
+      }
+    }
+
     // Canvas HUD (Diablo 2-style globes and action bar)
     this.hud.render({
       canvasWidth: this.canvas.width,
       canvasHeight: this.canvas.height,
+      saveIndicatorTimer: this._saveIndicatorTimer,
     });
 
     // Mouse crosshair (ARPG cursor)

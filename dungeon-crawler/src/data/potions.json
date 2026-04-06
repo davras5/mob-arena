@@ -51,6 +51,19 @@
       "gridSize": { "w": 1, "h": 1 },
       "classRestriction": ["warrior"],
       "color": "#cc6622"
+    },
+    {
+      "id": "scroll_teleport",
+      "name": "Scroll of Teleportation",
+      "icon": "📜",
+      "description": "Opens a portal to camp. The portal remains open in the dungeon — return to it to come back.",
+      "effect": { "type": "teleport_to_camp" },
+      "cooldownGroup": "scroll",
+      "cooldown": 1.0,
+      "maxStack": 5,
+      "gridSize": { "w": 1, "h": 1 },
+      "classRestriction": null,
+      "color": "#8e44ad"
     }
   ],
   "pricingBrackets": [

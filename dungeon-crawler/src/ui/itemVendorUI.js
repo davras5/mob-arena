@@ -223,6 +223,7 @@ export class ItemVendorUI {
     const gold = this.player.gold || 0;
     const price = item.buyPrice || item.sellValue || item.sellPrice || 0;
     const canAfford = gold >= price;
+    const isRestricted = item.classRestriction && Array.isArray(item.classRestriction) && this.player && this.player.playerClass && !item.classRestriction.includes(this.player.playerClass);
 
     const row = document.createElement('div');
     Object.assign(row.style, {
@@ -233,9 +234,23 @@ export class ItemVendorUI {
       border: canAfford ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(180,40,40,0.5)',
       cursor: canAfford ? 'pointer' : 'default',
       transition: 'background 0.15s',
+      position: 'relative',
     });
 
-    if (canAfford) {
+    if (isRestricted) {
+      row.style.opacity = '0.45';
+      row.style.cursor = 'not-allowed';
+      const restrictLabel = document.createElement('div');
+      restrictLabel.textContent = `⛔ ${item.classRestriction.map(c => c.charAt(0).toUpperCase() + c.slice(1)).join('/')} only`;
+      Object.assign(restrictLabel.style, {
+        position: 'absolute', bottom: '2px', left: '2px', right: '2px',
+        fontSize: '9px', color: '#e74c3c', textAlign: 'center',
+        background: 'rgba(0,0,0,0.7)', padding: '1px',
+      });
+      row.appendChild(restrictLabel);
+    }
+
+    if (canAfford && !isRestricted) {
       row.addEventListener('mouseenter', () => { row.style.background = 'rgba(255,255,255,0.1)'; });
       row.addEventListener('mouseleave', () => { row.style.background = 'rgba(255,255,255,0.04)'; });
     }
@@ -331,6 +346,7 @@ export class ItemVendorUI {
 
     // Click to buy
     row.addEventListener('click', () => {
+      if (isRestricted) return;
       if (!canAfford) return;
       if (price > 100) {
         this._showConfirmDialog(item, price, () => {
@@ -370,6 +386,22 @@ export class ItemVendorUI {
       background: 'rgba(201,168,76,0.04)',
     });
     pane.appendChild(paneTitle);
+
+    // Sell banner
+    const sellBanner = document.createElement('div');
+    sellBanner.innerHTML = '🛒 <b>Right-click an item to sell it</b>';
+    Object.assign(sellBanner.style, {
+      background: 'rgba(201, 168, 76, 0.12)',
+      border: '1px solid rgba(201, 168, 76, 0.4)',
+      borderRadius: '4px',
+      padding: '8px 12px',
+      margin: '8px',
+      textAlign: 'center',
+      color: '#c9a84c',
+      fontSize: '13px',
+      letterSpacing: '0.5px',
+    });
+    pane.appendChild(sellBanner);
 
     // Grid container (scrollable if needed)
     const gridWrap = document.createElement('div');
@@ -486,7 +518,7 @@ export class ItemVendorUI {
         // Right-click to sell
         itemEl.addEventListener('contextmenu', (e) => {
           e.preventDefault();
-          this._executeSell(item.id);
+          this._executeSell(item.id, item);
         });
 
         grid.appendChild(itemEl);
@@ -542,9 +574,65 @@ export class ItemVendorUI {
     return pane;
   }
 
-  _executeSell(itemId) {
-    if (this.onSell) this.onSell(itemId);
-    this._build();
+  _executeSell(itemId, item) {
+    // Confirmation for valuable items
+    const sellValue = (item && item.sellValue) || 1;
+    if (sellValue > 50) {
+      this._showSellConfirmation(item, () => {
+        if (this.onSell) this.onSell(itemId);
+        this._build();
+      });
+    } else {
+      if (this.onSell) this.onSell(itemId);
+      this._build();
+    }
+  }
+
+  _showSellConfirmation(item, onConfirm) {
+    // If a confirm dialog already exists, dismiss
+    if (this._confirmDialog && this._confirmDialog.parentNode) {
+      this._confirmDialog.parentNode.removeChild(this._confirmDialog);
+    }
+    const dialog = document.createElement('div');
+    Object.assign(dialog.style, {
+      position: 'fixed', top: '50%', left: '50%',
+      transform: 'translate(-50%, -50%)',
+      background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)',
+      border: '2px solid #c9a84c',
+      borderRadius: '8px',
+      boxShadow: '0 0 40px rgba(201,168,76,0.4)',
+      padding: '24px 32px',
+      zIndex: '100001',
+      color: '#e8d3a8',
+      fontFamily: '"Segoe UI", Arial, sans-serif',
+      minWidth: '320px',
+    });
+    const title = document.createElement('div');
+    title.textContent = 'Sell Item?';
+    Object.assign(title.style, { color: '#c9a84c', fontSize: '18px', fontWeight: 'bold', marginBottom: '12px', letterSpacing: '1px' });
+    const body = document.createElement('div');
+    body.innerHTML = `Sell <b>${item.name || 'this item'}</b> for <b style="color:#f1c40f">${item.sellValue}g</b>?`;
+    Object.assign(body.style, { fontSize: '14px', marginBottom: '20px' });
+    const btnRow = document.createElement('div');
+    Object.assign(btnRow.style, { display: 'flex', gap: '12px', justifyContent: 'flex-end' });
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    Object.assign(cancelBtn.style, { background: 'transparent', border: '1px solid #555', color: '#888', padding: '8px 16px', cursor: 'pointer', borderRadius: '4px', fontFamily: 'inherit', fontSize: '13px' });
+    cancelBtn.addEventListener('click', () => { dialog.parentNode.removeChild(dialog); this._confirmDialog = null; });
+
+    const confirmBtn = document.createElement('button');
+    confirmBtn.textContent = 'Sell';
+    Object.assign(confirmBtn.style, { background: 'rgba(201,168,76,0.2)', border: '1px solid #c9a84c', color: '#c9a84c', padding: '8px 20px', cursor: 'pointer', borderRadius: '4px', fontFamily: 'inherit', fontSize: '13px', fontWeight: 'bold' });
+    confirmBtn.addEventListener('click', () => { dialog.parentNode.removeChild(dialog); this._confirmDialog = null; onConfirm(); });
+
+    btnRow.appendChild(cancelBtn);
+    btnRow.appendChild(confirmBtn);
+    dialog.appendChild(title);
+    dialog.appendChild(body);
+    dialog.appendChild(btnRow);
+    document.body.appendChild(dialog);
+    this._confirmDialog = dialog;
   }
 
   _itemBgColor(rarity) {

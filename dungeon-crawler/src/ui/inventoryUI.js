@@ -391,7 +391,34 @@ export class InventoryUI {
   //  Equipment Doll
   // ===========================================================
 
+  _highlightValidSlots(targetSlot) {
+    if (!this._equipmentSlotEls) return;
+    for (const [slotName, el] of Object.entries(this._equipmentSlotEls)) {
+      if (slotName === targetSlot) {
+        // Remember original border color so we can restore on clear
+        if (el.dataset.origBorder === undefined) {
+          el.dataset.origBorder = el.style.borderColor || '';
+        }
+        el.style.boxShadow = '0 0 12px 3px rgba(241,196,15,0.7)';
+        el.style.borderColor = '#f1c40f';
+      }
+    }
+  }
+
+  _clearSlotHighlights() {
+    if (!this._equipmentSlotEls) return;
+    for (const el of Object.values(this._equipmentSlotEls)) {
+      el.style.boxShadow = '';
+      // Restore original border color (captured before highlight applied)
+      if (el.dataset.origBorder !== undefined) {
+        el.style.borderColor = el.dataset.origBorder;
+        delete el.dataset.origBorder;
+      }
+    }
+  }
+
   _buildEquipmentDoll() {
+    this._equipmentSlotEls = {};
     const wrapper = _el('div', {
       position: 'relative',
       width: '260px',
@@ -450,6 +477,7 @@ export class InventoryUI {
         boxSizing: 'border-box',
         transition: 'border-color 0.15s',
       });
+      this._equipmentSlotEls[slot] = slotEl;
 
       // Equipment slot drag-and-drop target (accept equipment drops)
       slotEl.addEventListener('dragover', (e) => {
@@ -617,7 +645,8 @@ export class InventoryUI {
           top: (r * CELL) + 'px',
           width: CELL + 'px',
           height: CELL + 'px',
-          border: '1px solid #222',
+          border: '1px solid #3a3a52',
+          boxShadow: 'inset 0 0 4px rgba(100, 100, 150, 0.1)',
           boxSizing: 'border-box',
         });
         grid.appendChild(cell);
@@ -707,9 +736,14 @@ export class InventoryUI {
           }));
           e.dataTransfer.effectAllowed = 'move';
           itemEl.style.opacity = '0.5';
+          // Highlight valid equipment slot targets
+          if (!isPotion && item.slot) {
+            this._highlightValidSlots(item.slot);
+          }
         });
         itemEl.addEventListener('dragend', (e) => {
           itemEl.style.opacity = '';
+          this._clearSlotHighlights();
           // If dropped outside any valid target, treat as "drop to ground"
           if (e.dataTransfer.dropEffect === 'none' && this._options.onDrop) {
             this._options.onDrop(item);

@@ -42,6 +42,10 @@ export class Persistence {
         floorStates: {},
       },
       settings: { volume: 0.5 },
+      // Tutorial / onboarding flags
+      introComplete: false,
+      tutorialComplete: false,
+      combatTutorialComplete: false,
     };
   }
 

@@ -1,3 +1,5 @@
+import { Tooltip } from './tooltip.js';
+
 export class SkillBookUI {
   constructor() {
     this.overlay = null;
@@ -69,6 +71,22 @@ export class SkillBookUI {
 
     // --- Active Skills Section ---
     target.appendChild(this._buildSectionTitle('ACTIVE SKILLS'));
+
+    const instructionBanner = document.createElement('div');
+    instructionBanner.innerHTML = '💡 <b>Drag a skill onto LMB / RMB</b> — or click a skill, then click an empty slot.';
+    Object.assign(instructionBanner.style, {
+      background: 'rgba(201, 168, 76, 0.10)',
+      border: '1px solid rgba(201, 168, 76, 0.35)',
+      borderRadius: '4px',
+      padding: '10px 14px',
+      marginBottom: '12px',
+      color: '#e8d3a8',
+      fontSize: '12px',
+      textAlign: 'center',
+      letterSpacing: '0.3px',
+    });
+    target.appendChild(instructionBanner);
+
     target.appendChild(this._buildActiveGrid(actives, skillManager));
 
     // --- Passive Skills Section ---
@@ -315,6 +333,19 @@ export class SkillBookUI {
   }
 
   _selectSkillCard(card, skillId) {
+    // Ensure pulse keyframes exist in the document
+    if (!document.getElementById('skillbook-pulse-style')) {
+      const style = document.createElement('style');
+      style.id = 'skillbook-pulse-style';
+      style.textContent = `
+        @keyframes skillbook-slot-pulse {
+          0%, 100% { border-color: #f0c040; box-shadow: 0 0 0 rgba(240,192,64,0); }
+          50%      { border-color: #ffd860; box-shadow: 0 0 12px rgba(240,192,64,0.6); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+
     // Deselect all cards (check both overlay and container modes)
     const root = this.overlay || this._container;
     if (root) {
@@ -326,6 +357,13 @@ export class SkillBookUI {
     this.selectedSkillId = skillId;
     card.style.borderColor = '#f0c040';
     card.style.backgroundColor = '#2a2a50';
+
+    // Pulse empty loadout slots to indicate valid drop targets
+    if (root) {
+      for (const slot of root.querySelectorAll('[data-empty-slot="true"]')) {
+        slot.style.animation = 'skillbook-slot-pulse 1.2s ease-in-out infinite';
+      }
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -569,6 +607,7 @@ export class SkillBookUI {
     });
     box.appendChild(lbl);
 
+    let isEmptySlot = false;
     if (skillInfo) {
       const icon = document.createElement('div');
       icon.textContent = skillInfo.skill.icon || '?';
@@ -580,9 +619,15 @@ export class SkillBookUI {
       Object.assign(name.style, { fontSize: '12px', color: '#e8e0c8', fontWeight: 'bold' });
       box.appendChild(name);
     } else {
+      isEmptySlot = true;
       const empty = document.createElement('div');
       empty.textContent = '[ Empty ]';
-      Object.assign(empty.style, { fontSize: '13px', color: '#555' });
+      Object.assign(empty.style, {
+        fontSize: '14px',
+        color: '#c9a84c',
+        fontWeight: 'bold',
+        letterSpacing: '0.5px',
+      });
       box.appendChild(empty);
     }
 
@@ -590,11 +635,17 @@ export class SkillBookUI {
     const hint = document.createElement('div');
     hint.textContent = 'Click to assign';
     Object.assign(hint.style, {
-      fontSize: '9px',
-      color: '#666',
+      fontSize: isEmptySlot ? '13px' : '9px',
+      color: isEmptySlot ? '#c9a84c' : '#666',
+      fontWeight: isEmptySlot ? 'bold' : 'normal',
       marginTop: '4px',
     });
     box.appendChild(hint);
+
+    // Mark empty slots so we can pulse them when a skill is selected
+    if (isEmptySlot) {
+      box.dataset.emptySlot = 'true';
+    }
 
     box.addEventListener('mouseenter', () => { box.style.borderColor = '#f0c040'; });
     box.addEventListener('mouseleave', () => { box.style.borderColor = '#444'; });

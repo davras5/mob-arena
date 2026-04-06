@@ -9,10 +9,10 @@
   },
   "dropSources": {
     "regular_enemy": {
-      "itemDropChance": 0.08,
+      "itemDropChance": 0.15,
       "minRarity": "junk",
       "rarityBonus": 0,
-      "goldBase": [1, 3],
+      "goldBase": [2, 5],
       "goldMultiplier": "enemyLevel"
     },
     "elite_enemy": {

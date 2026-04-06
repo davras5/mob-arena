@@ -347,10 +347,12 @@ export class CharacterUI {
 
     if (canAfford && hasAllocated) {
       resetBtn.addEventListener('click', () => {
-        if (this._onResetAttributes) {
-          this._onResetAttributes(resetCost);
-          this._rebuild();
-        }
+        this._confirmReset(resetCost, () => {
+          if (this._onResetAttributes) {
+            this._onResetAttributes(resetCost);
+            this._rebuild();
+          }
+        });
       });
       resetBtn.addEventListener('mouseenter', () => { resetBtn.style.backgroundColor = 'rgba(230,126,34,0.15)'; });
       resetBtn.addEventListener('mouseleave', () => { resetBtn.style.backgroundColor = 'transparent'; });
@@ -603,6 +605,57 @@ export class CharacterUI {
         }
       }
     }
+  }
+
+  // ===========================================================
+  //  Respec confirmation dialog
+  // ===========================================================
+
+  _confirmReset(goldCost, onConfirm) {
+    if (this._confirmDialog && this._confirmDialog.parentNode) {
+      this._confirmDialog.parentNode.removeChild(this._confirmDialog);
+    }
+    const dialog = document.createElement('div');
+    Object.assign(dialog.style, {
+      position: 'fixed', top: '50%', left: '50%',
+      transform: 'translate(-50%, -50%)',
+      background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)',
+      border: '2px solid #e67e22',
+      borderRadius: '8px',
+      boxShadow: '0 0 40px rgba(230,126,34,0.4)',
+      padding: '24px 32px',
+      zIndex: '100001',
+      color: '#e8d3a8',
+      fontFamily: '"Segoe UI", Arial, sans-serif',
+      minWidth: '340px',
+    });
+    const title = document.createElement('div');
+    title.textContent = 'Respec Attributes?';
+    Object.assign(title.style, { color: '#e67e22', fontSize: '18px', fontWeight: 'bold', marginBottom: '12px', letterSpacing: '1px' });
+    const body = document.createElement('div');
+    body.innerHTML = `Reset all attribute points and refund them for <b style="color:#f1c40f">${goldCost}g</b>?<br><br><span style="font-size:11px;color:#a89c80">All allocated points will be returned. You can re-spend them however you like.</span>`;
+    Object.assign(body.style, { fontSize: '14px', marginBottom: '20px', lineHeight: '1.5' });
+    const btnRow = document.createElement('div');
+    Object.assign(btnRow.style, { display: 'flex', gap: '12px', justifyContent: 'flex-end' });
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    Object.assign(cancelBtn.style, { background: 'transparent', border: '1px solid #555', color: '#888', padding: '8px 16px', cursor: 'pointer', borderRadius: '4px', fontFamily: 'inherit', fontSize: '13px' });
+    cancelBtn.addEventListener('click', () => { dialog.parentNode.removeChild(dialog); this._confirmDialog = null; });
+
+    const confirmBtn = document.createElement('button');
+    confirmBtn.textContent = 'Respec';
+    Object.assign(confirmBtn.style, { background: 'rgba(230,126,34,0.2)', border: '1px solid #e67e22', color: '#e67e22', padding: '8px 20px', cursor: 'pointer', borderRadius: '4px', fontFamily: 'inherit', fontSize: '13px', fontWeight: 'bold' });
+    confirmBtn.addEventListener('click', () => { dialog.parentNode.removeChild(dialog); this._confirmDialog = null; onConfirm(); });
+
+    btnRow.appendChild(cancelBtn);
+    btnRow.appendChild(confirmBtn);
+    dialog.appendChild(title);
+    dialog.appendChild(body);
+    dialog.appendChild(btnRow);
+    document.body.appendChild(dialog);
+    this._confirmDialog = dialog;
+    return true;
   }
 
   // ===========================================================

@@ -20,6 +20,7 @@ export class Input {
     this.characterPressed = false; // C (character panel)
     this.hotbarPressed = [false, false, false, false]; // 1-4 (potion hotbar)
     this.altHeld = false;          // Alt (show loot labels, hold)
+    this.helpPressed = false;      // F1 (controls help)
 
     // Mouse position (screen coords)
     this.mouseX = 0;
@@ -52,6 +53,7 @@ export class Input {
       if (k === '3') this.hotbarPressed[2] = true;
       if (k === '4') this.hotbarPressed[3] = true;
       if (e.key === 'Alt') { e.preventDefault(); this.altHeld = true; }
+      if (e.key === 'F1') { e.preventDefault(); this.helpPressed = true; }
       if (e.key === 'Escape' && this.onPause) this.onPause();
     });
     window.addEventListener('keyup', (e) => {
@@ -238,6 +240,12 @@ export class Input {
   consumeHotbar(slot) {
     const val = this.hotbarPressed[slot];
     this.hotbarPressed[slot] = false;
+    return val;
+  }
+
+  consumeHelp() {
+    const val = this.helpPressed;
+    this.helpPressed = false;
     return val;
   }
 }

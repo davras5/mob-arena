@@ -72,6 +72,7 @@ export class LootDrop {
         gridH: 1,
         isConsumable: true,
         isStackable: true,
+        stackable: true,
         effect: { type: 'heal_percent', value: 0.3, resource: 'hp' },
         cooldownGroup: 'shared',
         cooldown: 3.0,
@@ -120,12 +121,15 @@ export class LootDrop {
 
   // ── Spawning helpers ───────────────────────────────────────────────
 
-  spawnGroundItem(x, y, item) {
+  spawnGroundItem(x, y, item, options = {}) {
+    const now = performance.now();
     this.groundItems.push({
       item,
-      x,
-      y,
-      spawnTime: performance.now(),
+      x: x + (Math.random() - 0.5) * 30,
+      y: y + (Math.random() - 0.5) * 30,
+      spawnTime: now,
+      // Grace period: items dropped by player can't be picked up for 1.5s (so they don't auto-pick-up immediately)
+      pickupDelayUntil: now + (options.pickupDelay || 0),
       pickupRadius: 32,
       bobOffset: Math.random() * Math.PI * 2,
     });
@@ -170,9 +174,12 @@ export class LootDrop {
       }
     }
 
-    // 2) Item auto-pickup
+    // 2) Item auto-pickup (respects per-item pickup delay)
+    const now = performance.now();
     for (let i = this.groundItems.length - 1; i >= 0; i--) {
       const gi = this.groundItems[i];
+      // Skip items still in their pickup-delay grace period
+      if (gi.pickupDelayUntil && now < gi.pickupDelayUntil) continue;
       const d = dist(playerX, playerY, gi.x, gi.y);
 
       if (d < gi.pickupRadius) {

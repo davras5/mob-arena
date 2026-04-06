@@ -449,13 +449,28 @@ export class Player {
     this.maxHPBonus += totalSta * 10;
     this.regenRate += totalSta * 0.1;
 
+    // Reset weapon damage to class base each frame so unequipping reverts properly
+    const baseDmg = (this.classConfig && this.classConfig.baseStats && this.classConfig.baseStats.damage) || 15;
+    this.weaponDamageMin = baseDmg;
+    this.weaponDamageMax = baseDmg;
+
+    // Apply equipped main-hand weapon damage range (replaces base, doesn't add)
+    const mainHand = this.equipment.mainHand;
+    if (mainHand && mainHand.damageMin && mainHand.damageMax) {
+      this.weaponDamageMin = mainHand.damageMin;
+      this.weaponDamageMax = mainHand.damageMax;
+    }
+
     // Equipment stat aggregation
     for (const slot of Object.values(this.equipment)) {
       if (!slot) continue;
       const item = slot;
       // Base equipment stats
       if (item.armor) this.totalArmor += item.armor;
-      if (item.damageMin && item.damageMax) this.damageBonus += Math.floor((item.damageMin + item.damageMax) / 2);
+      // Off-hand weapons (quiver, etc.) add to damage bonus, main hand handled above
+      if (item !== mainHand && item.damageMin && item.damageMax) {
+        this.damageBonus += Math.floor((item.damageMin + item.damageMax) / 2);
+      }
       if (item.spellDamage) this.damageBonus += item.spellDamage;
       // item.manaBonus is handled in _updateResourceFromAttributes()
       // Affix stats

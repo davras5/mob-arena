@@ -29,11 +29,27 @@ async function init() {
 
   const game = new Game(canvas, floorsData, classesData, campData, resourcesData, skillsData, itemBasesData, affixesData, trapsData, potionsData, lootTablesData);
 
+  // Show Continue button if a save with a class exists
+  const savedChar = game.persistence.getCharacter();
+  const continueBtn = document.getElementById('continue-btn');
+  if (savedChar && savedChar.class) {
+    continueBtn.classList.remove('hidden');
+    continueBtn.textContent = `Continue (${savedChar.class.charAt(0).toUpperCase() + savedChar.class.slice(1)} Lv.${savedChar.level || 1})`;
+  }
+
   // Menu start button
   document.getElementById('start-btn').addEventListener('click', () => {
     if (game.state === 'MENU') {
       game.audio.buttonClick();
-      game.start();
+      game.start(); // shows class picker
+    }
+  });
+
+  // Continue button
+  continueBtn.addEventListener('click', () => {
+    if (game.state === 'MENU' && savedChar && savedChar.class) {
+      game.audio.buttonClick();
+      game.start(savedChar.class); // skip class picker, use saved class
     }
   });
 

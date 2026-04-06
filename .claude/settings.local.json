@@ -10,7 +10,20 @@
       "Bash([ -f \"dungeon-crawler/src/data/skills.json\" ])",
       "Bash(node -e \"const d=JSON.parse\\(require\\('fs'\\).readFileSync\\('dungeon-crawler/src/data/skills.json','utf8'\\)\\); console.log\\('Skills classes:', Object.keys\\(d\\).join\\(', '\\)\\); let t=0; for\\(const c of Object.values\\(d\\)\\){t+=c.length;} console.log\\('Total skills:', t\\);\")",
       "Bash(node -e \"const fs=require\\('fs'\\);const c=fs.readFileSync\\('dungeon-crawler/src/game.js','utf8'\\);let d=0;for\\(const ch of c\\){if\\(ch==='{'\\)d++;if\\(ch==='}'\\)d--;}console.log\\(d===0?'Balanced':'UNBALANCED: '+d\\);\")",
-      "Bash(node -e \"const fs=require\\('fs'\\);const c=fs.readFileSync\\('dungeon-crawler/src/game.js','utf8'\\);let d=0;for\\(const ch of c\\){if\\(ch==='{'\\)d++;if\\(ch==='}'\\)d--;}console.log\\(d===0?'OK':'BAD: '+d\\);\")"
+      "Bash(node -e \"const fs=require\\('fs'\\);const c=fs.readFileSync\\('dungeon-crawler/src/game.js','utf8'\\);let d=0;for\\(const ch of c\\){if\\(ch==='{'\\)d++;if\\(ch==='}'\\)d--;}console.log\\(d===0?'OK':'BAD: '+d\\);\")",
+      "Bash(node --check src/game.js)",
+      "Bash(node --input-type=module --check)",
+      "Bash(grep -E \"\\\\.\\(js|json|css\\)$\")",
+      "Bash(node --check \"c:/Users/DavidRasner/Documents/GitHub/mob-arena/dungeon-crawler/src/ui/hud.js\")",
+      "Bash(node -c dungeon-crawler/src/ui/itemVendorUI.js)",
+      "Bash(node --check dungeon-crawler/src/ui/itemVendorUI.js)",
+      "Bash(cp dungeon-crawler/src/ui/itemVendorUI.js /tmp/itemVendorUI.mjs)",
+      "Bash(node --check /tmp/itemVendorUI.mjs)",
+      "Bash(node --check dungeon-crawler/src/ui/skillBookUI.js)",
+      "Bash(node --check dungeon-crawler/src/ui/characterUI.js)",
+      "Bash(node --check src/renderer.js)",
+      "Bash(node --check src/ui/classPicker.js)",
+      "Bash(node --check src/ui/skillVendorUI.js)"
     ]
   }
 }

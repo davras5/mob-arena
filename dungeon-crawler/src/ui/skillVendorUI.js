@@ -1,3 +1,5 @@
+import { Tooltip } from './tooltip.js';
+
 export class SkillVendorUI {
   constructor() {
     this.overlay = null;
@@ -217,6 +219,17 @@ export class SkillVendorUI {
         fontSize: '11px', padding: '1px 6px', borderRadius: '3px',
         background: 'rgba(201,168,76,0.2)', color: '#c9a84c', fontWeight: 'bold',
       });
+      Tooltip.attach(tierBadge, () => {
+        const tierInfo = {
+          0: 'Tier 0 \u2014 Default basic attack',
+          1: 'Tier 1 \u2014 Available from level 1 (50g)',
+          2: 'Tier 2 \u2014 Available from level 5 (150g)',
+          3: 'Tier 3 \u2014 Available from level 10 (400g)',
+          4: 'Tier 4 \u2014 Available from level 20 (1000g)',
+          5: 'Tier 5 \u2014 Ultimate, level 30 (2500g)',
+        };
+        return tierInfo[skill.tier] || `Tier ${skill.tier}`;
+      });
 
       const stateBadge = document.createElement('span');
       stateBadge.textContent = stateLabel;
@@ -411,11 +424,18 @@ export class SkillVendorUI {
       `Respec Passives (${passiveRespecCost}g)`,
       this.player.gold >= passiveRespecCost,
       () => {
-        if (this.player.gold >= passiveRespecCost) {
-          if (this.onSpendGold) this.onSpendGold(passiveRespecCost);
-          if (this.onRespecPassives) this.onRespecPassives();
-          this._build(); // rebuild UI
-        }
+        this._confirmDialog(
+          'Respec Passives?',
+          `Reset all passive skills for <b style="color:#f1c40f">${passiveRespecCost}g</b>?<br><br><span style="font-size:11px;color:#a89c80">All invested passive points will be refunded. You can re-spend them anywhere.</span>`,
+          '#e67e22',
+          () => {
+            if (this.player.gold >= passiveRespecCost) {
+              if (this.onSpendGold) this.onSpendGold(passiveRespecCost);
+              if (this.onRespecPassives) this.onRespecPassives();
+              this._build(); // rebuild UI
+            }
+          }
+        );
       }
     );
 
@@ -423,11 +443,18 @@ export class SkillVendorUI {
       `Respec Attributes (${attrRespecCost}g)`,
       this.player.gold >= attrRespecCost,
       () => {
-        if (this.player.gold >= attrRespecCost) {
-          if (this.onSpendGold) this.onSpendGold(attrRespecCost);
-          if (this.onRespecAttributes) this.onRespecAttributes();
-          this._build(); // rebuild UI
-        }
+        this._confirmDialog(
+          'Respec Attributes?',
+          `Reset all attributes for <b style="color:#f1c40f">${attrRespecCost}g</b>?<br><br><span style="font-size:11px;color:#a89c80">All invested attribute points will be refunded. You can re-spend them anywhere.</span>`,
+          '#e67e22',
+          () => {
+            if (this.player.gold >= attrRespecCost) {
+              if (this.onSpendGold) this.onSpendGold(attrRespecCost);
+              if (this.onRespecAttributes) this.onRespecAttributes();
+              this._build(); // rebuild UI
+            }
+          }
+        );
       }
     );
 
@@ -435,6 +462,48 @@ export class SkillVendorUI {
     section.appendChild(respecRow);
 
     parent.appendChild(section);
+  }
+
+  _confirmDialog(title, body, accentColor, onConfirm) {
+    const dialog = document.createElement('div');
+    Object.assign(dialog.style, {
+      position: 'fixed', top: '50%', left: '50%',
+      transform: 'translate(-50%, -50%)',
+      background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)',
+      border: `2px solid ${accentColor}`,
+      borderRadius: '8px',
+      boxShadow: `0 0 40px ${accentColor}66`,
+      padding: '24px 32px',
+      zIndex: '100001',
+      color: '#e8d3a8',
+      fontFamily: '"Segoe UI", Arial, sans-serif',
+      minWidth: '340px',
+    });
+    const titleEl = document.createElement('div');
+    titleEl.textContent = title;
+    Object.assign(titleEl.style, { color: accentColor, fontSize: '18px', fontWeight: 'bold', marginBottom: '12px', letterSpacing: '1px' });
+    const bodyEl = document.createElement('div');
+    bodyEl.innerHTML = body;
+    Object.assign(bodyEl.style, { fontSize: '14px', marginBottom: '20px', lineHeight: '1.5' });
+    const btnRow = document.createElement('div');
+    Object.assign(btnRow.style, { display: 'flex', gap: '12px', justifyContent: 'flex-end' });
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.textContent = 'Cancel';
+    Object.assign(cancelBtn.style, { background: 'transparent', border: '1px solid #555', color: '#888', padding: '8px 16px', cursor: 'pointer', borderRadius: '4px', fontFamily: 'inherit', fontSize: '13px' });
+    cancelBtn.addEventListener('click', () => { if (dialog.parentNode) dialog.parentNode.removeChild(dialog); });
+
+    const confirmBtn = document.createElement('button');
+    confirmBtn.textContent = 'Confirm';
+    Object.assign(confirmBtn.style, { background: `${accentColor}33`, border: `1px solid ${accentColor}`, color: accentColor, padding: '8px 20px', cursor: 'pointer', borderRadius: '4px', fontFamily: 'inherit', fontSize: '13px', fontWeight: 'bold' });
+    confirmBtn.addEventListener('click', () => { if (dialog.parentNode) dialog.parentNode.removeChild(dialog); onConfirm(); });
+
+    btnRow.appendChild(cancelBtn);
+    btnRow.appendChild(confirmBtn);
+    dialog.appendChild(titleEl);
+    dialog.appendChild(bodyEl);
+    dialog.appendChild(btnRow);
+    document.body.appendChild(dialog);
   }
 
   _createRespecButton(text, canAfford, onClick) {

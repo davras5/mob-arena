@@ -291,14 +291,15 @@ export class Inventory {
    * Otherwise autoPlace. Return true/false.
    */
   addItem(item) {
-    // Handle stackable items (potions)
-    if (item.stackable && item.baseType) {
+    // Handle stackable items (potions, consumables) — accepts both 'stackable' and 'isStackable'
+    const itemStackable = item.stackable || item.isStackable;
+    if (itemStackable && item.baseType) {
       // Try to find an existing stack of the same baseType with room
       const existingItems = this.getItems();
       for (const existing of existingItems) {
         if (
           existing.baseType === item.baseType &&
-          existing.stackable &&
+          (existing.stackable || existing.isStackable) &&
           existing.stackCount !== undefined
         ) {
           const maxStack = existing.maxStack || 5;

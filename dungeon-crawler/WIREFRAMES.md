@@ -31,8 +31,8 @@
                               │          │          │                 │
                               v          v          v                 │
                         ┌──────────┐ ┌────────┐ ┌──────────┐         │
-                        │  SKILL   │ │  SHOP  │ │ WAYSTONE │         │
-                        │ VENDOR   │ │   UI   │ │  TRAVEL  │         │
+                        │ TRAINER  │ │  SHOP  │ │ WAYSTONE │         │
+                        │ (RESPEC) │ │   UI   │ │  TRAVEL  │         │
                         └──────────┘ └────────┘ └─────┬────┘         │
                                                       │              │
                                                       v              │
@@ -147,7 +147,7 @@ This is the main screen players see 90% of the time. Inspired by Diablo 2's bott
 - **Display**: Skill icon + skill name below in small text
 - **Cooldown**: Same radial clock-wipe as potions, plus grayed-out icon
 - **Resource cost**: Small text below slot showing cost (e.g., "15 mana")
-- **Swap arrows**: Small up-arrow button above each slot. Clicking opens a **quick skill picker** flyout showing all learned active skills. Click one to swap it in. This is the fast in-combat way to swap without opening the full Skill Book.
+- **Swap arrows**: Small up-arrow button above each slot. Clicking opens a **quick skill picker** flyout showing all 4 of the class's attacks (both specs' primary + secondary). Click one to swap it in. This is the fast in-combat way to swap without opening the full Skill Book.
 - **No resource**: If player lacks resource to cast, slot border pulses red briefly on click attempt
 
 #### Panel Buttons (Bottom-Center, Below Hotbars)
@@ -162,22 +162,29 @@ This is the main screen players see 90% of the time. Inspired by Diablo 2's bott
 
 #### Quick Skill Picker (Flyout)
 ```
-         ┌──┬──┬──┬──┐
-         │🔥│❄️│✨│☄️│        ← Icon-only grid for fast recognition
-         ├──┼──┼──┼──┤
-         │🔮│  │  │  │        ← Basic attack always bottom-left
-         └──┴──┴──┴──┘
+         ┌──────────────┐
+         │ SPEC 1 (Pyro)│
+         ├──────┬───────┤
+         │  🔥  │  💥   │   ← Primary  |  Secondary
+         │ Bolt │ Ball  │
+         ├──────┴───────┤
+         │ SPEC 2 (Cryo)│
+         ├──────┬───────┤
+         │  ❄️  │  🌨   │   ← Primary  |  Secondary
+         │ Shard│ Nova  │
+         └──────┴───────┘
                ┌────┐
                │ L  │  ← clicking swap arrow opens the flyout above
                │CLIK│
                └────┘
 ```
 - Appears above the skill slot on click of the swap arrow
-- **Icon-only grid layout** (no text) for instant recognition in combat — players learn the icons quickly
-- **Hover an icon** → small tooltip shows skill name + resource cost (for when you need a reminder)
+- **Always shows exactly 4 attacks** (both specs' primary + secondary) in a fixed 2×2 layout, grouped by spec — instant muscle memory
+- Icons currently equipped in the OTHER slot are shown with a thin gold border (so you don't double-equip the same attack to both slots — but you CAN if you want)
+- **Hover an icon** → small tooltip shows attack name, resource cost, cooldown, and how many tree points the player has invested in that spec
 - Click icon to assign. ESC or click-away to close.
-- Basic Attack icon always in bottom-left position with a subtle "free" badge.
 - Game continues running while flyout is open (risk/reward of swapping mid-combat).
+- Attacks for which the spec tree has zero investment are still selectable (the attack still works at base power) — they're just dimmed slightly to indicate "untrained".
 
 #### XP Bar (Very Bottom)
 - **Shape**: Thin horizontal bar spanning the full width of the bottom panel
@@ -406,144 +413,217 @@ A focused view of attributes and detailed stats. Can also be accessed from the I
 
 ## 6. SKILL BOOK PANEL (Hotkey: K)
 
-Shows all learned skills and allows slot assignment.
+The Skill Book is the central screen for spending skill points, viewing both spec trees, and assigning attacks to LMB/RMB. There is **no Skill Vendor** — all progression happens here.
+
+### 6.0 Layout Overview
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│  SKILL BOOK — Warrior, Lv 17                                    [X]   │
+│  Skill Points: 4 available     Invested:  Guardian 12  •  Berserker 6 │
+│                                                                        │
+│  ┌─ ACTION BAR ───────────────────────────────────────────────────┐    │
+│  │                                                                │    │
+│  │     ┌────────────────┐              ┌────────────────┐         │    │
+│  │     │  LMB           │              │  RMB           │         │    │
+│  │     │  ⚔  Bash       │              │  🌀 Whirlwind  │         │    │
+│  │     │  Guardian      │              │  Berserker     │         │    │
+│  │     │  +10 rage/hit  │              │  40 rage  6s   │         │    │
+│  │     └────────────────┘              └────────────────┘         │    │
+│  │                                                                │    │
+│  │   Click a slot → picker shows all 4 class attacks. Drag also.  │    │
+│  └────────────────────────────────────────────────────────────────┘    │
+│                                                                        │
+│  ╔═[ ⛨ GUARDIAN  (12 pts) ]══╗  ┌─[ ⚔ BERSERKER  (6 pts) ]──────┐     │
+│  ║                                                               ║│    │
+│  ║   PRIMARY: ⚔ Bash         SECONDARY: 🛡 Parry Stance         ║│    │
+│  ║   ────────────────────────────────────────────────────       ║│    │
+│  ║                                                               ║│    │
+│  ║   ┌─ Tier 1  (gate 0)  ─────────────────────────────────┐   ║│    │
+│  ║   │  ◉◉◉◯◯   Iron Hide      3/5    +9% armor            │   ║│    │
+│  ║   │  ◉◉◯◯◯   Stalwart       2/5    +30 max HP           │   ║│    │
+│  ║   │  ◉◉◉◉◉   Heavy Hands    5/5    Bash dmg +40%  [MAX] │   ║│    │
+│  ║   └──────────────────────────────────────────────────────┘   ║│    │
+│  ║                                                               ║│    │
+│  ║   ┌─ Tier 2  (gate 3)  ✓ unlocked ──────────────────────┐   ║│    │
+│  ║   │  ◉◉◯     Reinforced Stance   2/3                    │   ║│    │
+│  ║   │  ◯◯◯     Spiked Plating      0/3                    │   ║│    │
+│  ║   │  ◯◯◯     Counterattack       0/3                    │   ║│    │
+│  ║   └──────────────────────────────────────────────────────┘   ║│    │
+│  ║                                                               ║│    │
+│  ║   ┌─ Tier 3  (gate 8)  ✓ unlocked  — choose ONE branch ─┐   ║│    │
+│  ║   │   ┌────────────────────┐    ┌────────────────────┐  │   ║│    │
+│  ║   │   │  ⮞ Hold the Line   │    │     Vigilant       │  │   ║│    │
+│  ║   │   │       ◯◯◯          │ OR │       ◯◯◯          │  │   ║│    │
+│  ║   │   │  -8% dmg taken     │    │  Parry cd -0.6s    │  │   ║│    │
+│  ║   │   │  while slow-moving │    │  per rank          │  │   ║│    │
+│  ║   │   └────────────────────┘    └────────────────────┘  │   ║│    │
+│  ║   │   (picking one locks the other until respec)        │   ║│    │
+│  ║   └──────────────────────────────────────────────────────┘   ║│    │
+│  ║                                                               ║│    │
+│  ║   ┌─ Tier 4  (gate 15)  🔒  need 3 more pts in Guardian ─┐  ║│    │
+│  ║   │   🔒 Taunting Strike   (1 rank) — keystone            │  ║│    │
+│  ║   │   🔒 Last Stand        (1 rank) — keystone            │  ║│    │
+│  ║   └───────────────────────────────────────────────────────┘  ║│    │
+│  ║                                                               ║│    │
+│  ║   ┌─ Tier 5  (gate 20)  🔒  CAPSTONE ────────────────────┐  ║│    │
+│  ║   │                                                       │  ║│    │
+│  ║   │       ★  AEGIS  ★                                     │  ║│    │
+│  ║   │       Once per fight, when reduced below 20% HP,      │  ║│    │
+│  ║   │       become invulnerable for 3s and reflect          │  ║│    │
+│  ║   │       100% damage.                                    │  ║│    │
+│  ║   │       Available at 20 points in Guardian.             │  ║│    │
+│  ║   │                                                       │  ║│    │
+│  ║   └───────────────────────────────────────────────────────┘  ║│    │
+│  ╚═══════════════════════════════════════════════════════════════╝│    │
+│                                                                        │
+│  ┌─ NODE DETAIL (hover/select) ───────────────────────────────────┐    │
+│  │  Heavy Hands  •  Guardian Tier 1  •  Rank 5/5  [MAXED]         │    │
+│  │  Increases Bash damage by 8% per rank.                         │    │
+│  │  Current bonus: +40% Bash damage                               │    │
+│  │  Next rank: — (already maxed)                                  │    │
+│  │                                                                │    │
+│  │  Bash base damage: 14    →  with this node: 19.6              │    │
+│  └────────────────────────────────────────────────────────────────┘    │
+│                                                                        │
+│  4 Skill Points available     [Respec Skill Tree at Trainer (425g)]   │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### 6.1 Visual Language
+- **Spec tabs** — The active spec tab uses double-line borders (`╔══╗`) and highlight color matching the spec (Guardian = steel blue, Berserker = blood red, Pyromancer = orange, Cryomancer = ice blue, Marksman = forest green, Beastmaster = bark brown, Plaguebringer = sickly green, Bone Lord = bone white). The inactive tab uses single-line borders.
+- **Node ranks** — Filled circle ◉ = invested rank, empty circle ◯ = available rank. A `[MAX]` badge appears next to fully-maxed nodes.
+- **Tier gates** — Locked tiers display 🔒 with the unlock requirement ("need N more pts in this tree"). The tier header is dimmed gray. Once unlocked, the header turns class color and shows ✓ unlocked.
+- **Tier 3 choice nodes** — Shown as a side-by-side pair joined by an "OR" divider. Once a player invests in one, the other is grayed out with a "Locked by branch choice" tooltip until respec.
+- **Capstone (Tier 5)** — Always rendered as a single large card with a gold star ★, full description visible even when locked. The unlock condition ("20 pts in tree") is bold-prominent.
+- **Cross-tab indicator** — When the player has unspent skill points, BOTH spec tabs show a small green pulse dot to remind them they can invest in either tree.
+
+### 6.2 Action Bar Section (Top)
+- **Two large slots**: LMB and RMB. Each shows the currently equipped attack's icon, name, spec, and a one-line summary of cost/cooldown.
+- **Click a slot** → Opens a 4-attack picker (same layout as the in-combat Quick Skill Picker, but bigger and with full descriptions). Player picks any of the 4 class attacks.
+- **Drag-and-drop** → Player can drag any of the 4 attack icons (shown beneath the spec tree as a small reference row) directly onto either slot.
+- **Spec mismatch warning** — If the player equips an attack from a spec they have ZERO points in, a small ⚠ icon appears next to the slot and a hover tooltip says "You haven't invested in [Spec Name] — this attack will work at base power. Spend points in the [Spec Name] tree to scale it." Non-blocking.
+
+### 6.3 Tree Investment Flow
+1. Player opens Skill Book (K)
+2. Player clicks the spec tab they want to invest in (Guardian or Berserker)
+3. Player clicks any unlocked node with rank < maxRank
+4. **Confirmation**: a "+1" floats up from the node, the rank dot fills with the spec color, the "Skill Points available" counter decrements, and a soft chime plays
+5. Tier gates are re-evaluated immediately — if the new total unlocks Tier 2/3/4/5, those tiers visually "light up" with a brief gold sweep animation
+6. **No undo** outside of a Trainer respec. The first respec is free, so early experimentation is encouraged.
+
+### 6.4 Tier 3 Branch Choice
+- Player clicks one of the two side-by-side cards
+- Confirmation popup: "Choose [Hold the Line] as your Tier 3 branch? You can only invest in one branch per spec until you respec."
+- On confirm: chosen branch activates, other branch grays out with a "🔒 Branch locked" label
+- Players can still see the locked branch's description (read-only) so they know what they passed up
+- Respec at the Trainer fully resets the choice
+
+### 6.5 Capstone Unlock
+- When the player reaches 20 points in a tree, the capstone card pulses gold for 2 seconds and a center-screen notification appears: "★ CAPSTONE UNLOCKED — Aegis ★ — Available to invest in the Skill Book"
+- The capstone is a single rank, costs 1 point, and has a dramatic visual effect when invested (screen flash + sound)
+- Capstones are spec-defining; investing one usually changes how the player thinks about combat
+
+### 6.6 Hover Detail Panel (Bottom)
+Shown whenever the player hovers a node, an attack slot, or the capstone:
+- **Title**: Node name • Spec • Tier • Current rank
+- **Description**: Short flavor + per-rank effect
+- **Current bonus**: What the player gets right now (e.g., "+40% Bash damage")
+- **Next rank**: What investing one more point would give (e.g., "→ +48% Bash damage")
+- **Synergy hint** (optional, for nodes that interact with other tree nodes): "Synergizes with: Counterattack, Reinforced Stance"
+- **For attack slots**: Shows the attack's full damage formula INCLUDING all current tree bonuses, so the player can see the effect of their investment without doing math
+
+### 6.7 Footer
+- **Left**: "N Skill Points available" — pulses green if N > 0
+- **Right**: "[Respec Skill Tree at Trainer (425g)]" link — clicking it shows a tooltip "Visit the Trainer NPC in camp. First respec is free." The link is informational only; the actual respec happens at the Trainer.
+
+### 6.8 Empty / New Character State
+A brand-new level-1 character has 0 invested points in either tree. The Skill Book shows:
+- Both spec tabs at "(0 pts)"
+- All 4 attack slots already populated with the class's spec primaries (LMB defaults to Spec 1 primary, RMB defaults to Spec 2 primary, so the player can immediately try both spec attack styles before deciding)
+- A small banner at the top: "Welcome! You earn 1 skill point per level. Spend them in either tree — try both attacks first to see which playstyle you prefer. Your first respec is free."
+
+### 6.9 Hybrid Build Visualization
+For a hybrid player (points in both trees), the inactive tab still shows the invested point count in its label (e.g., `[ ⚔ BERSERKER (6 pts) ]`), so the player always knows their split at a glance without switching tabs.
+
+---
+
+## 7. TRAINER UI (Respec Only)
+
+Accessed by interacting with the Trainer NPC at camp. The Trainer **does not sell or upgrade skills** — all skill progression happens in the Skill Book (K) by spending skill points earned at level-up. The Trainer's only function is **respec**.
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                       SKILL BOOK                          [X]   │
+│                       TRAINER                            [X]    │
+│  Gold: 342                                                       │
 │                                                                  │
-│  ┌─ ACTIVE SKILLS ──────────────────────────────────────────┐    │
-│  │                                                          │    │
-│  │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐ │    │
-│  │  │  ⚔ Slash │  │ 🛡 Block │  │ 💨 Charge│  │ 🌀 Whirl│ │    │
-│  │  │  Lv.3    │  │  Lv.2    │  │  Lv.2    │  │  Lv.1    │ │    │
-│  │  │  Free    │  │  15 rage │  │  25 rage │  │  40 rage │ │    │
-│  │  │  0.7s cd │  │  1.5s cd │  │  4.0s cd │  │  8.0s cd │ │    │
-│  │  └──────────┘  └──────────┘  └──────────┘  └──────────┘ │    │
-│  │                                                          │    │
-│  │  Click a skill, then click LMB or RMB slot to assign    │    │
-│  └──────────────────────────────────────────────────────────┘    │
+│  "Need a fresh start? I can help you re-allocate your points.   │
+│   To learn and improve skills, open your Skill Book (K)."       │
 │                                                                  │
-│  ┌─ SUMMON TOGGLES (Necro only) ─────────────────────────┐      │
-│  │  [ON]  Summon Skeleton (2/2)   30mp/summon   3s cd    │      │
-│  │  [OFF] Summon Zombie   (0/1)   40mp/summon   5s cd    │      │
-│  └────────────────────────────────────────────────────────┘      │
+│  ┌─ SKILL TREE RESPEC ──────────────────────────────────────┐   │
+│  │                                                          │   │
+│  │  Refunds all spent skill points. Your action bar         │   │
+│  │  attack assignments are preserved.                       │   │
+│  │                                                          │   │
+│  │  Current investment:                                     │   │
+│  │    ⛨  Guardian:    12 points                             │   │
+│  │    ⚔  Berserker:    6 points                             │   │
+│  │       Available:    4 points                             │   │
+│  │       ─────────────────────                              │   │
+│  │       Total:       22 points  (Lv 17)                    │   │
+│  │                                                          │   │
+│  │  Cost: 425g     ( player level × 25 )                    │   │
+│  │  ★ FIRST RESPEC IS FREE ★                                │   │
+│  │                                                          │   │
+│  │                                       [ RESPEC TREE ]    │   │
+│  └──────────────────────────────────────────────────────────┘   │
 │                                                                  │
-│  ┌─ PASSIVE SKILLS (read-only — invest at Trainer NPC) ─────┐    │
-│  │                                                          │    │
-│  │  Toughness     ●●●○○  +6% damage reduction              │    │
-│  │  Bloodlust     ●●○○○  +2% lifesteal                     │    │
-│  │  Fury          ○○○○○  (not invested)                     │    │
-│  │  Iron Skin     ●●●●○  +12% armor                        │    │
-│  │  Relentless    ○○○○   (not invested)                     │    │
-│  │  Vitality      ○○○○○  (not invested)                     │    │
-│  │  Berserker Bl. ○○○    (not invested)                     │    │
-│  │                                                          │    │
-│  │  Points available: 3    Visit Trainer to invest          │    │
-│  └──────────────────────────────────────────────────────────┘    │
+│  ┌─ ATTRIBUTE RESPEC ───────────────────────────────────────┐   │
+│  │                                                          │   │
+│  │  Refunds all spent attribute points so you can           │   │
+│  │  re-allocate STR / INT / AGI / STA.                      │   │
+│  │                                                          │   │
+│  │  Current attributes:                                     │   │
+│  │     STR  8        INT  3                                 │   │
+│  │     AGI  5        STA  6                                 │   │
+│  │                                                          │   │
+│  │  Cost: 255g     ( player level × 15 )                    │   │
+│  │                                                          │   │
+│  │                                  [ RESPEC ATTRIBUTES ]   │   │
+│  └──────────────────────────────────────────────────────────┘   │
 │                                                                  │
-│  ┌─ CURRENT LOADOUT ────────────────────────────────────────┐    │
-│  │                                                          │    │
-│  │   ┌────────────┐              ┌────────────┐             │    │
-│  │   │  LMB SLOT  │              │  RMB SLOT  │             │    │
-│  │   │  ⚔ Slash   │              │ 💨 Charge  │             │    │
-│  │   │  Lv.3      │              │  Lv.2      │             │    │
-│  │   └────────────┘              └────────────┘             │    │
-│  │                                                          │    │
-│  └──────────────────────────────────────────────────────────┘    │
-│                                                                  │
-│  ┌─ SKILL DETAIL (on hover/select) ─────────────────────────┐   │
-│  │  Shield Charge  (Tier 2, Level 2/5)                      │   │
-│  │  Dash forward dealing 38 damage with knockback.           │   │
-│  │  Cost: 25 rage  |  Cooldown: 3.8s                        │   │
-│  │  Next level: 46 damage, 3.6s cooldown (requires Lv.5)    │   │
+│  ┌─ INFO ───────────────────────────────────────────────────┐   │
+│  │  💡 To learn new skills or improve attacks, open your    │   │
+│  │     Skill Book (K). You earn 1 skill point per level.    │   │
 │  └──────────────────────────────────────────────────────────┘   │
 │                                                                  │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-### 6.1 Skill Assignment Flow
-1. Player opens Skill Book (K)
-2. Clicks an active skill card → card highlights with a gold border
-3. Clicks either the LMB or RMB slot in "Current Loadout"
-4. Skill is assigned. Old skill returns to the available pool. Done.
-
-Alternative: Drag skill card directly onto LMB/RMB slot.
-
-**Swap Feedback:** On skill assignment, the action bar slot does a quick gold flash (200ms) + "click" sound. The old skill icon slides out left, new one slides in from right (~200ms animation). This gives clear confirmation the swap happened.
-
-### 6.2 Passive Display (Read-Only in Skill Book)
-- Skill Book shows passive ranks as filled/empty dots — **view only**
-- Click a passive row to see its description and per-rank effects in the detail panel
-- To invest passive points, visit the **Trainer NPC at camp** (see section 7)
-- Invested dots are highlighted in class color, empty dots are gray
-
----
-
-## 7. SKILL VENDOR / TRAINER UI
-
-Accessed by interacting with the Trainer NPC at camp. Replaces the old skill tree UI.
+### 7.1 Respec Confirmation
+Both respec buttons trigger a confirmation popup before charging gold:
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                    SKILL TRAINER                          [X]   │
-│  Gold: 342                                                       │
-│                                                                  │
-│  ┌─ ACTIVE SKILLS FOR SALE ─────────────────────────────────┐    │
-│  │                                                          │    │
-│  │  ┌──────────────────────────────────────────┐            │    │
-│  │  │ ⚔ Shield Block    Tier 1    [OWNED Lv2] │            │    │
-│  │  │ Block damage for 1s. 15 rage.            │            │    │
-│  │  │ Upgrade to Lv3: 75g               [BUY] │            │    │
-│  │  └──────────────────────────────────────────┘            │    │
-│  │                                                          │    │
-│  │  ┌──────────────────────────────────────────┐            │    │
-│  │  │ 💨 Shield Charge   Tier 2   [OWNED Lv2] │            │    │
-│  │  │ Dash + damage + knockback. 25 rage.      │            │    │
-│  │  │ Upgrade to Lv3: 200g              [BUY] │            │    │
-│  │  └──────────────────────────────────────────┘            │    │
-│  │                                                          │    │
-│  │  ┌──────────────────────────────────────────┐            │    │
-│  │  │ 🌀 Whirlwind       Tier 3   [OWNED Lv1] │            │    │
-│  │  │ Spin AoE for 2s. 40 rage.               │            │    │
-│  │  │ Upgrade to Lv2: 500g              [BUY] │            │    │
-│  │  └──────────────────────────────────────────┘            │    │
-│  │                                                          │    │
-│  │  ┌──────────────────────────────────────────┐            │    │
-│  │  │ 📢 War Cry          Tier 3   [NOT OWNED] │            │    │
-│  │  │ +20% damage buff for 5s. 30 rage.        │            │    │
-│  │  │ Purchase: 400g                    [BUY] │            │    │
-│  │  └──────────────────────────────────────────┘            │    │
-│  │                                                          │    │
-│  │  ┌──────────────────────────────────────────┐            │    │
-│  │  │ 🔒 Earthquake       Tier 5   LOCKED      │            │    │
-│  │  │ Requires Player Level 30                  │            │    │
-│  │  │ Massive AoE stun + damage.               │            │    │
-│  │  └──────────────────────────────────────────┘            │    │
-│  └──────────────────────────────────────────────────────────┘    │
-│                                                                  │
-│  ┌─ PASSIVE SKILLS ─────────────────────────────────────────┐    │
-│  │  Points available: 3                                     │    │
-│  │                                                          │    │
-│  │  Toughness     ●●●○○  [+]   +2% dmg reduction/rank      │    │
-│  │  Bloodlust     ●●○○○  [+]   +1% lifesteal/rank          │    │
-│  │  Fury          ○○○○○  [+]   +5% rage gen/rank           │    │
-│  │  Iron Skin     ●●●●○  [+]   +3% armor/rank              │    │
-│  │  Relentless    ○○○○   [+]   +2% attack speed/rank       │    │
-│  │  Vitality      ○○○○○  [+]   +15 max HP/rank             │    │
-│  │  Berserker Bl. ○○○    [+]   +3% dmg at low HP/rank      │    │
-│  │                                                          │    │
-│  │  [Respec Passives (240g)]  [Respec Attributes (180g)]    │    │
-│  └──────────────────────────────────────────────────────────┘    │
-│                                                                  │
-└──────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────┐
+│         CONFIRM RESPEC               │
+│                                      │
+│  This will refund all 22 spent       │
+│  skill points. You'll need to        │
+│  re-spend them in the Skill Book.    │
+│                                      │
+│  Cost: 425g                          │
+│                                      │
+│       [ CANCEL ]   [ CONFIRM ]       │
+└──────────────────────────────────────┘
 ```
 
-### 7.1 Vendor States
-- **OWNED**: Green badge, shows current level and upgrade cost
-- **NOT OWNED**: Available for purchase, shows purchase cost
-- **LOCKED**: Grayed out, shows level requirement, no buy button
-- **MAX LEVEL**: Gold badge "MAX", no buy button
+If `freeRespecUsed === false`, the cost line shows `Cost: FREE (one-time)` and the confirm button is highlighted gold.
+
+### 7.2 Trainer States
+- **No points spent**: The "Skill Tree Respec" section shows "Nothing to refund yet — spend some points in the Skill Book first." The button is grayed out.
+- **Cannot afford**: Button text turns red and shows "Need 425g (have 342g)". Disabled.
+- **Free respec available**: Gold star badge ★ on the Tree Respec section, button highlighted gold.
+- **After confirming**: Gold deducted (or `freeRespecUsed` flag set), all tree nodes refunded, brief gold-coin animation flying to the player's gold counter, screen briefly dims, Skill Book opens automatically so the player can immediately re-spend.
 - **Can't afford**: Buy button grayed out, price in red
 
 ---

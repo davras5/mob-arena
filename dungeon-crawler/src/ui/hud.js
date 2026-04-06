@@ -1,3 +1,6 @@
+import { UI_THEME } from './uiTheme.js';
+import { Tooltip } from './tooltip.js';
+
 export class HUD {
   constructor(canvas) {
     // Canvas rendering context
@@ -32,8 +35,11 @@ export class HUD {
     // --- Internal state (populated by API methods, drawn by render()) ---
     this._hp = 0;
     this._maxHP = 1;
+    this._displayHP = 0; // smoothly lerped value for animation
     this._resource = 0;
     this._maxResource = 1;
+    this._displayResource = 0; // smoothly lerped value for animation
+    this._displayXP = 0; // smoothly lerped XP value
     this._resourceColor = '#3498db';
     this._resourceName = 'Mana';
     this._resourceGradient = ['#00008b', '#4169e1'];
@@ -54,6 +60,7 @@ export class HUD {
     this._hotbar = [null, null, null, null];
 
     this._statusEffects = [];
+    this._statusEffectTooltipEls = [];
 
     this._bossHP = 0;
     this._bossMaxHP = 0;
@@ -129,7 +136,41 @@ export class HUD {
         if (this.onPanelClick) this.onPanelClick(b.panel);
       });
       container.appendChild(btn);
+      Tooltip.attach(btn, () => {
+        const labels = {
+          character: 'Character (C) — view your stats and attributes',
+          skillBook: 'Skill Book (K) — view your skills and assign LMB/RMB',
+          inventory: 'Inventory (I) — manage gear and consumables',
+        };
+        return labels[b.panel] || b.label;
+      });
     }
+
+    // Help button (F1)
+    const helpBtn = document.createElement('button');
+    helpBtn.textContent = '?';
+    helpBtn.title = 'Help (F1)';
+    Object.assign(helpBtn.style, {
+      width: '32px', height: '26px',
+      background: 'rgba(60, 55, 45, 0.7)',
+      border: '1px solid rgba(180, 170, 130, 0.4)',
+      borderRadius: '3px',
+      color: 'rgba(200, 190, 170, 0.8)',
+      fontSize: '14px',
+      fontWeight: 'bold',
+      cursor: 'pointer',
+      fontFamily: '"Segoe UI", Arial, sans-serif',
+      transition: 'background 0.15s, color 0.15s',
+      marginLeft: '4px',
+    });
+    helpBtn.addEventListener('mouseenter', () => { helpBtn.style.background = 'rgba(100, 90, 70, 0.8)'; helpBtn.style.color = '#e8d8b0'; });
+    helpBtn.addEventListener('mouseleave', () => { helpBtn.style.background = 'rgba(60, 55, 45, 0.7)'; helpBtn.style.color = 'rgba(200, 190, 170, 0.8)'; });
+    helpBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (this.onPanelClick) this.onPanelClick('help');
+    });
+    container.appendChild(helpBtn);
+    Tooltip.attach(helpBtn, 'Help & Controls (F1)');
 
     document.body.appendChild(container);
     return container;
@@ -328,6 +369,16 @@ export class HUD {
     this._hpGlobeWaveOffset += 0.03;
     this._resGlobeWaveOffset += 0.025;
 
+    // Smooth lerp HP/resource/XP for fluid animations
+    const lerpSpeed = 0.15;
+    this._displayHP += (this._hp - this._displayHP) * lerpSpeed;
+    this._displayResource += (this._resource - this._displayResource) * lerpSpeed;
+    this._displayXP += (this._xp - this._displayXP) * lerpSpeed;
+    // Snap if very close
+    if (Math.abs(this._displayHP - this._hp) < 0.5) this._displayHP = this._hp;
+    if (Math.abs(this._displayResource - this._resource) < 0.5) this._displayResource = this._resource;
+    if (Math.abs(this._displayXP - this._xp) < 0.5) this._displayXP = this._xp;
+
     // --- Layout calculations ---
     const barHeight = Math.max(80, H * 0.15);
     const barY = H - barHeight;
@@ -363,7 +414,7 @@ export class HUD {
     const hpGlobeX = globePadding + globeRadius + 8;
     const hpGlobeY = barY + barHeight / 2 - xpBarHeight / 2;
     this._drawGlobe(ctx, hpGlobeX, hpGlobeY, globeRadius,
-      this._hp, this._maxHP,
+      this._displayHP, this._maxHP,
       '#1a0000', ['#8b0000', '#cc0000'],
       this._hpGlobeWaveOffset,
       this._hp / this._maxHP < 0.25
@@ -384,7 +435,7 @@ export class HUD {
     const resGrad = this._resourceGradient || ['#00008b', '#4169e1'];
     const resBgColor = this._darkenColor(resGrad[0], 0.3);
     this._drawGlobe(ctx, resGlobeX, resGlobeY, globeRadius,
-      this._resource, this._maxResource,
+      this._displayResource, this._maxResource,
       resBgColor, resGrad,
       this._resGlobeWaveOffset,
       false
@@ -457,7 +508,7 @@ export class HUD {
     const xpY = H - xpBarHeight;
     ctx.fillStyle = '#0a0a12';
     ctx.fillRect(0, xpY, W, xpBarHeight);
-    const xpPct = this._xpToNext > 0 ? Math.max(0, Math.min(1, this._xp / this._xpToNext)) : 0;
+    const xpPct = this._xpToNext > 0 ? Math.max(0, Math.min(1, this._displayXP / this._xpToNext)) : 0;
     if (xpPct > 0) {
       const xpGrad = ctx.createLinearGradient(0, xpY, W * xpPct, xpY);
       xpGrad.addColorStop(0, '#4a0080');
@@ -481,6 +532,26 @@ export class HUD {
 
     // ---- Top-right info area ----
     this._drawInfoPanel(ctx, W, 0);
+
+    // Save indicator toast (top-right area)
+    const saveTimer = state?.saveIndicatorTimer || 0;
+    if (saveTimer > 0) {
+      const fade = saveTimer > 0.3 ? 1 : (saveTimer / 0.3);
+      ctx.save();
+      ctx.globalAlpha = fade * 0.92;
+      ctx.fillStyle = 'rgba(20, 30, 20, 0.85)';
+      ctx.strokeStyle = '#27ae60';
+      ctx.lineWidth = 1.5;
+      const tx = W - 130; const ty = 60;
+      ctx.fillRect(tx, ty, 110, 28);
+      ctx.strokeRect(tx, ty, 110, 28);
+      ctx.fillStyle = '#27ae60';
+      ctx.font = 'bold 13px "Segoe UI", Arial, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('✓ Saved', tx + 55, ty + 14);
+      ctx.restore();
+    }
 
     // ---- Boss HP bar (top-center) ----
     if (this._showBoss && this._bossHP > 0) {
@@ -769,6 +840,26 @@ export class HUD {
         ctx.fillText(Math.ceil(skill.cooldownRemaining), x + size / 2, y + size / 2);
         ctx.shadowBlur = 0;
       }
+
+      // Prominent gold swap arrow (top-right corner) — click to swap skill
+      const arrowSize = Math.max(12, Math.round(size * 0.32));
+      const ax = x + size - arrowSize - 1;
+      const ay = y + 1;
+      ctx.save();
+      ctx.fillStyle = 'rgba(10, 8, 6, 0.75)';
+      ctx.fillRect(ax, ay, arrowSize, arrowSize);
+      ctx.strokeStyle = UI_THEME.gold;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(ax + 0.5, ay + 0.5, arrowSize - 1, arrowSize - 1);
+      ctx.font = `bold ${Math.round(arrowSize * 0.85)}px "Segoe UI", Arial, sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = UI_THEME.goldBright;
+      ctx.shadowColor = 'rgba(201, 168, 76, 0.6)';
+      ctx.shadowBlur = 4;
+      ctx.fillText('\u21C4', ax + arrowSize / 2, ay + arrowSize / 2 + 1);
+      ctx.shadowBlur = 0;
+      ctx.restore();
     }
 
     // Label above slot (LMB / RMB)
@@ -814,8 +905,8 @@ export class HUD {
   // ========================
 
   _drawStatusEffects(ctx, startX, y, now) {
-    const size = 16;
-    const gap = 3;
+    const size = 22;
+    const gap = 4;
 
     const colorMap = {
       poison: '#22cc44',
@@ -825,54 +916,112 @@ export class HUD {
       slowed: '#4488ff',
       weakened: '#8844cc',
     };
-    const charMap = {
-      poison: 'P',
-      burning: 'F',
-      bleeding: 'B',
-      frozen: 'I',
-      slowed: 'S',
-      weakened: 'W',
-    };
+
+    // Buff vs debuff — for now all are debuffs (red border).
+    const debuffTypes = new Set(['poison', 'burning', 'bleeding', 'frozen', 'slowed', 'weakened']);
+
+    const positions = [];
 
     for (let i = 0; i < this._statusEffects.length; i++) {
       const eff = this._statusEffects[i];
       const ex = startX + i * (size + gap);
       const color = eff.color || colorMap[eff.type] || '#aaa';
-      const char = charMap[eff.type] || '?';
-      const remaining = eff.remainingDuration || 0;
+      const icon = (UI_THEME.statusIcons && UI_THEME.statusIcons[eff.type]) || '?';
+      const remaining = eff.remainingDuration || eff.remaining || eff.duration || 0;
+      const isDebuff = debuffTypes.has(eff.type);
 
       // Pulse when almost expired
       let alpha = 1;
-      if (remaining < 1) {
+      if (remaining > 0 && remaining < 1) {
         alpha = 0.4 + 0.6 * Math.abs(Math.sin(now * 8));
       }
 
       ctx.globalAlpha = alpha;
 
-      // Background
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+      // Tinted background (effect color tint over dark base)
+      const [r, g, b] = this._parseColor(color);
+      ctx.fillStyle = 'rgba(10, 8, 6, 0.85)';
+      ctx.fillRect(ex, y, size, size);
+      ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.22)`;
       ctx.fillRect(ex, y, size, size);
 
-      // Color fill
-      ctx.fillStyle = color;
-      ctx.fillRect(ex + 1, y + 1, size - 2, size - 2);
+      // Border — red for debuffs, green for buffs
+      ctx.strokeStyle = isDebuff ? 'rgba(231, 76, 60, 0.85)' : 'rgba(39, 174, 96, 0.85)';
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(ex + 0.5, y + 0.5, size - 1, size - 1);
 
-      // Character
-      ctx.fillStyle = '#fff';
-      ctx.font = `bold 9px "Segoe UI", Arial, sans-serif`;
+      // Emoji icon
+      ctx.font = `16px "Segoe UI Emoji", "Apple Color Emoji", "Segoe UI", Arial, sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(char, ex + size / 2, y + size / 2 - 1);
+      ctx.fillStyle = '#fff';
+      ctx.fillText(icon, ex + size / 2, y + size / 2 + 1);
 
       // Duration below
       if (remaining > 0) {
-        ctx.font = `7px "Segoe UI", Arial, sans-serif`;
+        ctx.font = `bold 9px "Segoe UI", Arial, sans-serif`;
         ctx.textBaseline = 'top';
-        ctx.fillStyle = '#ddd';
-        ctx.fillText(Math.ceil(remaining) + 's', ex + size / 2, y + size + 1);
+        ctx.fillStyle = '#e8d8a0';
+        ctx.shadowColor = '#000';
+        ctx.shadowBlur = 2;
+        ctx.fillText(Math.ceil(remaining) + 's', ex + size / 2, y + size + 2);
+        ctx.shadowBlur = 0;
       }
 
       ctx.globalAlpha = 1;
+
+      positions.push({
+        effect: { type: eff.type, remaining, duration: eff.duration || eff.totalDuration || remaining },
+        x: ex, y, w: size, h: size,
+      });
+    }
+
+    this._updateStatusEffectTooltips(positions);
+  }
+
+  _updateStatusEffectTooltips(positions) {
+    // Ensure we have enough overlay divs
+    while (this._statusEffectTooltipEls.length < positions.length) {
+      const div = document.createElement('div');
+      div.className = 'status-effect-tooltip-target';
+      Object.assign(div.style, {
+        position: 'fixed', pointerEvents: 'auto', background: 'transparent',
+      });
+      document.body.appendChild(div);
+      this._statusEffectTooltipEls.push({ div, lastEffect: null });
+    }
+    // Position divs and (re)attach tooltips
+    const canvas = this.canvas;
+    if (!canvas) return;
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = rect.width / canvas.width;
+    const scaleY = rect.height / canvas.height;
+    for (let i = 0; i < this._statusEffectTooltipEls.length; i++) {
+      const item = this._statusEffectTooltipEls[i];
+      if (i < positions.length) {
+        const p = positions[i];
+        item.div.style.display = 'block';
+        item.div.style.left = `${rect.left + p.x * scaleX}px`;
+        item.div.style.top = `${rect.top + p.y * scaleY}px`;
+        item.div.style.width = `${p.w * scaleX}px`;
+        item.div.style.height = `${p.h * scaleY}px`;
+        // Refresh tooltip handler if effect changed
+        if (item.lastEffect !== p.effect.type) {
+          item.lastEffect = p.effect.type;
+          Tooltip.detach(item.div);
+          const type = p.effect.type;
+          const name = UI_THEME.statusNames[type] || type;
+          const desc = UI_THEME.statusDescriptions[type] || '';
+          Tooltip.attach(item.div, () => {
+            const remaining = Math.ceil(p.effect.remaining || p.effect.duration || 0);
+            return `<div style="color:${UI_THEME.gold};font-weight:bold;margin-bottom:4px">${name}</div>` +
+                   `<div style="color:${UI_THEME.textSecondary};margin-bottom:4px">${desc}</div>` +
+                   `<div style="color:${UI_THEME.textMuted};font-size:11px">Remaining: ${remaining}s</div>`;
+          });
+        }
+      } else {
+        item.div.style.display = 'none';
+      }
     }
   }
 

@@ -20,25 +20,26 @@ Four classes, each with a primary resource, distinct playstyle, and class-restri
 
 | Class | Resource | Regen Model | Fantasy |
 |-------|----------|-------------|---------|
-| **Warrior** | **Rage** | Builds on dealing/taking damage. Basic attack "Slash" generates +10 rage per swing. Decays at -2/sec after 4s out of combat. Starts at 30 on floor entry, max 100. | Melee bruiser, cleave & charge |
+| **Warrior** | **Rage** | Builds on dealing/taking damage. Primary attacks (Bash / Cleave) generate rage per swing. Decays at -2/sec after 4s out of combat. Starts at 30 on floor entry, max 100. | Guardian (defensive) or Berserker (AoE bruiser) |
 | **Mage** | **Mana** | Regenerates over time: 1.5 + (INT * 0.05)/sec. Mana potions restore 30% of max. Base max = 80 + (INT * 2). | Glass cannon, AoE spells |
 | **Archer** | **Stamina** | Regenerates passively: 5 + (AGI * 0.15)/sec. Fast spender/regen cycle. Base max = 80 + (AGI * 1.5). | Kiting, precision, traps |
 | **Necromancer** | **Mana** | Same as Mage. Summoning is the primary mana sink. Base max = 80 + (INT * 2). | Pet army (zombies & skeletons), curses |
 
-### 2.1 Necromancer Pets
-Pets are **persistent summons** — they do NOT occupy action bar slots. Once the player owns a summoning skill, pets are summoned automatically when below max count and off cooldown. The two action bar slots are free for combat skills (Corpse Explosion, Dark Pact, Necrotic Bolt, etc.).
+### 2.1 Necromancer Pets (Bone Lord Spec)
+The Necromancer's **Bone Lord** specialization summons undead via the **Raise Dead** secondary attack (RMB). Pets are **persistent** — they remain until killed or until the player leaves the dungeon floor — but they are NOT auto-summoned. The player actively casts Raise Dead to spawn each pet.
 
-- **Skeleton Warrior**: Melee, moderate HP, auto-summoned. Max count scales with skill level + "Army of the Dead" passive.
-- **Zombie**: Slow, tanky, explodes on death for AoE. Auto-summoned. Max count scales with skill level.
-- Pets persist until killed or player leaves dungeon floor.
-- Pets scale with player INT and summoning skill level.
-- Summoning still costs mana per pet summoned (deducted automatically when a summon triggers).
-- If player lacks mana, summon is delayed until mana is available.
+- **Skeleton Warrior**: Melee, moderate HP. Unlocked by the "Bone Army" tree node. Max count scales with node ranks and the "Army of the Dead" tier-4 keystone.
+- **Zombie**: Slow, tanky, explodes on death for AoE. Unlocked by the "Shambling Horde" tree node. Max count scales with node ranks.
+- **Bone Golem**: Single permanent tank, granted by the **Lich Lord** capstone node.
+- Pets persist until killed or player leaves the dungeon floor.
+- Pets scale with player INT and Bone Lord tree investment.
+- Each Raise Dead cast costs 30 mana (base) and summons one pet of the next available type.
 
-**Pet Summon Behavior:**
-- Summon cooldown per skill (e.g., Skeleton = 3s, Zombie = 5s).
-- When a pet dies and count < max, the cooldown begins automatically.
-- Player can toggle auto-summon on/off per pet type via the Skill Book.
+**Raise Dead Behavior at Max Pet Count:**
+- **Default**: At max count, Raise Dead heals the nearest pet for 30% of its max HP (no new summon, but the cast still costs mana).
+- **With "Dark Pact" node** (Tier 4 Bone Lord): At max count, Raise Dead instead sacrifices the nearest pet for a large AoE explosion (replaces the heal behavior).
+
+The same active-summon pattern is used by the **Archer's Beastmaster** spec via the **Call Beast** secondary attack (RMB), which summons Wolves, Hawks, and Bears unlocked through tree nodes.
 
 ---
 
@@ -63,9 +64,9 @@ Each class has a "primary" attribute that grants bonus damage:
 
 ### 3.3 Leveling
 - XP from killing enemies (scales with enemy level vs player level).
-- Each level grants: **+1 attribute point**, **+1 passive skill point**, small base stat increases.
-- Max player level: **50** (for initial release).
-- **Attribute respec** available at Camp Trainer NPC for gold cost (scales with level).
+- Each level grants: **+1 attribute point**, **+1 skill point** (spent in spec trees, see Section 5), small base stat increases.
+- Max player level: **50** (for initial release). Total at cap: 50 attribute points + 50 skill points.
+- **Attribute respec** and **skill tree respec** both available at the Camp Trainer NPC for gold cost (scales with level). First skill respec is free.
 
 ### 3.4 XP Curve
 XP required to reach next level follows a polynomial curve:
@@ -165,11 +166,11 @@ Minimum 20% duration (status effects always apply for at least a fraction).
 
 ### 4.6 Rage (Warrior Only)
 - Starts at **30** each dungeon floor (enough for one opener skill)
-- **Slash** (basic attack) generates **+10 rage** per swing
-- +5 rage on hitting an enemy with any skill, +3 rage on taking a hit
+- **Bash** (Guardian primary) generates **+10 rage** per swing; **Cleave** (Berserker primary) generates **+8 rage** per swing
+- +5 rage on hitting an enemy with any attack, +3 rage on taking a hit
 - Decays at -2/sec when out of combat for 4 seconds
 - Max 100 rage
-- Skills cost rage (e.g., Shield Charge = 25 rage, Whirlwind = 40 rage)
+- Secondary attacks cost rage (Parry Stance = 25 rage, Whirlwind = 40 rage)
 
 ### 4.7 Mana (Mage & Necromancer)
 - Base mana = 80 + (INT * 2)
@@ -187,142 +188,243 @@ Minimum 20% duration (status effects always apply for at least a fraction).
 
 ## 5. SKILL SYSTEM
 
-### 5.1 Two-Slot Action Bar
-Players equip exactly **2 skills** at a time:
-- **Left-click slot**: Any skill (attack, spell, block, etc.)
-- **Right-click slot**: Any skill
+### 5.1 Specialization Overview
+Every class has **two specializations**, each defined by:
+- A **primary attack** (fast, low/no resource cost)
+- A **secondary attack** (slower, higher impact, resource cost)
+- A **passive skill tree** of ~16 nodes that improves the primary attack, the secondary attack, and grants passive bonuses
 
-A default "Basic Attack" is always available — it is class-appropriate (sword swing, wand bolt, arrow, necrotic bolt) and costs no resource. Players can assign Basic Attack to either slot, or replace both with learned skills.
+There is **no Skill Vendor**. Players do not buy skills with gold. All progression happens in the **Skill Book (K)** by spending **skill points** earned on level up.
 
-**Exception — Necromancer Summons:** Summoning skills (Summon Skeleton, Summon Zombie, Undead Army) are **passive toggles**, not action bar skills. They auto-cast when below max pet count and mana is available. This frees both action bar slots for combat skills.
+**Hybrid is allowed.** A player can spend points across both specializations of their class. All four attacks (both specs' primary + secondary) are unlocked from level 1 and can be assigned to LMB/RMB freely. This enables mixed builds (e.g., a Mage running Flame Bolt LMB + Frost Nova RMB and splitting points between Pyromancer and Cryomancer trees).
 
-### 5.2 Skill Book (UI — Hotkey: K)
-The Skill Book is an inventory-like UI that shows all skills the player has learned:
-- **Active Skills**: Assigned to L/R click slots via drag or click-to-assign
-- **Passive Skills**: Displayed read-only (current ranks and effects). Investment happens at the Trainer NPC only.
-- **Summon Toggles** (Necro): On/off switch per summon type
-- Shows skill level, description, resource cost, cooldown, damage, and next-level preview
+### 5.2 Two-Slot Action Bar
+Players assign exactly **2 attacks** at a time:
+- **Left-click slot**: Any of the 4 attacks available to your class
+- **Right-click slot**: Any of the 4 attacks available to your class
 
-### 5.3 Skill Acquisition
-| Type | How to Get | Leveling |
-|------|-----------|----------|
-| **Active Skills** | Buy from Skill Vendor NPC at camp using gold | Upgrade with gold + requires min player level per tier |
-| **Passive Skills** | Gain 1 passive point per level-up, spend at Trainer NPC | Each passive has max ranks, costs 1 point per rank |
+Both slots can hold the same spec's attacks (pure build) or be mixed across specs (hybrid). The action bar contains nothing else — there is no third slot, no separate ultimate slot. Tree nodes upgrade specific attacks individually, so investment in one tree is wasted if you never assign that spec's attacks to a slot.
 
-### 5.4 Skill Level Requirements
-Active skills have level gates for purchase/upgrade:
+### 5.3 The Eight Specializations
 
-| Skill Tier | Min Player Level | Gold Cost (buy) | Gold Cost (upgrade) |
-|------------|-----------------|-----------------|-------------------|
-| Tier 1 | 1 | 50 | 75 |
-| Tier 2 | 5 | 150 | 200 |
-| Tier 3 | 10 | 400 | 500 |
-| Tier 4 | 20 | 1000 | 1200 |
-| Tier 5 (Ultimate) | 30 | 2500 | 3000 |
+| Class | Spec 1 | Spec 2 |
+|-------|--------|--------|
+| Warrior | **Guardian** — defensive, parry, reflect damage, high survival | **Berserker** — high damage, AoE, fragile, attack-speed scaling |
+| Mage | **Pyromancer** — fire DoTs, AoE, burning spread | **Cryomancer** — single-target nukes, freeze chains, crowd control |
+| Archer | **Marksman** — precision, bleed, multishot, kiting | **Beastmaster** — animal companions, pet army |
+| Necromancer | **Plaguebringer** — disease that spreads target-to-target | **Bone Lord** — undead summons (skeletons, zombies) |
 
-### 5.5 Skill Upgrade Scaling
-Every active skill has **5 upgrade levels**. Each level improves the skill along predictable axes:
+### 5.4 Class Attack Reference
+All four attacks per class are available from level 1. Numbers below are **base values** before any tree investment.
 
-| Upgrade Level | Damage Increase | Cooldown Reduction | Cost Reduction | Bonus Effect |
-|---------------|----------------|-------------------|---------------|--------------|
-| Lv 1 (base) | 100% | 0% | 0% | — |
-| Lv 2 | +20% | -5% | 0% | — |
-| Lv 3 | +45% | -10% | -5% | Minor (e.g., +0.5s duration) |
-| Lv 4 | +75% | -15% | -10% | Moderate (e.g., +1 target) |
-| Lv 5 (max) | +110% | -20% | -15% | Major (e.g., stun, extra hit) |
+**Warrior**
+| Spec | Slot | Attack | Cost | Cooldown | Description |
+|------|------|--------|------|----------|-------------|
+| Guardian | Primary | **Bash** | Generates +10 rage | 0.7s | Heavy single-target swing. |
+| Guardian | Secondary | **Parry Stance** | 25 rage | 6s | Channel for 2s: blocks all frontal damage and reflects 50% back. |
+| Berserker | Primary | **Cleave** | Generates +8 rage | 0.8s | Wide-arc swing, hits all enemies in a frontal cone. |
+| Berserker | Secondary | **Whirlwind** | 40 rage | 6s | Spin in place for 2s, AoE damage to all surrounding enemies. |
 
-Upgrade cost scales with both tier and upgrade level: `upgradeCost = tierBaseUpgradeCost * upgradeLevel`.
-Example: Upgrading a Tier 2 skill from Lv2→3 costs 200 * 3 = 600g. Lv4→5 costs 200 * 5 = 1000g.
-This ensures skill upgrades remain a meaningful gold sink at all stages of the game.
+**Mage**
+| Spec | Slot | Attack | Cost | Cooldown | Description |
+|------|------|--------|------|----------|-------------|
+| Pyromancer | Primary | **Flame Bolt** | 5 mana | 0.6s | Fast projectile, applies Burning DoT. |
+| Pyromancer | Secondary | **Fireball** | 18 mana | 2.0s | Exploding projectile with AoE. |
+| Cryomancer | Primary | **Frost Shard** | 5 mana | 0.6s | Piercing projectile, slows on hit. |
+| Cryomancer | Secondary | **Frost Nova** | 22 mana | 6s | AoE freeze around the player. |
 
-**Example — Fireball (Tier 1, Mage):**
-| Level | Damage | Mana Cost | Cooldown | Bonus |
-|-------|--------|-----------|----------|-------|
-| 1 | 25 | 15 | 2.0s | — |
-| 2 | 30 | 15 | 1.9s | — |
-| 3 | 36 | 14 | 1.8s | +10% explosion radius |
-| 4 | 44 | 14 | 1.7s | Hits +1 extra target |
-| 5 | 53 | 13 | 1.6s | Leaves burning ground (2s) |
+**Archer**
+| Spec | Slot | Attack | Cost | Cooldown | Description |
+|------|------|--------|------|----------|-------------|
+| Marksman | Primary | **Aimed Shot** | 0 stamina | 1.0s | Slow, high-damage single arrow. |
+| Marksman | Secondary | **Multishot** | 18 stamina | 2.5s | 3-arrow spread. |
+| Beastmaster | Primary | **Quick Shot** | 0 stamina | 0.5s | Fast, low-damage arrow. |
+| Beastmaster | Secondary | **Call Beast** | 25 stamina | 4s | Summons next available beast companion. At max count, heals nearest beast for 30% HP. |
 
-### 5.6 Starting Skills Per Class
+**Necromancer**
+| Spec | Slot | Attack | Cost | Cooldown | Description |
+|------|------|--------|------|----------|-------------|
+| Plaguebringer | Primary | **Plague Bolt** | 8 mana | 0.8s | Projectile, applies Plague (8 dmg/s for 6s). |
+| Plaguebringer | Secondary | **Outbreak** | 25 mana | 5s | AoE cloud at target location, infects all enemies inside with Plague. |
+| Bone Lord | Primary | **Bone Spear** | 8 mana | 0.8s | Piercing projectile, passes through enemies. |
+| Bone Lord | Secondary | **Raise Dead** | 30 mana | 4s | Summons next available undead. At max count, behavior depends on tree (heals nearest pet by default; sacrifices nearest pet for AoE if **Dark Pact** is taken). |
 
-**Warrior:**
-| Skill | Type | Tier | Cost | Cooldown | Resource | Description |
-|-------|------|------|------|----------|----------|-------------|
-| Slash | Active | — | Free (default) | 0.7s | Generates +10 rage | Basic melee sweep. Hits in arc. |
-| Shield Block | Active | 1 | 50g | 1.5s | 15 rage | Block incoming damage for 1s. |
-| Shield Charge | Active | 2 | 150g | 4s | 25 rage | Dash forward, deal damage + knockback. |
-| Whirlwind | Active | 3 | 400g | 8s | 40 rage | Spin AoE for 2s. |
-| War Cry | Active | 3 | 400g | 12s | 30 rage | Buff: +20% damage for 5s. |
-| Cleave | Active | 4 | 1000g | 6s | 35 rage | Wide-arc melee hitting all enemies in front. |
-| Earthquake | Active | 5 | 2500g | 20s | 60 rage | Massive AoE stun + damage. |
-| Toughness | Passive | — | Level-up | — | — | +2% damage reduction per rank (max 5) |
-| Bloodlust | Passive | — | Level-up | — | — | +1% lifesteal per rank (max 5) |
-| Fury | Passive | — | Level-up | — | — | +5% rage generation per rank (max 5) |
-| Iron Skin | Passive | — | Level-up | — | — | +3% armor per rank (max 5) |
-| Relentless | Passive | — | Level-up | — | — | +2% attack speed per rank (max 4) |
-| Vitality | Passive | — | Level-up | — | — | +15 max HP per rank (max 5) |
-| Berserker Blood | Passive | — | Level-up | — | — | +3% damage when below 40% HP per rank (max 3) |
+### 5.5 Skill Points & Budget
+- Players gain **1 skill point per level**. Total at max level (50): **50 skill points**.
+- Skill points are spent in the Skill Book on tree nodes.
+- A fully maxed single tree costs **~33 points**; the remaining ~17 can be invested in the off-tree, or saved.
+- **Skill points are separate from attribute points** (1 of each per level).
+- There is no longer a separate "passive points" pool — passives live inside the trees.
 
-**Mage:**
-| Skill | Type | Tier | Cost | Cooldown | Resource | Description |
-|-------|------|------|------|----------|----------|-------------|
-| Wand Bolt | Active | — | Free (default) | 1.0s | 0 mana | Ranged magic projectile. |
-| Fireball | Active | 1 | 50g | 2s | 15 mana | Exploding projectile. AoE. |
-| Frost Nova | Active | 2 | 150g | 6s | 20 mana | AoE freeze around player. |
-| Arcane Blink | Active | 2 | 150g | 5s | 15 mana | Teleport short distance. |
-| Chain Lightning | Active | 3 | 400g | 5s | 25 mana | Bolt bounces between 3 enemies. |
-| Meteor | Active | 4 | 1000g | 15s | 50 mana | Targeted AoE nuke. |
-| Arcane Singularity | Active | 5 | 2500g | 25s | 70 mana | Black hole pulls + damages. |
-| Arcane Potency | Passive | — | Level-up | — | — | +3% spell damage per rank (max 5) |
-| Mana Flow | Passive | — | Level-up | — | — | +0.3 mana regen/s per rank (max 5) |
-| Glass Cannon | Passive | — | Level-up | — | — | +5% damage, -2% max HP per rank (max 3) |
-| Elemental Mastery | Passive | — | Level-up | — | — | +2% elemental effect duration per rank (max 5) |
-| Spell Shield | Passive | — | Level-up | — | — | +3% magic damage reduction per rank (max 4) |
-| Quick Cast | Passive | — | Level-up | — | — | -2% cooldown on all spells per rank (max 5) |
-| Overcharge | Passive | — | Level-up | — | — | +4% crit damage per rank (max 3) |
+**Example budgets:**
+| Build Style | Spec 1 Investment | Spec 2 Investment | Outcome |
+|-------------|------------------|-------------------|---------|
+| Pure focus | ~33 (full clear, capstone) | ~17 (shallow dabble) | Strong identity, light off-spec utility |
+| Heavy hybrid | ~25 | ~25 | Both trees medium-deep, neither capstone reached |
+| Lopsided hybrid | ~30 | ~20 | Capstone in main tree + Tier-4 keystone in off-tree |
 
-**Archer:**
-| Skill | Type | Tier | Cost | Cooldown | Resource | Description |
-|-------|------|------|------|----------|----------|-------------|
-| Shoot | Active | — | Free (default) | 0.5s | 0 stamina | Basic ranged arrow. |
-| Multishot | Active | 1 | 50g | 2s | 15 stamina | Fire 3 arrows in a spread. |
-| Evasive Roll | Active | 2 | 150g | 3s | 25 stamina | Dodge roll with i-frames. |
-| Poison Arrow | Active | 2 | 150g | 4s | 20 stamina | DoT arrow. |
-| Explosive Trap | Active | 3 | 400g | 8s | 30 stamina | Place a trap that detonates when enemies walk over it. |
-| Rain of Arrows | Active | 4 | 1000g | 12s | 40 stamina | Targeted AoE barrage. |
-| Phantom Archer | Active | 5 | 2500g | 20s | 60 stamina | Clone mirrors attacks for 5s. |
-| Steady Aim | Passive | — | Level-up | — | — | +2% crit chance per rank (max 5) |
-| Fleet Foot | Passive | — | Level-up | — | — | +3% movement speed per rank (max 5) |
-| Piercing Shots | Passive | — | Level-up | — | — | +1 pierce per rank (max 3) |
-| Nimble | Passive | — | Level-up | — | — | +2% dodge chance per rank (max 5) |
-| Marksman | Passive | — | Level-up | — | — | +3% ranged damage per rank (max 4) |
-| Stamina Reserve | Passive | — | Level-up | — | — | +10 max stamina per rank (max 3) |
-| Lethal Tempo | Passive | — | Level-up | — | — | Kill grants +5% attack speed for 3s per rank (max 3) |
+### 5.6 Tree Structure
+Each spec tree has **5 tiers**. Higher tiers are **gated by points spent in that specific tree** (not class total). Hybrid players unlock tiers in both trees independently.
 
-**Necromancer:**
-| Skill | Type | Tier | Cost | Cooldown | Resource | Description |
-|-------|------|------|------|----------|----------|-------------|
-| Necrotic Bolt | Active | — | Free (default) | 1.0s | 0 mana | Dark magic projectile. |
-| Bone Spear | Active | 1 | 50g | 1.5s | 15 mana | Piercing projectile, passes through enemies. |
-| Summon Skeleton | Summon Toggle | 1 | 50g | 3s cd | 30 mana/summon | Auto-summon melee skeleton. Max 2 (+passive). |
-| Summon Zombie | Summon Toggle | 2 | 150g | 5s cd | 40 mana/summon | Auto-summon tanky zombie. Max 1 (+passive). |
-| Corpse Explosion | Active | 2 | 150g | 4s | 20 mana | Detonate nearby corpses for AoE. |
-| Dark Pact | Active | 3 | 400g | 8s | 25 mana | Sacrifice a pet for massive AoE. |
-| Curse of Weakness | Active | 4 | 1000g | 10s | 35 mana | AoE debuff: enemies take +25% damage for 4s. |
-| Undead Army | Summon Toggle | 5 | 2500g | 30s cd | 80 mana/cast | Summon 5 skeletons + 3 zombies at once. |
-| Soul Tether | Passive | — | Level-up | — | — | +5% pet HP per rank (max 5) |
-| Dark Harvest | Passive | — | Level-up | — | — | +2% mana on kill per rank (max 5) |
-| Army of the Dead | Passive | — | Level-up | — | — | +1 max pet count per rank (max 3) |
-| Necrotic Aura | Passive | — | Level-up | — | — | Pets deal +3% damage per rank (max 5) |
-| Life Tap | Passive | — | Level-up | — | — | +1% lifesteal from pet damage per rank (max 4) |
-| Bone Barrier | Passive | — | Level-up | — | — | +2% damage reduction per active pet per rank (max 3) |
-| Corpse Mastery | Passive | — | Level-up | — | — | Corpses last +2s longer, +10% corpse explosion damage per rank (max 3) |
+| Tier | Gate (points in this tree) | Layout |
+|------|---------------------------|--------|
+| Tier 1 | 0 | 3 ranked nodes (5 ranks each, 1 point per rank). Stat boosters and starter modifiers. |
+| Tier 2 | 3 | 3 ranked nodes (3 ranks each). Stronger modifiers. |
+| Tier 3 | 8 | 2 mutually-exclusive choice nodes (3 ranks each). Player picks one branch. |
+| Tier 4 | 15 | 2 single-rank "keystone" nodes. Gameplay-changing effects. |
+| Tier 5 | 20 | 1 capstone node (single rank). Spec-defining ultimate. |
 
-**Passive Point Budget:**
-- Each class has 7 passives with a combined max investment of ~30 points
-- 50 levels = 50 passive points → player can max ~5 of 7 passives, forcing meaningful choices
-- Respec at Trainer NPC for gold (cost = player level * 20g)
+- **Total nodes per tree:** ~16
+- **Total points to fully clear one tree:** ~33
+- A hybrid player with 18 points in each tree has unlocked Tier 4 in both, but neither capstone.
+
+### 5.7 Tree Node Reference
+Numbers below are starting values; expect tuning during balance. Each node lists its rank count and per-rank effect.
+
+#### Warrior — Guardian
+| Tier | Node | Ranks | Per-Rank Effect |
+|------|------|-------|-----------------|
+| 1 | Iron Hide | 5 | +3% armor |
+| 1 | Stalwart | 5 | +15 max HP |
+| 1 | Heavy Hands | 5 | Bash damage +8% |
+| 2 | Reinforced Stance | 3 | Parry Stance duration +0.4s |
+| 2 | Spiked Plating | 3 | Reflect damage +10% |
+| 2 | Counterattack | 3 | After a successful parry, next Bash deals +30% damage |
+| 3a | Hold the Line | 3 | -8% damage taken while moving < 50% speed |
+| 3b | Vigilant | 3 | Parry Stance cooldown -0.6s |
+| 4 | Taunting Strike | 1 | Bash forces nearby enemies to attack you for 3s |
+| 4 | Last Stand | 1 | Below 30% HP, take 25% less damage |
+| 5 | **CAPSTONE — Aegis** | 1 | Once per fight, when reduced below 20% HP, become invulnerable for 3s and reflect 100% damage taken back at attackers |
+
+#### Warrior — Berserker
+| Tier | Node | Ranks | Per-Rank Effect |
+|------|------|-------|-----------------|
+| 1 | Brutal Edge | 5 | Cleave damage +10% |
+| 1 | Whirling Steel | 5 | Whirlwind damage +10% |
+| 1 | Bloodthirst | 5 | +1% lifesteal |
+| 2 | Frenzy | 3 | +4% attack speed per enemy hit in last 3s (max 5 stacks) |
+| 2 | Wide Arc | 3 | Cleave hits 15% wider |
+| 2 | Tornado | 3 | Whirlwind moves with you, +0.3s duration |
+| 3a | Reckless | 3 | +12% damage, -5% damage reduction |
+| 3b | Endless Carnage | 3 | Kills during Whirlwind extend its duration by 0.5s |
+| 4 | Unstoppable | 1 | Immune to slow and root |
+| 4 | Crimson Surge | 1 | Killing an enemy heals 5% max HP |
+| 5 | **CAPSTONE — Endless Rage** | 1 | While Whirlwind is active, kills refresh its full duration. Effectively no max duration if you keep killing. |
+
+#### Mage — Pyromancer
+| Tier | Node | Ranks | Per-Rank Effect |
+|------|------|-------|-----------------|
+| 1 | Burning Soul | 5 | Burning DoT +15% |
+| 1 | Kindling | 5 | Flame Bolt damage +10% |
+| 1 | Hot Hands | 5 | Pyromancer skills cost -1 mana (min 1) |
+| 2 | Wildfire | 3 | Burning has 10% chance per tick to spread to nearest enemy |
+| 2 | Conflagration | 3 | Fireball leaves a +1s burning patch on impact |
+| 2 | Heat Wave | 3 | -7% damage taken from burning enemies |
+| 3a | Inferno | 3 | Fireball radius +15% |
+| 3b | Meteor | 3 | Fireball is replaced by a falling Meteor: slower travel, +damage, +radius |
+| 4 | Combustion | 1 | Killing a burning enemy triggers a small fire nova |
+| 4 | Eternal Flame | 1 | Burning duration +50% |
+| 5 | **CAPSTONE — Phoenix** | 1 | On killing blow, ignite into a fire nova dealing 200% spell damage in a large radius. 8s internal cooldown. |
+
+#### Mage — Cryomancer
+| Tier | Node | Ranks | Per-Rank Effect |
+|------|------|-------|-----------------|
+| 1 | Frostbite | 5 | Frost Shard damage +10% |
+| 1 | Glacial Will | 5 | +20 max mana |
+| 1 | Cold Edge | 5 | +2% crit chance vs. slowed/frozen enemies |
+| 2 | Deep Freeze | 3 | Freeze duration +0.4s |
+| 2 | Shatter | 3 | +25% crit damage vs. frozen enemies |
+| 2 | Ice Lance | 3 | Frost Shard +15% damage to slowed targets |
+| 3a | Cryostasis | 3 | Frost Nova radius +12% |
+| 3b | Ice Spear | 3 | Frost Nova fires a piercing ice spear in your facing direction |
+| 4 | Arcane Blink | 1 | Out-of-combat right-click blinks 200px (3s cooldown) — utility, doesn't replace your assigned RMB attack in combat |
+| 4 | Permafrost | 1 | Slowed enemies have their slow effect duration doubled |
+| 5 | **CAPSTONE — Absolute Zero** | 1 | Frozen enemies killed by Frost Shard explode in a smaller Frost Nova that can chain freeze nearby enemies |
+
+#### Archer — Marksman
+| Tier | Node | Ranks | Per-Rank Effect |
+|------|------|-------|-----------------|
+| 1 | Sharpshooter | 5 | Aimed Shot damage +8% |
+| 1 | Steady Aim | 5 | +2% crit chance |
+| 1 | Quiver | 5 | +6 max stamina |
+| 2 | Hemorrhage | 3 | Aimed Shot inflicts Bleeding (3 dmg/s for 5s, +1 dmg/rank) |
+| 2 | Hunter's Mark | 3 | Bleeding enemies take +8% damage from all sources |
+| 2 | Volley | 3 | Multishot fires +1 arrow |
+| 3a | Piercing Aim | 3 | Aimed Shot pierces +1 target |
+| 3b | Cripple | 3 | Bleeding enemies are slowed 15% |
+| 4 | Dead Eye | 1 | Aimed Shot deals +100% damage vs. full-HP enemies |
+| 4 | Hail Pattern | 1 | Multishot's spread arc doubles, covering a wider cone |
+| 5 | **CAPSTONE — Phantom Archer** | 1 | When you crit, summon a phantom that mirrors your next 3 attacks for free |
+
+#### Archer — Beastmaster
+| Tier | Node | Ranks | Per-Rank Effect |
+|------|------|-------|-----------------|
+| 1 | Loyal Hound | 5 | Unlocks Wolf companion. +10% wolf damage and HP per rank. Max 1 wolf at rank 1, max 2 at rank 5. |
+| 1 | Pack Leader | 5 | All pets +5% damage |
+| 1 | Tame the Wild | 5 | All pets +6% HP |
+| 2 | Sky Hunter | 3 | Unlocks Hawk companion (ranged attacker, marks targets for +10% damage taken). Max 1. |
+| 2 | Apex Predator | 3 | Unlocks Bear companion (tank, taunts in radius). Max 1. |
+| 2 | Wild Bond | 3 | Pets heal you for +2% of their damage dealt |
+| 3a | Bestial Fury | 3 | Pets gain +4% attack speed |
+| 3b | Hunter's Discipline | 3 | Call Beast cooldown -0.4s |
+| 4 | Beast Within | 1 | +1 max of each beast type unlocked |
+| 4 | Wild Heart | 1 | Pets explode for AoE damage on death |
+| 5 | **CAPSTONE — Spirit Wolf** | 1 | Permanent legendary Spirit Wolf companion (massive damage, persistent across floor transitions, no upkeep cost) |
+
+#### Necromancer — Plaguebringer
+| Tier | Node | Ranks | Per-Rank Effect |
+|------|------|-------|-----------------|
+| 1 | Virulent | 5 | Plague DoT +12% |
+| 1 | Foul Reach | 5 | Plague Bolt range +6% |
+| 1 | Decay | 5 | Plague duration +0.5s |
+| 2 | Contagion | 3 | Plague has 10% chance per tick to spread to nearest uninfected enemy (max 30%) |
+| 2 | Festering Wounds | 3 | Plagued enemies take +6% damage from all sources |
+| 2 | Necrotic Corrosion | 3 | Plague reduces enemy armor by 10% |
+| 3a | Pandemic | 3 | Killing a plagued enemy spreads Plague to all enemies within 100/150/200px |
+| 3b | Acidic Plague | 3 | Plague also slows enemies by 5% |
+| 4 | Outbreak Mastery | 1 | Outbreak radius +30% |
+| 4 | Patient Zero | 1 | Plague never expires on the closest infected enemy in your line of sight |
+| 5 | **CAPSTONE — Death's Echo** | 1 | A plagued enemy that dies releases a Corpse Explosion (large AoE that re-applies Plague to anything it hits) |
+
+#### Necromancer — Bone Lord
+| Tier | Node | Ranks | Per-Rank Effect |
+|------|------|-------|-----------------|
+| 1 | Bone Army | 5 | Unlocks Skeleton Warriors. Max +1 at ranks 1, 3, 5 (max 3 total). +6% pet damage per rank. |
+| 1 | Marrow Edge | 5 | Bone Spear damage +8% |
+| 1 | Soul Tether | 5 | Pet HP +10% |
+| 2 | Shambling Horde | 3 | Unlocks Zombies (slow, tanky, explode on death). Max 1 / 2 / 2 by rank. |
+| 2 | Necrotic Aura | 3 | Pet damage +6% (additive with other pet bonuses) |
+| 2 | Bone Spike | 3 | Bone Spear pierces +1 target |
+| 3a | Reanimator | 3 | Killing an enemy has 8 / 16 / 25% chance to spawn a free skeleton |
+| 3b | Plague Carriers | 3 | Pets apply a small DoT on hit (synergy with Plaguebringer hybrid) |
+| 4 | Army of the Dead | 1 | +1 max of every pet type |
+| 4 | **Dark Pact** | 1 | Modifies Raise Dead: when at max pet count, sacrifices nearest pet for huge AoE explosion (instead of healing) |
+| 5 | **CAPSTONE — Lich Lord** | 1 | All pets become elite undead with +50% HP and +50% damage. Permanently summons one Bone Golem (huge persistent tank). |
+
+### 5.8 Respec
+- **Skill tree respec**: Available at the **Trainer NPC** in camp. Cost = `playerLevel * 25g`. Refunds all spent skill points instantly so the player can re-allocate.
+- **First skill respec is free** (one-time, encourages experimentation in early game).
+- **Attribute respec**: Same Trainer NPC. Cost = `playerLevel * 15g`.
+- Respec does not affect equipped attacks (LMB/RMB assignments are preserved across respec).
+
+### 5.9 Skill Book UI (Hotkey: K)
+The Skill Book is the central screen for all skill management:
+- **Top section — Action Bar**: Two large slots showing currently equipped LMB and RMB attacks. Click a slot to open a picker showing all 4 attacks with descriptions. Drag-and-drop also supported.
+- **Left tab — Spec 1 tree**: Visual tree of nodes with tier gates. Click a node to spend a point. Hover for full description and per-rank preview.
+- **Right tab — Spec 2 tree**: Same layout for the other specialization.
+- **Footer**: Skill points remaining, total invested per tree, "Respec at Trainer" hint.
+
+There is no separate "passive skills" panel — all passives live inside the trees.
+
+### 5.10 Removed / Replaced Mechanics
+The following systems from earlier drafts no longer exist:
+- **Skill Vendor NPC** (gold-cost skill purchases) — replaced by free, point-based tree progression in the Skill Book
+- **Tier-gated active skill list** (Tiers 1–5 with gold costs and player-level requirements) — replaced by 4 attacks per class unlocked at level 1
+- **Free Basic Attack** (Slash, Wand Bolt, Shoot, Necrotic Bolt as separate "default" skills) — folded into the spec primary attacks (Bash, Cleave, Flame Bolt, Frost Shard, Aimed Shot, Quick Shot, Plague Bolt, Bone Spear)
+- **Separate "passive points" pool** — merged into unified skill points (1 per level)
+- **Necromancer auto-summon toggles** — replaced by the **Raise Dead** secondary attack (RMB), which is actively cast
+- **Standalone tier-3+ active skills** (Whirlwind, Meteor, Phantom Archer, Corpse Explosion, Dark Pact, Earthquake, Cleave-as-active, Curse of Weakness, etc.) — folded into tree nodes that modify primary or secondary attacks, or repurposed as capstones
+- **5-level skill upgrade system** (Lv1–5 per skill with gold upgrade cost) — replaced by node ranks within the trees
 
 ---
 
@@ -337,6 +439,15 @@ This ensures skill upgrades remain a meaningful gold sink at all stages of the g
 | **Legs** | Greaves, Leggings, Pants |
 | **Belt** | Sash, War Belt, Leather Belt |
 | **Boots** | Plate Boots, Sandals, Leather Boots |
+
+### 6.1.1 Weapon Requirements & Starter Gear
+- **All four spec attacks require a matching weapon equipped in main hand**:
+  - Warrior (`Bash`, `Parry Stance`, `Cleave`, `Whirlwind`) requires **sword / axe / dagger**
+  - Mage (`Flame Bolt`, `Fireball`, `Frost Shard`, `Frost Nova`) requires **wand / staff**
+  - Archer (`Aimed Shot`, `Multishot`, `Quick Shot`, `Call Beast`) requires **bow / crossbow**
+  - Necromancer (`Plague Bolt`, `Outbreak`, `Bone Spear`, `Raise Dead`) requires **wand / staff**
+- Without a matching weapon, attacks will not fire and a "No weapon equipped!" message displays.
+- **Every new character starts with a low-quality (Common) main-hand weapon** matching their class, generated at iLvl 1. This is given automatically on first character creation if `equipment.mainHand` is null.
 
 ### 6.2 Rarity Tiers
 | Rarity | Color | Affix Count | Drop Weight |
@@ -568,28 +679,60 @@ Treasure rooms have **higher trap density** (+50%) as a risk/reward tradeoff for
 
 ## 8. POTIONS & CONSUMABLES
 
-### 8.1 Potion Types
-| Potion | Effect | Cooldown | Stack Size | Buy Price | Grid Size |
+### 8.1 Potion & Scroll Types
+| Item | Effect | Cooldown | Stack Size | Buy Price | Grid Size |
 |--------|--------|----------|-----------|-----------|-----------|
 | **HP Potion** | Restore 30% of max HP | 3s (shared) | 5 | See pricing table | 1x1 |
 | **Mana Potion** | Restore 30% of max mana | 3s (shared) | 5 | See pricing table | 1x1 |
 | **Stamina Tonic** | Instant full stamina refill | 5s (own cd) | 3 | See pricing table | 1x1 |
 | **Rage Tonic** | Instantly gain 50 rage | 5s (own cd) | 3 | See pricing table | 1x1 |
+| **Scroll of Teleportation** | Open a return portal to camp | 1s | 5 | 4× tonic price | 1x1 |
 
 **Potion pricing by player level bracket:**
-| Player Level | HP/Mana Potion | Stamina/Rage Tonic |
-|-------------|---------------|-------------------|
-| 1–10 | 10g | 15g |
-| 11–20 | 25g | 35g |
-| 21–35 | 50g | 65g |
-| 36–50 | 80g | 100g |
+| Player Level | HP/Mana Potion | Stamina/Rage Tonic | Scroll of Teleport |
+|-------------|---------------|-------------------|-------------------|
+| 1–10 | 10g | 15g | 60g |
+| 11–20 | 25g | 35g | 140g |
+| 21–35 | 50g | 65g | 260g |
+| 36–50 | 80g | 100g | 400g |
 
 ### 8.2 Potion Rules
 - **Shared cooldown**: HP and Mana potions share a 3-second cooldown (can't chug both instantly).
 - **Class-appropriate potions**: Mana potions only usable by Mage/Necro. Stamina Tonics only by Archer. Rage Tonics only by Warrior.
-- **Hotbar**: Slots 1–4 for quick-use consumables.
+- **Stacking**: All consumables stack to their `maxStack` value (HP/Mana 5, tonics 3, scrolls 5). Same-type items merge into existing stacks via `inventory.addItem()`.
+- **Hotbar**: Slots 1–4 for quick-use consumables. Drag from inventory to assign.
 - **Sources**: Buy from Item Vendor, drop from enemies (low chance), found in treasure chests.
 - Potions occupy inventory grid space (1x1 each, stacks shown as count overlay).
+
+### 8.3 Scroll of Teleportation
+A powerful consumable that creates a two-way portal between the dungeon and camp.
+
+**Use flow:**
+1. **In dungeon**: Player uses scroll from hotbar (or assigned slot 1-4)
+2. A swirling purple **portal** spawns at the player's current dungeon position
+3. Player is instantly teleported to camp
+4. A matching **return portal** appears in camp near the campfire
+5. Player can shop, train, repair, etc. in camp as normal — dungeon state (room progress, enemies, loot, traps) is fully preserved
+6. **To return**: Walk to the camp return portal and press **E**
+7. Player teleports back to the exact dungeon position; both portals vanish (one scroll = one round trip)
+
+**Rules:**
+- Can only be used while in a dungeon (no-op in camp or menus)
+- Dungeon state is stashed in `_savedDungeonState` and fully restored on return
+- The scroll is consumed when used (decreases stack count by 1)
+- Round-trip mechanic: each scroll = one camp visit + one return; using a second scroll mid-portal creates a new portal pair
+- Visual: Pulsing purple radial gradient with spinning ring and white center sparkle
+- Audio: `waystoneTravel` sound on both teleport and return
+
+**Why use it:**
+- Stash loot mid-dungeon without losing room progress
+- Buy more potions/scrolls before a tough boss
+- Train new skills/passives between rooms
+- Heal at the campfire when health potions run out
+
+**Sources:**
+- Item Vendor (4× tonic price — premium item)
+- Optional rare drop from treasure chests (future)
 
 ---
 
@@ -657,14 +800,11 @@ When hovering an inventory item, show side-by-side comparison with currently equ
 
 **Sell formula:** `sellValue = baseSellForRarity * (0.5 + 0.5 * (iLvl / 50))`
 
-### 10.3 Skill Vendor (Camp NPC — Trainer)
-- Shows all class skills available at your level
-- Locked skills shown grayed out with level requirement
-- Buy new active skills with gold
-- Upgrade existing skills with gold (requires min player level per tier)
-- Spend passive skill points on passives (no gold cost for passives)
-- Reset passive points for gold (cost = player level * 20g)
-- Reset attribute points for gold (cost = player level * 15g)
+### 10.3 Trainer (Camp NPC — Respec Only)
+The Trainer no longer sells or upgrades skills. All skill progression happens in the Skill Book (K) by spending skill points earned at level-up. The Trainer's only function is **respec**:
+- **Reset skill tree** (refund all skill points): cost = `playerLevel * 25g`. **First respec is free.**
+- **Reset attribute points**: cost = `playerLevel * 15g`.
+- The Trainer NPC may also display a read-only summary of the player's current spec investment for convenience.
 
 ---
 
@@ -673,7 +813,7 @@ When hovering an inventory item, show side-by-side comparison with currently equ
 ### 11.1 NPCs
 | NPC | Function | Icon |
 |-----|----------|------|
-| **Trainer / Skill Vendor** | Buy/upgrade active skills, spend passive points, respec attributes/passives | ⚔ |
+| **Trainer** | Respec skill tree (first free, then gold) and attribute points (gold). No skill purchases — all progression happens in the Skill Book. | ⚔ |
 | **Item Vendor** | Buy/sell equipment, buy potions, sell junk | 🛒 |
 | **Waystone** | Travel to discovered dungeon floors, enter dungeon | 🔵 |
 | **Campfire** | Full HP/resource restore (approach to heal) | 🔥 |
@@ -707,7 +847,7 @@ When hovering an inventory item, show side-by-side comparison with currently equ
 - **Inventory + Equipment** (I): Left side = equipment doll (6 slots), right side = 10x6 grid. Item tooltips with comparison.
 - **Character** (C): Attributes with [+] buttons, full stat breakdown.
 - **Skill Book** (K): Active skills, passive ranks, summon toggles (Necro), current LMB/RMB loadout.
-- **Skill Vendor**: Buy/upgrade actives, spend passive points, respec.
+- **Trainer**: Respec skill tree (first free, then gold) and attribute points (gold). No skill purchases.
 - **Item Vendor**: Buy/sell split view, bulk sell junk.
 - **Waystone Travel**: Floor list with states (Cleared/In Progress/Discovered/Locked).
 - Panels overlay the game (dimmed background). Only one panel open at a time. ESC closes.
@@ -742,11 +882,13 @@ When hovering an inventory item, show side-by-side comparison with currently equ
     "attributes": { "str": 8, "int": 3, "agi": 5, "sta": 6 },
     "attributePointsAvailable": 0,
     "gold": 342,
-    "activeSkills": { "leftClick": "slash", "rightClick": "shield_charge" },
-    "learnedSkills": { "slash": 3, "shield_charge": 2, "whirlwind": 1 },
-    "passiveSkills": { "toughness": 3, "bloodlust": 2 },
-    "passivePointsAvailable": 1,
-    "summonToggles": {}
+    "equippedAttacks": { "leftClick": "warrior_guardian_bash", "rightClick": "warrior_berserker_whirlwind" },
+    "skillTree": {
+      "warrior_guardian": { "iron_hide": 3, "heavy_hands": 5, "counterattack": 2 },
+      "warrior_berserker": { "whirling_steel": 5, "tornado": 3, "endless_carnage": 1 }
+    },
+    "skillPointsAvailable": 1,
+    "freeRespecUsed": false
   },
   "equipment": {
     "mainHand": null,
@@ -790,12 +932,13 @@ When hovering an inventory item, show side-by-side comparison with currently equ
 2. **Resource System**: HP + Rage/Mana/Stamina per class, regen logic, resource bar rendering
 3. **HUD Overhaul**: HP bar + resource bar, level display, gold counter, action bar slots
 
-### Phase 2 — Skill System
-4. **Skill Data**: Define all skills per class in JSON (active + passive + summon toggles)
-5. **Two-Slot Action Bar**: Left/right click skill assignment, basic attack fallback, skill execution with resource costs and cooldowns
-6. **Skill Book UI**: View learned skills, assign to slots, toggle summons
-7. **Skill Vendor NPC**: Buy/upgrade actives, spend passive points, respec (attributes + passives)
-8. **Skill Upgrade Scaling**: Per-level damage/cooldown/cost/bonus progression
+### Phase 2 — Skill System (Spec Trees)
+4. **Spec & Attack Data**: Define all 8 specs in JSON — for each spec, primary attack, secondary attack, and tree node list with rank counts and effects
+5. **Two-Slot Action Bar**: LMB/RMB attack assignment from the 4 class attacks (all unlocked at level 1), execution with resource costs and cooldowns
+6. **Skill Tree System**: Tier-gated nodes (gates check points spent in same tree), ranked nodes, point spend/refund, capstone unlock at 20+ points
+7. **Skill Book UI**: Action bar slots at top, two spec tree tabs below, hover tooltips with per-rank previews, skill points remaining indicator
+8. **Trainer NPC (Respec)**: Skill tree respec (first free, then `level * 25g`), attribute respec (`level * 15g`)
+9. **Tree Node Effect Engine**: Generic system to apply node effects to specific attacks (damage modifiers, behavior modifiers like "Fireball leaves burning patch", capstone hooks)
 
 ### Phase 3 — Items & Inventory
 9. **Item Data Model**: Item generation with rarity, affixes, iLvl, grid size, class restrictions
@@ -828,10 +971,10 @@ When hovering an inventory item, show side-by-side comparison with currently equ
 
 | File | Changes |
 |------|---------|
-| `classes.json` | Add resource type, base resource stats, base attributes, starting skill IDs |
-| `skillTrees.json` | **Replace entirely** with `skills.json` (active + passive + summon per class, with upgrade scaling) |
+| `classes.json` | Add resource type, base resource stats, base attributes, the 4 attack IDs available to the class (2 per spec) |
+| `skills.json` | **Restructure entirely** around the 8 specializations. Schema: `{ warrior: { guardian: { primary: {...}, secondary: {...}, tree: [nodes] }, berserker: {...} }, mage: {...}, ... }`. Each tree node has `id`, `tier` (1-5), `maxRank`, `effect` descriptor, and optional `mutuallyExclusiveWith` for tier-3 choice nodes. |
 | `levels.json` | **Replace** with `floors.json` (10 floors, level reqs, enemy level ranges, boss defs, theme) |
-| `camp.json` | Rename Trainer → Skill Vendor, add interaction types per NPC |
+| `camp.json` | Trainer NPC: respec-only role (skill tree + attributes), no skill purchases |
 | **NEW** `items.json` | Item base types, affix pools, rarity weights, class restrictions, grid sizes |
 | **NEW** `lootTables.json` | Per-floor drop tables, boss chest tables, treasure chest tables |
 | **NEW** `potions.json` | Potion definitions (type, effect, cooldown, stack size, price) |

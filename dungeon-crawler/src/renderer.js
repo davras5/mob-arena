@@ -260,6 +260,50 @@ export class Renderer {
         ctx.font = 'bold 11px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('Way Stone', sx, sy + (obs.radius || 20) + 14);
+      } else if (obs.type === 'teleport_portal') {
+        // Swirling purple/blue portal with ring
+        ctx.save();
+        const t = Date.now() / 1000;
+        const radius = obs.radius || 28;
+        // Outer glow
+        ctx.globalAlpha = 0.5 + Math.sin(t * 4) * 0.2;
+        const portalGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, radius);
+        portalGrad.addColorStop(0, '#d6a8ff');
+        portalGrad.addColorStop(0.4, '#9b59b6');
+        portalGrad.addColorStop(0.8, '#5a2880');
+        portalGrad.addColorStop(1, 'rgba(155, 89, 182, 0)');
+        ctx.fillStyle = portalGrad;
+        ctx.beginPath();
+        ctx.arc(sx, sy, radius, 0, Math.PI * 2);
+        ctx.fill();
+        // Inner spinning ring
+        ctx.globalAlpha = 0.85;
+        ctx.strokeStyle = '#e8d3ff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) {
+          const a1 = t * 3 + i * Math.PI / 4;
+          const r1 = radius * 0.6;
+          const x1 = sx + Math.cos(a1) * r1;
+          const y1 = sy + Math.sin(a1) * r1;
+          if (i === 0) ctx.moveTo(x1, y1);
+          else ctx.lineTo(x1, y1);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        // Center sparkle
+        ctx.globalAlpha = 0.9;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(sx, sy, 3 + Math.sin(t * 6) * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        // Label
+        ctx.fillStyle = '#d6a8ff';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        const label = obs._isReturnPortal ? 'Return Portal' : 'Portal';
+        ctx.fillText(label, sx, sy + radius + 14);
       }
     }
   }
@@ -583,10 +627,11 @@ export class Renderer {
 
   drawMinimap(player, enemies, boss, blessings) {
     const ctx = this.ctx;
-    const size = 140;
-    const padding = 10;
-    const mx = padding;
-    const my = this.canvas.height - size - padding;
+    const size = 160;
+    const padding = 12;
+    // Top-right corner — bottom of screen is the HUD action bar.
+    const mx = this.canvas.width - size - padding;
+    const my = padding;
     const scale = size / this.mapWidth;
 
     ctx.save();
@@ -1008,6 +1053,22 @@ export class Renderer {
       ctx.textBaseline = 'alphabetic';
       ctx.fillText(npc.name, sx, sy - npc.radius - 10);
 
+      // Role subtitle (always visible)
+      const roleMap = {
+        trainer: 'Skills',
+        skill_vendor: 'Skills',
+        vendor: 'Items',
+        item_vendor: 'Items',
+        waystone: 'Travel',
+      };
+      const role = roleMap[npc.type];
+      if (role) {
+        ctx.font = '10px sans-serif';
+        ctx.fillStyle = 'rgba(180, 170, 140, 0.6)';
+        ctx.textAlign = 'center';
+        ctx.fillText(role, sx, sy - npc.radius - 22);
+      }
+
       // Interact prompt for nearest NPC
       if (npc === nearestNPC) {
         ctx.font = 'bold 11px sans-serif';
@@ -1145,10 +1206,11 @@ export class Renderer {
 
   drawDungeonMinimap(player, dungeon, dungeonManager, enemies, boss) {
     const ctx = this.ctx;
-    const size = 160;
-    const padding = 10;
-    const mx = padding;
-    const my = this.canvas.height - size - padding;
+    const size = 180;
+    const padding = 12;
+    // Top-right corner — the bottom of the screen is occupied by the HUD action bar.
+    const mx = this.canvas.width - size - padding;
+    const my = padding;
     const scale = size / Math.max(dungeon.mapWidth, dungeon.mapHeight);
 
     ctx.save();

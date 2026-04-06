@@ -1,0 +1,252 @@
+[
+  {
+    "id": 1,
+    "name": "Dark Cellar",
+    "icon": "🕯️",
+    "description": "The entrance to the dungeon. Damp stone walls and flickering torches.",
+    "playerLevelReq": 1,
+    "enemyLevelRange": [1, 3],
+    "mainBoss": { "type": "stoneguard", "level": 3 },
+    "sideBosses": [],
+    "enemyTypes": ["grunt", "rusher"],
+    "trapDensity": { "room": [1, 2], "corridor": [0, 1] },
+    "trapTypes": ["poison"],
+    "dungeonGrid": { "cols": 6, "rows": 4 },
+    "roomCount": { "combat": 4, "treasure": 1, "shop": 0, "safe": 1 },
+    "theme": {
+      "tilePrimary": "#3a3a2e",
+      "tileSecondary": "#32322a",
+      "tileGrid": "rgba(255,255,255,0.03)",
+      "tileBorder": "#555544",
+      "wallColor": "#4a4a3e",
+      "floorAccent": "#5a5040"
+    }
+  },
+  {
+    "id": 2,
+    "name": "Cursed Crypt",
+    "icon": "⚰️",
+    "description": "Ancient burial chambers haunted by restless spirits.",
+    "playerLevelReq": 3,
+    "enemyLevelRange": [3, 6],
+    "mainBoss": { "type": "voidlord", "level": 6 },
+    "sideBosses": [{ "type": "stoneguard", "level": 5 }],
+    "enemyTypes": ["grunt", "rusher", "brute", "ranged"],
+    "trapDensity": { "room": [1, 2], "corridor": [0, 1] },
+    "trapTypes": ["poison", "fire", "slow"],
+    "dungeonGrid": { "cols": 6, "rows": 4 },
+    "roomCount": { "combat": 5, "treasure": 1, "shop": 1, "safe": 1 },
+    "theme": {
+      "tilePrimary": "#2a2a3a",
+      "tileSecondary": "#222235",
+      "tileGrid": "rgba(150,150,255,0.03)",
+      "tileBorder": "#444466",
+      "wallColor": "#3a3a55",
+      "floorAccent": "#4a4065"
+    }
+  },
+  {
+    "id": 3,
+    "name": "Molten Cavern",
+    "icon": "🌋",
+    "description": "Rivers of lava flow through cracked obsidian tunnels.",
+    "playerLevelReq": 6,
+    "enemyLevelRange": [6, 9],
+    "mainBoss": { "type": "swarmmother", "level": 9 },
+    "sideBosses": [{ "type": "stoneguard", "level": 8 }],
+    "enemyTypes": ["grunt", "rusher", "brute", "splitter"],
+    "trapDensity": { "room": [1, 3], "corridor": [0, 1] },
+    "trapTypes": ["poison", "fire", "spike", "slow"],
+    "dungeonGrid": { "cols": 7, "rows": 5 },
+    "roomCount": { "combat": 5, "treasure": 1, "shop": 1, "safe": 1 },
+    "theme": {
+      "tilePrimary": "#3a2a1a",
+      "tileSecondary": "#352518",
+      "tileGrid": "rgba(255,100,0,0.04)",
+      "tileBorder": "#664422",
+      "wallColor": "#553318",
+      "floorAccent": "#884411"
+    }
+  },
+  {
+    "id": 4,
+    "name": "Frozen Depths",
+    "icon": "❄️",
+    "description": "The temperature plummets. Ice encases the ancient stonework.",
+    "playerLevelReq": 10,
+    "enemyLevelRange": [10, 14],
+    "mainBoss": { "type": "frostlich", "level": 14 },
+    "sideBosses": [{ "type": "voidlord", "level": 12 }],
+    "enemyTypes": ["grunt", "rusher", "brute", "ranged", "shielder"],
+    "trapDensity": { "room": [2, 3], "corridor": [1, 1] },
+    "trapTypes": ["poison", "fire", "spike", "slow", "explosive"],
+    "dungeonGrid": { "cols": 7, "rows": 5 },
+    "roomCount": { "combat": 6, "treasure": 1, "shop": 1, "safe": 1 },
+    "theme": {
+      "tilePrimary": "#2a3a4a",
+      "tileSecondary": "#253545",
+      "tileGrid": "rgba(150,200,255,0.04)",
+      "tileBorder": "#446688",
+      "wallColor": "#3a5570",
+      "floorAccent": "#5588aa"
+    }
+  },
+  {
+    "id": 5,
+    "name": "Blighted Sewers",
+    "icon": "🧪",
+    "description": "Toxic waste festers in abandoned waterways beneath the dungeon.",
+    "playerLevelReq": 14,
+    "enemyLevelRange": [14, 18],
+    "mainBoss": { "type": "plagueking", "level": 18 },
+    "sideBosses": [
+      { "type": "swarmmother", "level": 16 },
+      { "type": "stoneguard", "level": 15 }
+    ],
+    "enemyTypes": ["grunt", "splitter", "necromancer_enemy", "bomber", "burrower"],
+    "trapDensity": { "room": [2, 3], "corridor": [1, 1] },
+    "trapTypes": ["poison", "fire", "spike", "slow", "explosive"],
+    "dungeonGrid": { "cols": 7, "rows": 5 },
+    "roomCount": { "combat": 6, "treasure": 2, "shop": 1, "safe": 1 },
+    "theme": {
+      "tilePrimary": "#2a3a2a",
+      "tileSecondary": "#253525",
+      "tileGrid": "rgba(100,255,100,0.03)",
+      "tileBorder": "#336633",
+      "wallColor": "#2a4a2a",
+      "floorAccent": "#448844"
+    }
+  },
+  {
+    "id": 6,
+    "name": "Bone Spire",
+    "icon": "🦴",
+    "description": "A towering column of fused skeletons, still groaning.",
+    "playerLevelReq": 18,
+    "enemyLevelRange": [18, 23],
+    "mainBoss": { "type": "bone_colossus", "level": 23 },
+    "sideBosses": [
+      { "type": "voidlord", "level": 21 },
+      { "type": "plagueking", "level": 20 }
+    ],
+    "enemyTypes": ["rusher", "brute", "necromancer_enemy", "shielder", "splitter", "bomber"],
+    "trapDensity": { "room": [2, 4], "corridor": [1, 2] },
+    "trapTypes": ["poison", "fire", "spike", "slow", "explosive", "curse"],
+    "dungeonGrid": { "cols": 7, "rows": 5 },
+    "roomCount": { "combat": 7, "treasure": 2, "shop": 1, "safe": 1 },
+    "theme": {
+      "tilePrimary": "#3a3530",
+      "tileSecondary": "#35302b",
+      "tileGrid": "rgba(255,240,200,0.03)",
+      "tileBorder": "#665544",
+      "wallColor": "#554433",
+      "floorAccent": "#887766"
+    }
+  },
+  {
+    "id": 7,
+    "name": "Shadow Realm",
+    "icon": "🌑",
+    "description": "Reality bends. Shadows move with purpose and malice.",
+    "playerLevelReq": 23,
+    "enemyLevelRange": [23, 28],
+    "mainBoss": { "type": "voidlord_empowered", "level": 28 },
+    "sideBosses": [
+      { "type": "frostlich", "level": 26 },
+      { "type": "swarmmother", "level": 25 }
+    ],
+    "enemyTypes": ["grunt", "rusher", "brute", "ranged", "burrower", "shielder", "necromancer_enemy"],
+    "trapDensity": { "room": [3, 4], "corridor": [1, 2] },
+    "trapTypes": ["poison", "fire", "spike", "slow", "explosive", "curse"],
+    "dungeonGrid": { "cols": 7, "rows": 5 },
+    "roomCount": { "combat": 7, "treasure": 2, "shop": 1, "safe": 1 },
+    "theme": {
+      "tilePrimary": "#1a1a2a",
+      "tileSecondary": "#151525",
+      "tileGrid": "rgba(120,80,200,0.04)",
+      "tileBorder": "#332255",
+      "wallColor": "#2a1a3a",
+      "floorAccent": "#6633aa"
+    }
+  },
+  {
+    "id": 8,
+    "name": "Sunken Temple",
+    "icon": "🏛️",
+    "description": "A drowned civilization's temple, reclaimed by fire and fury.",
+    "playerLevelReq": 28,
+    "enemyLevelRange": [28, 34],
+    "mainBoss": { "type": "infernalwyrm", "level": 34 },
+    "sideBosses": [
+      { "type": "plagueking", "level": 32 },
+      { "type": "bone_colossus", "level": 30 }
+    ],
+    "enemyTypes": ["grunt", "brute", "ranged", "shielder", "burrower", "splitter", "bomber"],
+    "trapDensity": { "room": [3, 5], "corridor": [1, 2] },
+    "trapTypes": ["poison", "fire", "spike", "slow", "explosive", "curse"],
+    "dungeonGrid": { "cols": 7, "rows": 5 },
+    "roomCount": { "combat": 8, "treasure": 2, "shop": 1, "safe": 1 },
+    "theme": {
+      "tilePrimary": "#2a3535",
+      "tileSecondary": "#253030",
+      "tileGrid": "rgba(100,200,200,0.03)",
+      "tileBorder": "#446666",
+      "wallColor": "#335555",
+      "floorAccent": "#558888"
+    }
+  },
+  {
+    "id": 9,
+    "name": "Ashen Battlefield",
+    "icon": "⚔️",
+    "description": "A scorched warzone where fallen soldiers still fight.",
+    "playerLevelReq": 34,
+    "enemyLevelRange": [34, 42],
+    "mainBoss": { "type": "crimson_general", "level": 42 },
+    "sideBosses": [
+      { "type": "infernalwyrm", "level": 39 },
+      { "type": "voidlord_empowered", "level": 37 },
+      { "type": "frostlich", "level": 36 }
+    ],
+    "enemyTypes": ["grunt", "rusher", "brute", "ranged", "bomber", "necromancer_enemy", "burrower", "shielder"],
+    "trapDensity": { "room": [3, 5], "corridor": [1, 2] },
+    "trapTypes": ["poison", "fire", "spike", "slow", "explosive", "curse"],
+    "dungeonGrid": { "cols": 7, "rows": 5 },
+    "roomCount": { "combat": 8, "treasure": 2, "shop": 1, "safe": 2 },
+    "theme": {
+      "tilePrimary": "#3a2a2a",
+      "tileSecondary": "#352525",
+      "tileGrid": "rgba(255,100,100,0.04)",
+      "tileBorder": "#664433",
+      "wallColor": "#553322",
+      "floorAccent": "#aa4422"
+    }
+  },
+  {
+    "id": 10,
+    "name": "The Hollow",
+    "icon": "💀",
+    "description": "The deepest pit. The Hollow King awaits at the bottom of all things.",
+    "playerLevelReq": 42,
+    "enemyLevelRange": [42, 50],
+    "mainBoss": { "type": "hollow_king", "level": 50 },
+    "sideBosses": [
+      { "type": "crimson_general", "level": 48 },
+      { "type": "infernalwyrm", "level": 46 },
+      { "type": "bone_colossus", "level": 45 }
+    ],
+    "enemyTypes": ["grunt", "rusher", "brute", "ranged", "splitter", "necromancer_enemy", "burrower", "shielder", "bomber"],
+    "trapDensity": { "room": [3, 5], "corridor": [1, 2] },
+    "trapTypes": ["poison", "fire", "spike", "slow", "explosive", "curse"],
+    "dungeonGrid": { "cols": 7, "rows": 5 },
+    "roomCount": { "combat": 9, "treasure": 2, "shop": 1, "safe": 2 },
+    "theme": {
+      "tilePrimary": "#1a1a1a",
+      "tileSecondary": "#151515",
+      "tileGrid": "rgba(200,200,200,0.02)",
+      "tileBorder": "#333333",
+      "wallColor": "#2a2a2a",
+      "floorAccent": "#444444"
+    }
+  }
+]

@@ -1,0 +1,62 @@
+[
+  {
+    "id": "dark_forest",
+    "name": "Dark Forest",
+    "floors": [1, 5],
+    "tilePrimary": "#1a2a1a",
+    "tileSecondary": "#1e2e1e",
+    "tileGrid": "#253525",
+    "borderColor": "#3a5a3a",
+    "enemyTypes": ["grunt", "rusher"],
+    "bosses": ["stoneguard"],
+    "milestoneBoss": "stoneguard"
+  },
+  {
+    "id": "cursed_crypt",
+    "name": "Cursed Crypt",
+    "floors": [6, 10],
+    "tilePrimary": "#1a1a22",
+    "tileSecondary": "#1e1e28",
+    "tileGrid": "#2a2a35",
+    "borderColor": "#4a4a6a",
+    "enemyTypes": ["grunt", "rusher", "brute", "ranged"],
+    "bosses": ["voidlord", "stoneguard"],
+    "milestoneBoss": "voidlord"
+  },
+  {
+    "id": "molten_cavern",
+    "name": "Molten Cavern",
+    "floors": [11, 15],
+    "tilePrimary": "#2a1a1a",
+    "tileSecondary": "#2e1e1e",
+    "tileGrid": "#3a2525",
+    "borderColor": "#6a3a3a",
+    "enemyTypes": ["grunt", "rusher", "brute", "splitter", "bomber"],
+    "bosses": ["swarmmother", "infernalwyrm"],
+    "milestoneBoss": "infernalwyrm"
+  },
+  {
+    "id": "frozen_wastes",
+    "name": "Frozen Wastes",
+    "floors": [16, 20],
+    "tilePrimary": "#1a1a2a",
+    "tileSecondary": "#1e1e2e",
+    "tileGrid": "#252535",
+    "borderColor": "#4a4a7a",
+    "enemyTypes": ["grunt", "rusher", "brute", "ranged", "burrower", "shielder", "necromancer_enemy"],
+    "bosses": ["frostlich", "plagueking"],
+    "milestoneBoss": "frostlich"
+  },
+  {
+    "id": "shadow_realm",
+    "name": "Shadow Realm",
+    "floors": [21, 25],
+    "tilePrimary": "#150a1a",
+    "tileSecondary": "#1a0e1e",
+    "tileGrid": "#251525",
+    "borderColor": "#5a2a6a",
+    "enemyTypes": ["grunt", "rusher", "brute", "ranged", "splitter", "bomber", "burrower", "shielder", "necromancer_enemy"],
+    "bosses": ["hollow_king", "voidlord", "infernalwyrm"],
+    "milestoneBoss": "hollow_king"
+  }
+]

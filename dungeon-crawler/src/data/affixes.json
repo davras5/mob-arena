@@ -1,0 +1,30 @@
+{
+  "prefixes": [
+    { "id": "sturdy", "name": "Sturdy", "statKey": "maxHPBonus", "min": 5, "max": 50, "slots": ["mainHand", "offHand", "chest", "legs", "belt", "boots"] },
+    { "id": "arcane", "name": "Arcane", "statKey": "maxManaBonus", "min": 3, "max": 30, "slots": ["mainHand", "offHand", "chest", "legs", "belt", "boots"] },
+    { "id": "swift", "name": "Swift", "statKey": "attackSpeedPercent", "min": 0.02, "max": 0.12, "slots": ["mainHand", "offHand", "boots"] },
+    { "id": "deadly", "name": "Deadly", "statKey": "critChanceBonus", "min": 0.01, "max": 0.08, "slots": ["mainHand", "offHand", "belt"] },
+    { "id": "vampiric", "name": "Vampiric", "statKey": "lifestealPercent", "min": 0.005, "max": 0.04, "slots": ["mainHand"] },
+    { "id": "fortified", "name": "Fortified", "statKey": "damageReductionPercent", "min": 0.01, "max": 0.10, "slots": ["chest", "legs", "belt", "boots"] },
+    { "id": "vigorous", "name": "Vigorous", "statKey": "staminaRegenPercent", "min": 0.03, "max": 0.20, "slots": ["chest", "legs", "boots"] },
+    { "id": "enraged", "name": "Enraged", "statKey": "rageGenerationPercent", "min": 0.03, "max": 0.20, "slots": ["mainHand", "chest", "belt"] }
+  ],
+  "suffixes": [
+    { "id": "of_strength", "name": "of Strength", "statKey": "str", "min": 1, "max": 8, "slots": ["mainHand", "offHand", "chest", "legs", "belt", "boots"] },
+    { "id": "of_intellect", "name": "of Intellect", "statKey": "int", "min": 1, "max": 8, "slots": ["mainHand", "offHand", "chest", "legs", "belt", "boots"] },
+    { "id": "of_agility", "name": "of Agility", "statKey": "agi", "min": 1, "max": 8, "slots": ["mainHand", "offHand", "chest", "legs", "belt", "boots"] },
+    { "id": "of_vitality", "name": "of Vitality", "statKey": "sta", "min": 1, "max": 8, "slots": ["mainHand", "offHand", "chest", "legs", "belt", "boots"] },
+    { "id": "of_the_bear", "name": "of the Bear", "statKey": "maxHPBonus", "min": 8, "max": 60, "slots": ["chest", "legs", "belt"] },
+    { "id": "of_haste", "name": "of Haste", "statKey": "moveSpeedPercent", "min": 0.02, "max": 0.15, "slots": ["boots", "legs"] },
+    { "id": "of_the_owl", "name": "of the Owl", "statKey": "manaRegenBonus", "min": 0.2, "max": 1.5, "slots": ["offHand", "chest"] },
+    { "id": "of_thorns", "name": "of Thorns", "statKey": "reflectDamagePercent", "min": 0.01, "max": 0.08, "slots": ["chest", "legs", "offHand"] }
+  ],
+  "rarityRules": {
+    "uncommon": { "affixCount": 1, "rule": "1 prefix OR 1 suffix", "rollRangeMin": 0 },
+    "rare": { "affixCount": 2, "rule": "1 prefix + 1 suffix", "rollRangeMin": 0 },
+    "epic": { "affixCount": 3, "rule": "1-2 prefix + 1-2 suffix", "rollRangeMin": 0.3 },
+    "legendary": { "affixCount": 3, "rule": "same as epic + 1 unique effect", "rollRangeMin": 0.3 }
+  },
+  "scalingFormula": "value = min + (max - min) * (iLvl / 50)",
+  "rollVariance": 0.15
+}

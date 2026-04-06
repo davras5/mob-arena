@@ -1,0 +1,102 @@
+{
+  "warrior": {
+    "id": "warrior",
+    "name": "Warrior",
+    "icon": "⚔",
+    "description": "A melee powerhouse who cleaves through enemies with devastating sweeps.",
+    "color": "#c0392b",
+    "highlightColor": "#e74c3c",
+    "resourceType": "rage",
+    "primaryAttribute": "str",
+    "baseAttributes": { "str": 3, "int": 1, "agi": 1, "sta": 3 },
+    "baseStats": {
+      "radius": 18,
+      "speed": 105,
+      "attackCooldown": 0.7,
+      "damage": 22,
+      "maxHP": 140,
+      "attackRange": 80,
+      "armor": 5
+    },
+    "attackType": "melee",
+    "meleeArc": 90,
+    "knockback": 15,
+    "defaultSkills": { "leftClick": "slash", "rightClick": "slash" },
+    "statBars": { "hp": 5, "damage": 4, "speed": 2, "defense": 5 }
+  },
+  "mage": {
+    "id": "mage",
+    "name": "Mage",
+    "icon": "🔮",
+    "description": "A glass cannon who obliterates groups with explosive arcane magic.",
+    "color": "#8e44ad",
+    "highlightColor": "#9b59b6",
+    "resourceType": "mana",
+    "primaryAttribute": "int",
+    "baseAttributes": { "str": 1, "int": 3, "agi": 2, "sta": 1 },
+    "baseStats": {
+      "radius": 14,
+      "speed": 115,
+      "attackCooldown": 1.0,
+      "damage": 20,
+      "maxHP": 75,
+      "attackRange": 450,
+      "projectileSpeed": 220,
+      "armor": 1
+    },
+    "attackType": "ranged",
+    "defaultSkills": { "leftClick": "wand_bolt", "rightClick": "wand_bolt" },
+    "statBars": { "hp": 2, "damage": 5, "speed": 3, "defense": 1 }
+  },
+  "archer": {
+    "id": "archer",
+    "name": "Archer",
+    "icon": "🏹",
+    "description": "A swift marksman who kites enemies with precise, rapid-fire arrows.",
+    "color": "#27ae60",
+    "highlightColor": "#2ecc71",
+    "resourceType": "stamina",
+    "primaryAttribute": "agi",
+    "baseAttributes": { "str": 1, "int": 1, "agi": 3, "sta": 2 },
+    "baseStats": {
+      "radius": 14,
+      "speed": 140,
+      "attackCooldown": 0.5,
+      "damage": 10,
+      "maxHP": 85,
+      "attackRange": 650,
+      "projectileSpeed": 450,
+      "armor": 2
+    },
+    "attackType": "ranged",
+    "pierce": 1,
+    "firstHitBonus": 0.2,
+    "defaultSkills": { "leftClick": "shoot", "rightClick": "shoot" },
+    "statBars": { "hp": 3, "damage": 3, "speed": 5, "defense": 2 }
+  },
+  "necromancer": {
+    "id": "necromancer",
+    "name": "Necromancer",
+    "icon": "💀",
+    "description": "A dark summoner who commands an army of undead to overwhelm foes.",
+    "color": "#1a5276",
+    "highlightColor": "#2980b9",
+    "resourceType": "mana",
+    "primaryAttribute": "int",
+    "baseAttributes": { "str": 1, "int": 3, "agi": 1, "sta": 2 },
+    "baseStats": {
+      "radius": 15,
+      "speed": 110,
+      "attackCooldown": 1.0,
+      "damage": 12,
+      "maxHP": 90,
+      "attackRange": 400,
+      "projectileSpeed": 250,
+      "armor": 2
+    },
+    "attackType": "ranged",
+    "lifesteal": 0.15,
+    "defaultSkills": { "leftClick": "necrotic_bolt", "rightClick": "necrotic_bolt" },
+    "statBars": { "hp": 3, "damage": 2, "speed": 3, "defense": 2 }
+  }
+}

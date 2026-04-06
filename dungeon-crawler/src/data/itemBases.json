@@ -1,0 +1,40 @@
+{
+  "weapons": {
+    "sword": { "name": "Sword", "slot": "mainHand", "twoHanded": false, "classReq": ["warrior"], "icon": "🗡", "damageMin": 12, "damageMax": 18, "speedMod": 1.0, "gridW": 1, "gridH": 2 },
+    "axe": { "name": "Axe", "slot": "mainHand", "twoHanded": false, "classReq": ["warrior"], "icon": "🪓", "damageMin": 14, "damageMax": 20, "speedMod": 0.85, "gridW": 1, "gridH": 2 },
+    "dagger": { "name": "Dagger", "slot": "mainHand", "twoHanded": false, "classReq": ["warrior", "mage", "archer", "necromancer"], "icon": "🔪", "damageMin": 6, "damageMax": 10, "speedMod": 1.3, "gridW": 1, "gridH": 2 },
+    "staff": { "name": "Staff", "slot": "mainHand", "twoHanded": true, "classReq": ["mage", "necromancer"], "icon": "🪄", "damageMin": 16, "damageMax": 22, "speedMod": 0.8, "gridW": 1, "gridH": 3 },
+    "wand": { "name": "Wand", "slot": "mainHand", "twoHanded": false, "classReq": ["mage", "necromancer"], "icon": "✨", "damageMin": 10, "damageMax": 14, "speedMod": 1.1, "gridW": 1, "gridH": 2 },
+    "bow": { "name": "Bow", "slot": "mainHand", "twoHanded": true, "classReq": ["archer"], "icon": "🏹", "damageMin": 8, "damageMax": 12, "speedMod": 1.0, "gridW": 1, "gridH": 3 },
+    "crossbow": { "name": "Crossbow", "slot": "mainHand", "twoHanded": true, "classReq": ["archer"], "icon": "🎯", "damageMin": 14, "damageMax": 18, "speedMod": 0.7, "gridW": 1, "gridH": 3 }
+  },
+  "offHands": {
+    "shield": { "name": "Shield", "slot": "offHand", "classReq": ["warrior"], "icon": "🛡", "armorMin": 5, "armorMax": 12, "blockChance": 0.15, "gridW": 1, "gridH": 2 },
+    "quiver": { "name": "Quiver", "slot": "offHand", "classReq": ["archer"], "icon": "🏹", "damageMin": 2, "damageMax": 5, "critBonus": 0.02, "gridW": 1, "gridH": 1 },
+    "orb": { "name": "Orb", "slot": "offHand", "classReq": ["mage", "necromancer"], "icon": "🔮", "spellDamageMin": 3, "spellDamageMax": 8, "manaBonus": 10, "gridW": 1, "gridH": 1 },
+    "tome": { "name": "Tome", "slot": "offHand", "classReq": ["mage", "necromancer"], "icon": "📖", "spellDamageMin": 5, "spellDamageMax": 10, "cooldownReduction": 0.03, "gridW": 1, "gridH": 1 }
+  },
+  "armor": {
+    "plate_chest": { "name": "Plate Armor", "slot": "chest", "classReq": ["warrior"], "icon": "🛡", "armorMin": 8, "armorMax": 15, "gridW": 2, "gridH": 2 },
+    "leather_chest": { "name": "Leather Vest", "slot": "chest", "classReq": ["warrior", "archer"], "icon": "👕", "armorMin": 4, "armorMax": 10, "gridW": 2, "gridH": 2 },
+    "robe_chest": { "name": "Robe", "slot": "chest", "classReq": ["mage", "necromancer"], "icon": "👘", "armorMin": 2, "armorMax": 6, "manaBonus": 15, "gridW": 2, "gridH": 2 },
+    "cloth_chest": { "name": "Cloth Tunic", "slot": "chest", "classReq": ["mage", "archer", "necromancer"], "icon": "👕", "armorMin": 1, "armorMax": 4, "gridW": 2, "gridH": 2 },
+    "plate_legs": { "name": "Plate Greaves", "slot": "legs", "classReq": ["warrior"], "icon": "👖", "armorMin": 5, "armorMax": 10, "gridW": 2, "gridH": 2 },
+    "leather_legs": { "name": "Leather Leggings", "slot": "legs", "classReq": ["warrior", "archer"], "icon": "👖", "armorMin": 3, "armorMax": 7, "gridW": 2, "gridH": 2 },
+    "cloth_legs": { "name": "Cloth Pants", "slot": "legs", "classReq": ["mage", "archer", "necromancer"], "icon": "👖", "armorMin": 1, "armorMax": 4, "gridW": 2, "gridH": 2 },
+    "plate_boots": { "name": "Plate Boots", "slot": "boots", "classReq": ["warrior"], "icon": "🥾", "armorMin": 3, "armorMax": 7, "gridW": 1, "gridH": 2 },
+    "leather_boots": { "name": "Leather Boots", "slot": "boots", "classReq": ["warrior", "archer"], "icon": "👢", "armorMin": 2, "armorMax": 5, "gridW": 1, "gridH": 2 },
+    "cloth_boots": { "name": "Sandals", "slot": "boots", "classReq": ["mage", "archer", "necromancer"], "icon": "👡", "armorMin": 1, "armorMax": 3, "moveSpeedBonus": 0.03, "gridW": 1, "gridH": 2 },
+    "war_belt": { "name": "War Belt", "slot": "belt", "classReq": ["warrior"], "icon": "🔗", "armorMin": 2, "armorMax": 5, "gridW": 2, "gridH": 1 },
+    "leather_belt": { "name": "Leather Belt", "slot": "belt", "classReq": ["warrior", "archer"], "icon": "🔗", "armorMin": 1, "armorMax": 3, "gridW": 2, "gridH": 1 },
+    "sash": { "name": "Sash", "slot": "belt", "classReq": ["mage", "archer", "necromancer"], "icon": "🔗", "armorMin": 0, "armorMax": 2, "manaBonus": 8, "gridW": 2, "gridH": 1 }
+  },
+  "junk": {
+    "bone_fragment": { "name": "Bone Fragment", "icon": "🦴", "sellMin": 1, "sellMax": 3, "gridW": 1, "gridH": 1 },
+    "tattered_cloth": { "name": "Tattered Cloth", "icon": "🧵", "sellMin": 1, "sellMax": 2, "gridW": 1, "gridH": 1 },
+    "rusty_gear": { "name": "Rusty Gear", "icon": "⚙️", "sellMin": 2, "sellMax": 5, "gridW": 1, "gridH": 1 },
+    "cracked_gem": { "name": "Cracked Gem", "icon": "💎", "sellMin": 3, "sellMax": 8, "gridW": 1, "gridH": 1 }
+  },
+  "iLvlDamageScaling": "baseDamage * (1 + 0.04 * (iLvl - 1))",
+  "iLvlArmorScaling": "baseArmor * (1 + 0.03 * (iLvl - 1))"
+}

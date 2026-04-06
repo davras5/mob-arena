@@ -1,0 +1,614 @@
+{
+  "warrior": {
+    "actives": [
+      {
+        "id": "slash",
+        "name": "Slash",
+        "icon": "⚔️",
+        "type": "active",
+        "tier": 0,
+        "goldCost": 0,
+        "isDefault": true,
+        "attackType": "melee",
+        "description": "Basic melee sweep. Hits in arc. Generates rage.",
+        "resourceCost": 0,
+        "resourceGeneration": 10,
+        "cooldown": 0.7,
+        "levels": [
+          { "damage": 22, "arc": 90, "range": 80, "knockback": 10 },
+          { "damage": 26, "arc": 95, "range": 85, "knockback": 12 },
+          { "damage": 32, "arc": 100, "range": 85, "knockback": 14 },
+          { "damage": 39, "arc": 110, "range": 90, "knockback": 16 },
+          { "damage": 46, "arc": 120, "range": 90, "knockback": 18, "bonus": "Slash cleaves in 360° at max rage" }
+        ]
+      },
+      {
+        "id": "shield_block",
+        "name": "Shield Block",
+        "icon": "🛡️",
+        "type": "active",
+        "tier": 1,
+        "goldCost": 50,
+        "attackType": "buff",
+        "description": "Block incoming damage for 1s.",
+        "resourceCost": 15,
+        "cooldown": 1.5,
+        "levels": [
+          { "duration": 1.0, "damageReduction": 0.6 },
+          { "duration": 1.1, "damageReduction": 0.65 },
+          { "duration": 1.2, "damageReduction": 0.7, "bonus": "Reflects 10% damage" },
+          { "duration": 1.3, "damageReduction": 0.75, "bonus": "Reflects 15% damage" },
+          { "duration": 1.5, "damageReduction": 0.8, "bonus": "Reflects 20% damage, stuns attackers 0.5s" }
+        ]
+      },
+      {
+        "id": "shield_charge",
+        "name": "Shield Charge",
+        "icon": "💨",
+        "type": "active",
+        "tier": 2,
+        "goldCost": 150,
+        "attackType": "dash",
+        "description": "Dash forward, deal damage + knockback.",
+        "resourceCost": 25,
+        "cooldown": 4.0,
+        "levels": [
+          { "damage": 30, "distance": 150, "knockback": 40 },
+          { "damage": 36, "distance": 160, "knockback": 45 },
+          { "damage": 44, "distance": 170, "knockback": 50, "bonus": "+0.3s stun" },
+          { "damage": 53, "distance": 180, "knockback": 55, "bonus": "+0.5s stun" },
+          { "damage": 63, "distance": 200, "knockback": 60, "bonus": "+0.8s stun, leaves fire trail" }
+        ]
+      },
+      {
+        "id": "whirlwind",
+        "name": "Whirlwind",
+        "icon": "🌀",
+        "type": "active",
+        "tier": 3,
+        "goldCost": 400,
+        "attackType": "channel",
+        "description": "Spin AoE for 2s.",
+        "resourceCost": 40,
+        "cooldown": 8.0,
+        "levels": [
+          { "dps": 15, "duration": 2.0, "radius": 70 },
+          { "dps": 18, "duration": 2.1, "radius": 75 },
+          { "dps": 22, "duration": 2.2, "radius": 80, "bonus": "Pulls enemies toward you" },
+          { "dps": 26, "duration": 2.4, "radius": 85, "bonus": "Pulls + slows 20%" },
+          { "dps": 32, "duration": 2.6, "radius": 95, "bonus": "Pulls + slows 30% + 0.3s stun on end" }
+        ]
+      },
+      {
+        "id": "war_cry",
+        "name": "War Cry",
+        "icon": "📢",
+        "type": "active",
+        "tier": 3,
+        "goldCost": 400,
+        "attackType": "buff",
+        "description": "Buff: damage boost for 5s.",
+        "resourceCost": 30,
+        "cooldown": 12.0,
+        "levels": [
+          { "damageBuff": 0.20, "duration": 5.0 },
+          { "damageBuff": 0.24, "duration": 5.5 },
+          { "damageBuff": 0.28, "duration": 6.0, "bonus": "+10% attack speed" },
+          { "damageBuff": 0.33, "duration": 6.5, "bonus": "+15% attack speed" },
+          { "damageBuff": 0.40, "duration": 7.0, "bonus": "+20% attack speed" }
+        ]
+      },
+      {
+        "id": "cleave",
+        "name": "Cleave",
+        "icon": "🪓",
+        "type": "active",
+        "tier": 4,
+        "goldCost": 1000,
+        "attackType": "melee",
+        "description": "Wide-arc melee hitting all enemies in front.",
+        "resourceCost": 35,
+        "cooldown": 6.0,
+        "levels": [
+          { "damage": 40, "arc": 160, "range": 100 },
+          { "damage": 48, "arc": 170, "range": 105 },
+          { "damage": 58, "arc": 180, "range": 110, "bonus": "Enemies bleed for 3s" },
+          { "damage": 70, "arc": 200, "range": 115, "bonus": "Bleed + shockwave at edge" },
+          { "damage": 84, "arc": 220, "range": 120, "bonus": "Bleed + shockwave + 0.5s stun" }
+        ]
+      },
+      {
+        "id": "earthquake",
+        "name": "Earthquake",
+        "icon": "💥",
+        "type": "active",
+        "tier": 5,
+        "goldCost": 2500,
+        "attackType": "aoe",
+        "description": "Massive AoE stun + damage.",
+        "resourceCost": 60,
+        "cooldown": 20.0,
+        "levels": [
+          { "damage": 80, "radius": 120, "stunDuration": 1.0 },
+          { "damage": 96, "radius": 130, "stunDuration": 1.1 },
+          { "damage": 116, "radius": 140, "stunDuration": 1.3, "bonus": "Cracks slow enemies 30% for 3s" },
+          { "damage": 140, "radius": 155, "stunDuration": 1.5, "bonus": "Cracks + falling rocks (3 hits)" },
+          { "damage": 168, "radius": 170, "stunDuration": 1.8, "bonus": "Cracks + rocks + aftershock at 50% damage" }
+        ]
+      }
+    ],
+    "passives": [
+      { "id": "toughness", "name": "Toughness", "icon": "🛡️", "maxRanks": 5, "description": "+2% damage reduction per rank", "effectPerRank": { "flatDamageReduction": 0.02 } },
+      { "id": "bloodlust", "name": "Bloodlust", "icon": "🩸", "maxRanks": 5, "description": "+1% lifesteal per rank", "effectPerRank": { "lifestealPercent": 0.01 } },
+      { "id": "fury", "name": "Fury", "icon": "😤", "maxRanks": 5, "description": "+5% rage generation per rank", "effectPerRank": { "rageGenerationMult": 0.05 } },
+      { "id": "iron_skin", "name": "Iron Skin", "icon": "🪨", "maxRanks": 5, "description": "+3% armor per rank", "effectPerRank": { "armorPercent": 0.03 } },
+      { "id": "relentless", "name": "Relentless", "icon": "⏩", "maxRanks": 4, "description": "+2% attack speed per rank", "effectPerRank": { "attackSpeedPercent": 0.02 } },
+      { "id": "vitality", "name": "Vitality", "icon": "💚", "maxRanks": 5, "description": "+15 max HP per rank", "effectPerRank": { "maxHPBonus": 15 } },
+      { "id": "berserker_blood", "name": "Berserker Blood", "icon": "🔴", "maxRanks": 3, "description": "+3% damage when below 40% HP per rank", "effectPerRank": { "lowHPDamagePercent": 0.03, "lowHPThreshold": 0.4 } }
+    ]
+  },
+  "mage": {
+    "actives": [
+      {
+        "id": "wand_bolt",
+        "name": "Wand Bolt",
+        "icon": "🔮",
+        "type": "active",
+        "tier": 0,
+        "goldCost": 0,
+        "isDefault": true,
+        "attackType": "projectile",
+        "description": "Ranged magic projectile.",
+        "resourceCost": 0,
+        "cooldown": 1.0,
+        "levels": [
+          { "damage": 20, "projectileSpeed": 220, "range": 450 },
+          { "damage": 24, "projectileSpeed": 230, "range": 460 },
+          { "damage": 29, "projectileSpeed": 240, "range": 470 },
+          { "damage": 35, "projectileSpeed": 250, "range": 480 },
+          { "damage": 42, "projectileSpeed": 260, "range": 500, "bonus": "Bolts pierce 1 enemy" }
+        ]
+      },
+      {
+        "id": "fireball",
+        "name": "Fireball",
+        "icon": "🔥",
+        "type": "active",
+        "tier": 1,
+        "goldCost": 50,
+        "attackType": "projectile_aoe",
+        "description": "Exploding projectile. AoE.",
+        "resourceCost": 15,
+        "cooldown": 2.0,
+        "levels": [
+          { "damage": 25, "explosionRadius": 40, "projectileSpeed": 200 },
+          { "damage": 30, "explosionRadius": 42, "projectileSpeed": 210 },
+          { "damage": 36, "explosionRadius": 46, "projectileSpeed": 220, "bonus": "+10% explosion radius" },
+          { "damage": 44, "explosionRadius": 50, "projectileSpeed": 230, "bonus": "Hits +1 extra target" },
+          { "damage": 53, "explosionRadius": 55, "projectileSpeed": 240, "bonus": "Leaves burning ground (2s)" }
+        ]
+      },
+      {
+        "id": "frost_nova",
+        "name": "Frost Nova",
+        "icon": "❄️",
+        "type": "active",
+        "tier": 2,
+        "goldCost": 150,
+        "attackType": "aoe_self",
+        "description": "AoE freeze around player.",
+        "resourceCost": 20,
+        "cooldown": 6.0,
+        "levels": [
+          { "damage": 18, "radius": 100, "freezeDuration": 1.5 },
+          { "damage": 22, "radius": 108, "freezeDuration": 1.6 },
+          { "damage": 26, "radius": 116, "freezeDuration": 1.8, "bonus": "Frozen enemies take +10% damage" },
+          { "damage": 32, "radius": 125, "freezeDuration": 2.0, "bonus": "+15% damage, shatter on kill" },
+          { "damage": 38, "radius": 135, "freezeDuration": 2.3, "bonus": "+20% damage, shatter chain" }
+        ]
+      },
+      {
+        "id": "arcane_blink",
+        "name": "Arcane Blink",
+        "icon": "✨",
+        "type": "active",
+        "tier": 2,
+        "goldCost": 150,
+        "attackType": "teleport",
+        "description": "Teleport short distance.",
+        "resourceCost": 15,
+        "cooldown": 5.0,
+        "levels": [
+          { "distance": 120, "invulnDuration": 0.2 },
+          { "distance": 135, "invulnDuration": 0.25 },
+          { "distance": 150, "invulnDuration": 0.3, "bonus": "Leave decoy for 1.5s" },
+          { "distance": 170, "invulnDuration": 0.35, "bonus": "Decoy 2s, explodes on expire" },
+          { "distance": 200, "invulnDuration": 0.4, "bonus": "Decoy 2.5s, 2 charges" }
+        ]
+      },
+      {
+        "id": "chain_lightning",
+        "name": "Chain Lightning",
+        "icon": "⚡",
+        "type": "active",
+        "tier": 3,
+        "goldCost": 400,
+        "attackType": "chain",
+        "description": "Bolt bounces between 3 enemies.",
+        "resourceCost": 25,
+        "cooldown": 5.0,
+        "levels": [
+          { "damage": 22, "chains": 3, "chainRange": 120 },
+          { "damage": 26, "chains": 3, "chainRange": 130 },
+          { "damage": 32, "chains": 4, "chainRange": 140, "bonus": "Stuns last target 0.5s" },
+          { "damage": 39, "chains": 4, "chainRange": 150, "bonus": "Stuns last 2 targets" },
+          { "damage": 46, "chains": 5, "chainRange": 170, "bonus": "Stuns all, can re-hit targets" }
+        ]
+      },
+      {
+        "id": "meteor",
+        "name": "Meteor",
+        "icon": "☄️",
+        "type": "active",
+        "tier": 4,
+        "goldCost": 1000,
+        "attackType": "targeted_aoe",
+        "description": "Targeted AoE nuke.",
+        "resourceCost": 50,
+        "cooldown": 15.0,
+        "levels": [
+          { "damage": 70, "radius": 90, "impactDelay": 0.8 },
+          { "damage": 84, "radius": 95, "impactDelay": 0.75 },
+          { "damage": 102, "radius": 100, "impactDelay": 0.7, "bonus": "Burning ground 3s" },
+          { "damage": 123, "radius": 110, "impactDelay": 0.65, "bonus": "Burning + stun 0.5s" },
+          { "damage": 147, "radius": 120, "impactDelay": 0.6, "bonus": "Burning + stun + 2 smaller meteors" }
+        ]
+      },
+      {
+        "id": "arcane_singularity",
+        "name": "Arcane Singularity",
+        "icon": "🕳️",
+        "type": "active",
+        "tier": 5,
+        "goldCost": 2500,
+        "attackType": "targeted_aoe",
+        "description": "Black hole pulls + damages.",
+        "resourceCost": 70,
+        "cooldown": 25.0,
+        "levels": [
+          { "damage": 50, "dps": 15, "radius": 130, "pullForce": 60, "duration": 3.0 },
+          { "damage": 60, "dps": 18, "radius": 140, "pullForce": 65, "duration": 3.2 },
+          { "damage": 73, "dps": 22, "radius": 150, "pullForce": 70, "duration": 3.4, "bonus": "Slows 30%" },
+          { "damage": 88, "dps": 26, "radius": 160, "pullForce": 80, "duration": 3.6, "bonus": "Slows 40%" },
+          { "damage": 105, "dps": 32, "radius": 180, "pullForce": 90, "duration": 4.0, "bonus": "Slows 50%, explodes on expire" }
+        ]
+      }
+    ],
+    "passives": [
+      { "id": "arcane_potency", "name": "Arcane Potency", "icon": "💎", "maxRanks": 5, "description": "+3% spell damage per rank", "effectPerRank": { "spellDamagePercent": 0.03 } },
+      { "id": "mana_flow", "name": "Mana Flow", "icon": "💧", "maxRanks": 5, "description": "+0.3 mana regen/s per rank", "effectPerRank": { "manaRegenBonus": 0.3 } },
+      { "id": "glass_cannon", "name": "Glass Cannon", "icon": "💀", "maxRanks": 3, "description": "+5% damage, -2% max HP per rank", "effectPerRank": { "allDamagePercent": 0.05, "maxHPPercent": -0.02 } },
+      { "id": "elemental_mastery", "name": "Elemental Mastery", "icon": "🌈", "maxRanks": 5, "description": "+2% elemental effect duration per rank", "effectPerRank": { "statusDurationPercent": 0.02 } },
+      { "id": "spell_shield", "name": "Spell Shield", "icon": "🔵", "maxRanks": 4, "description": "+3% magic damage reduction per rank", "effectPerRank": { "magicDamageReduction": 0.03 } },
+      { "id": "quick_cast", "name": "Quick Cast", "icon": "⏱️", "maxRanks": 5, "description": "-2% cooldown on all spells per rank", "effectPerRank": { "cooldownReduction": 0.02 } },
+      { "id": "overcharge", "name": "Overcharge", "icon": "⚡", "maxRanks": 3, "description": "+4% crit damage per rank", "effectPerRank": { "critDamageBonus": 0.04 } }
+    ]
+  },
+  "archer": {
+    "actives": [
+      {
+        "id": "shoot",
+        "name": "Shoot",
+        "icon": "🏹",
+        "type": "active",
+        "tier": 0,
+        "goldCost": 0,
+        "isDefault": true,
+        "attackType": "projectile",
+        "description": "Basic ranged arrow.",
+        "resourceCost": 0,
+        "cooldown": 0.5,
+        "levels": [
+          { "damage": 10, "projectileSpeed": 450, "range": 650 },
+          { "damage": 12, "projectileSpeed": 460, "range": 660 },
+          { "damage": 15, "projectileSpeed": 470, "range": 670 },
+          { "damage": 18, "projectileSpeed": 480, "range": 680 },
+          { "damage": 21, "projectileSpeed": 500, "range": 700, "bonus": "20% chance to fire 2 arrows" }
+        ]
+      },
+      {
+        "id": "multishot",
+        "name": "Multishot",
+        "icon": "🎯",
+        "type": "active",
+        "tier": 1,
+        "goldCost": 50,
+        "attackType": "projectile_multi",
+        "description": "Fire 3 arrows in a spread.",
+        "resourceCost": 15,
+        "cooldown": 2.0,
+        "levels": [
+          { "damage": 8, "arrowCount": 3, "spread": 30 },
+          { "damage": 10, "arrowCount": 3, "spread": 28 },
+          { "damage": 12, "arrowCount": 4, "spread": 30, "bonus": "+1 arrow" },
+          { "damage": 14, "arrowCount": 5, "spread": 30, "bonus": "+2 arrows" },
+          { "damage": 17, "arrowCount": 6, "spread": 35, "bonus": "+3 arrows, pierce 1" }
+        ]
+      },
+      {
+        "id": "evasive_roll",
+        "name": "Evasive Roll",
+        "icon": "🔄",
+        "type": "active",
+        "tier": 2,
+        "goldCost": 150,
+        "attackType": "dash",
+        "description": "Dodge roll with i-frames.",
+        "resourceCost": 25,
+        "cooldown": 3.0,
+        "levels": [
+          { "distance": 120, "invulnDuration": 0.2 },
+          { "distance": 130, "invulnDuration": 0.25 },
+          { "distance": 140, "invulnDuration": 0.3, "bonus": "Fires 2 arrows backward" },
+          { "distance": 150, "invulnDuration": 0.35, "bonus": "3 arrows backward" },
+          { "distance": 170, "invulnDuration": 0.4, "bonus": "3 arrows + 2 charges" }
+        ]
+      },
+      {
+        "id": "poison_arrow",
+        "name": "Poison Arrow",
+        "icon": "☠️",
+        "type": "active",
+        "tier": 2,
+        "goldCost": 150,
+        "attackType": "projectile",
+        "description": "DoT arrow. Poisons on hit.",
+        "resourceCost": 20,
+        "cooldown": 4.0,
+        "levels": [
+          { "damage": 12, "poisonDPS": 3, "poisonDuration": 3.0 },
+          { "damage": 14, "poisonDPS": 4, "poisonDuration": 3.2 },
+          { "damage": 17, "poisonDPS": 5, "poisonDuration": 3.5, "bonus": "-15% healing on target" },
+          { "damage": 21, "poisonDPS": 6, "poisonDuration": 3.8, "bonus": "-20% healing, spreads to 1 nearby" },
+          { "damage": 25, "poisonDPS": 8, "poisonDuration": 4.0, "bonus": "-25% healing, spreads to 2 nearby" }
+        ]
+      },
+      {
+        "id": "explosive_trap",
+        "name": "Explosive Trap",
+        "icon": "💣",
+        "type": "active",
+        "tier": 3,
+        "goldCost": 400,
+        "attackType": "placed",
+        "description": "Place a trap that detonates when enemies walk over it.",
+        "resourceCost": 30,
+        "cooldown": 8.0,
+        "levels": [
+          { "damage": 35, "radius": 60, "maxTraps": 1 },
+          { "damage": 42, "radius": 65, "maxTraps": 1 },
+          { "damage": 51, "radius": 70, "maxTraps": 2, "bonus": "Slows enemies 30% for 2s" },
+          { "damage": 61, "radius": 75, "maxTraps": 2, "bonus": "Slows 40%, burns 2s" },
+          { "damage": 74, "radius": 85, "maxTraps": 3, "bonus": "Slows 40%, burns 3s, stun 0.5s" }
+        ]
+      },
+      {
+        "id": "rain_of_arrows",
+        "name": "Rain of Arrows",
+        "icon": "🌧️",
+        "type": "active",
+        "tier": 4,
+        "goldCost": 1000,
+        "attackType": "targeted_aoe",
+        "description": "Targeted AoE barrage.",
+        "resourceCost": 40,
+        "cooldown": 12.0,
+        "levels": [
+          { "dps": 12, "radius": 100, "duration": 2.0 },
+          { "dps": 14, "radius": 108, "duration": 2.1 },
+          { "dps": 17, "radius": 116, "duration": 2.3, "bonus": "Slows enemies 20%" },
+          { "dps": 21, "radius": 125, "duration": 2.5, "bonus": "Slows 30%, poisons" },
+          { "dps": 25, "radius": 140, "duration": 2.8, "bonus": "Slows 40%, poisons, stuns on final hit" }
+        ]
+      },
+      {
+        "id": "phantom_archer",
+        "name": "Phantom Archer",
+        "icon": "👻",
+        "type": "active",
+        "tier": 5,
+        "goldCost": 2500,
+        "attackType": "summon",
+        "description": "Clone mirrors your attacks for 5s.",
+        "resourceCost": 60,
+        "cooldown": 20.0,
+        "levels": [
+          { "duration": 5.0, "cloneDamageMult": 0.5 },
+          { "duration": 5.5, "cloneDamageMult": 0.55 },
+          { "duration": 6.0, "cloneDamageMult": 0.6, "bonus": "Clone fires at different target" },
+          { "duration": 6.5, "cloneDamageMult": 0.7, "bonus": "2 targets, clone can crit" },
+          { "damage": 7.0, "cloneDamageMult": 0.8, "bonus": "2 targets, crits, explodes on expire" }
+        ]
+      }
+    ],
+    "passives": [
+      { "id": "steady_aim", "name": "Steady Aim", "icon": "🎯", "maxRanks": 5, "description": "+2% crit chance per rank", "effectPerRank": { "critChanceBonus": 0.02 } },
+      { "id": "fleet_foot", "name": "Fleet Foot", "icon": "👟", "maxRanks": 5, "description": "+3% movement speed per rank", "effectPerRank": { "moveSpeedPercent": 0.03 } },
+      { "id": "piercing_shots", "name": "Piercing Shots", "icon": "➡️", "maxRanks": 3, "description": "+1 pierce per rank", "effectPerRank": { "pierce": 1 } },
+      { "id": "nimble", "name": "Nimble", "icon": "💨", "maxRanks": 5, "description": "+2% dodge chance per rank", "effectPerRank": { "dodgeChanceBonus": 0.02 } },
+      { "id": "marksman", "name": "Marksman", "icon": "🏹", "maxRanks": 4, "description": "+3% ranged damage per rank", "effectPerRank": { "rangedDamagePercent": 0.03 } },
+      { "id": "stamina_reserve", "name": "Stamina Reserve", "icon": "⚡", "maxRanks": 3, "description": "+10 max stamina per rank", "effectPerRank": { "maxStaminaBonus": 10 } },
+      { "id": "lethal_tempo", "name": "Lethal Tempo", "icon": "⏩", "maxRanks": 3, "description": "Kill grants +5% attack speed for 3s per rank", "effectPerRank": { "onKillAttackSpeedPercent": 0.05, "onKillDuration": 3.0 } }
+    ]
+  },
+  "necromancer": {
+    "actives": [
+      {
+        "id": "necrotic_bolt",
+        "name": "Necrotic Bolt",
+        "icon": "💀",
+        "type": "active",
+        "tier": 0,
+        "goldCost": 0,
+        "isDefault": true,
+        "attackType": "projectile",
+        "description": "Dark magic projectile.",
+        "resourceCost": 0,
+        "cooldown": 1.0,
+        "levels": [
+          { "damage": 12, "projectileSpeed": 250, "range": 400, "lifesteal": 0.15 },
+          { "damage": 14, "projectileSpeed": 260, "range": 410, "lifesteal": 0.16 },
+          { "damage": 17, "projectileSpeed": 270, "range": 420, "lifesteal": 0.18 },
+          { "damage": 21, "projectileSpeed": 280, "range": 430, "lifesteal": 0.20 },
+          { "damage": 25, "projectileSpeed": 290, "range": 450, "lifesteal": 0.22, "bonus": "Splashes to 1 nearby" }
+        ]
+      },
+      {
+        "id": "bone_spear",
+        "name": "Bone Spear",
+        "icon": "🦴",
+        "type": "active",
+        "tier": 1,
+        "goldCost": 50,
+        "attackType": "projectile",
+        "description": "Piercing projectile, passes through enemies.",
+        "resourceCost": 15,
+        "cooldown": 1.5,
+        "levels": [
+          { "damage": 18, "pierce": 3, "projectileSpeed": 300, "range": 500 },
+          { "damage": 22, "pierce": 3, "projectileSpeed": 310, "range": 510 },
+          { "damage": 26, "pierce": 4, "projectileSpeed": 320, "range": 520, "bonus": "+10% damage per pierce" },
+          { "damage": 32, "pierce": 4, "projectileSpeed": 330, "range": 530, "bonus": "+15% per pierce" },
+          { "damage": 38, "pierce": 5, "projectileSpeed": 350, "range": 550, "bonus": "+20% per pierce, explodes at end" }
+        ]
+      },
+      {
+        "id": "corpse_explosion",
+        "name": "Corpse Explosion",
+        "icon": "💥",
+        "type": "active",
+        "tier": 2,
+        "goldCost": 150,
+        "attackType": "aoe",
+        "description": "Detonate nearby corpses for AoE.",
+        "resourceCost": 20,
+        "cooldown": 4.0,
+        "levels": [
+          { "damagePerCorpse": 25, "radius": 60, "corpseRange": 120 },
+          { "damagePerCorpse": 30, "radius": 65, "corpseRange": 130 },
+          { "damagePerCorpse": 36, "radius": 70, "corpseRange": 140, "bonus": "Corpses poison enemies 2s" },
+          { "damagePerCorpse": 44, "radius": 75, "corpseRange": 150, "bonus": "Poison 3s, +1 corpse range" },
+          { "damagePerCorpse": 53, "radius": 85, "corpseRange": 170, "bonus": "Poison 4s, chain explode nearby corpses" }
+        ]
+      },
+      {
+        "id": "dark_pact",
+        "name": "Dark Pact",
+        "icon": "🖤",
+        "type": "active",
+        "tier": 3,
+        "goldCost": 400,
+        "attackType": "sacrifice",
+        "description": "Sacrifice a pet for massive AoE.",
+        "resourceCost": 25,
+        "cooldown": 8.0,
+        "levels": [
+          { "damage": 50, "radius": 80 },
+          { "damage": 60, "radius": 85 },
+          { "damage": 73, "radius": 90, "bonus": "Heals you 20% of damage dealt" },
+          { "damage": 88, "radius": 100, "bonus": "Heals 25%, weakens enemies 3s" },
+          { "damage": 105, "radius": 110, "bonus": "Heals 30%, weakens 4s, spawns 2 skeletons" }
+        ]
+      },
+      {
+        "id": "curse_of_weakness",
+        "name": "Curse of Weakness",
+        "icon": "🔮",
+        "type": "active",
+        "tier": 4,
+        "goldCost": 1000,
+        "attackType": "aoe_debuff",
+        "description": "AoE debuff: enemies take +25% damage for 4s.",
+        "resourceCost": 35,
+        "cooldown": 10.0,
+        "levels": [
+          { "radius": 100, "damageAmp": 0.25, "duration": 4.0 },
+          { "radius": 110, "damageAmp": 0.28, "duration": 4.3 },
+          { "radius": 120, "damageAmp": 0.32, "duration": 4.6, "bonus": "-15% enemy damage" },
+          { "radius": 130, "damageAmp": 0.36, "duration": 5.0, "bonus": "-20% enemy damage, -20% speed" },
+          { "radius": 150, "damageAmp": 0.40, "duration": 5.5, "bonus": "-25% damage, -25% speed, spreads on kill" }
+        ]
+      },
+      {
+        "id": "undead_army",
+        "name": "Undead Army",
+        "icon": "⚰️",
+        "type": "active",
+        "tier": 5,
+        "goldCost": 2500,
+        "attackType": "summon_burst",
+        "description": "Summon 5 skeletons + 3 zombies at once.",
+        "resourceCost": 80,
+        "cooldown": 30.0,
+        "levels": [
+          { "skeletons": 5, "zombies": 3, "petDuration": 12 },
+          { "skeletons": 5, "zombies": 3, "petDuration": 13, "petDamageMult": 1.1 },
+          { "skeletons": 6, "zombies": 3, "petDuration": 14, "petDamageMult": 1.2, "bonus": "Pets explode on death" },
+          { "skeletons": 6, "zombies": 4, "petDuration": 15, "petDamageMult": 1.3, "bonus": "Explode + lifesteal 10%" },
+          { "skeletons": 8, "zombies": 5, "petDuration": 18, "petDamageMult": 1.5, "bonus": "Explode + lifesteal + army is permanent" }
+        ]
+      }
+    ],
+    "summonToggles": [
+      {
+        "id": "summon_skeleton",
+        "name": "Summon Skeleton",
+        "icon": "💀",
+        "tier": 1,
+        "goldCost": 50,
+        "resourceCost": 30,
+        "cooldown": 3.0,
+        "description": "Auto-summon melee skeleton when below max count.",
+        "levels": [
+          { "maxCount": 2, "petHP": 30, "petDamage": 5, "petSpeed": 80, "petDuration": 15 },
+          { "maxCount": 2, "petHP": 38, "petDamage": 7, "petSpeed": 85, "petDuration": 16 },
+          { "maxCount": 3, "petHP": 48, "petDamage": 9, "petSpeed": 90, "petDuration": 18, "bonus": "Skeletons have 10% lifesteal" },
+          { "maxCount": 3, "petHP": 60, "petDamage": 12, "petSpeed": 95, "petDuration": 20, "bonus": "15% lifesteal, can block" },
+          { "maxCount": 4, "petHP": 75, "petDamage": 15, "petSpeed": 100, "petDuration": 25, "bonus": "20% lifesteal, block, rally cry" }
+        ]
+      },
+      {
+        "id": "summon_zombie",
+        "name": "Summon Zombie",
+        "icon": "🧟",
+        "tier": 2,
+        "goldCost": 150,
+        "resourceCost": 40,
+        "cooldown": 5.0,
+        "description": "Auto-summon tanky zombie. Explodes on death.",
+        "levels": [
+          { "maxCount": 1, "petHP": 60, "petDamage": 3, "petSpeed": 50, "explosionDamage": 20, "explosionRadius": 50 },
+          { "maxCount": 1, "petHP": 75, "petDamage": 4, "petSpeed": 52, "explosionDamage": 28, "explosionRadius": 55 },
+          { "maxCount": 2, "petHP": 95, "petDamage": 5, "petSpeed": 55, "explosionDamage": 38, "explosionRadius": 60, "bonus": "Explosion poisons 2s" },
+          { "maxCount": 2, "petHP": 120, "petDamage": 7, "petSpeed": 58, "explosionDamage": 50, "explosionRadius": 65, "bonus": "Poison 3s, taunt nearby" },
+          { "maxCount": 3, "petHP": 150, "petDamage": 9, "petSpeed": 60, "explosionDamage": 65, "explosionRadius": 75, "bonus": "Poison 4s, taunt, resurrect once" }
+        ]
+      }
+    ],
+    "passives": [
+      { "id": "soul_tether", "name": "Soul Tether", "icon": "🔗", "maxRanks": 5, "description": "+5% pet HP per rank", "effectPerRank": { "petHPPercent": 0.05 } },
+      { "id": "dark_harvest", "name": "Dark Harvest", "icon": "🌑", "maxRanks": 5, "description": "+2% mana on kill per rank", "effectPerRank": { "manaOnKillPercent": 0.02 } },
+      { "id": "army_of_the_dead", "name": "Army of the Dead", "icon": "⚰️", "maxRanks": 3, "description": "+1 max pet count per rank", "effectPerRank": { "maxPetCountBonus": 1 } },
+      { "id": "necrotic_aura", "name": "Necrotic Aura", "icon": "☠️", "maxRanks": 5, "description": "Pets deal +3% damage per rank", "effectPerRank": { "petDamagePercent": 0.03 } },
+      { "id": "life_tap", "name": "Life Tap", "icon": "💉", "maxRanks": 4, "description": "+1% lifesteal from pet damage per rank", "effectPerRank": { "petLifestealPercent": 0.01 } },
+      { "id": "bone_barrier", "name": "Bone Barrier", "icon": "🛡️", "maxRanks": 3, "description": "+2% damage reduction per active pet per rank", "effectPerRank": { "dmgReductionPerPet": 0.02 } },
+      { "id": "corpse_mastery", "name": "Corpse Mastery", "icon": "💀", "maxRanks": 3, "description": "Corpses last +2s, +10% corpse explosion damage per rank", "effectPerRank": { "corpseDurationBonus": 2, "corpseExplosionDamagePercent": 0.10 } }
+    ]
+  },
+  "skillUpgradeCosts": {
+    "tierBuyCost": { "0": 0, "1": 50, "2": 150, "3": 400, "4": 1000, "5": 2500 },
+    "tierUpgradeBase": { "0": 25, "1": 75, "2": 200, "3": 500, "4": 1200, "5": 3000 },
+    "tierMinLevel": { "0": 1, "1": 1, "2": 5, "3": 10, "4": 20, "5": 30 },
+    "upgradeCostFormula": "tierUpgradeBase * upgradeLevel"
+  }
+}

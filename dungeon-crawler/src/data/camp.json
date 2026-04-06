@@ -1,0 +1,77 @@
+{
+  "id": "base_camp",
+  "name": "Base Camp",
+  "type": "camp",
+  "mapWidth": 1216,
+  "mapHeight": 832,
+  "layout": {
+    "rooms": [
+      { "x": 64, "y": 64, "w": 1088, "h": 704 }
+    ],
+    "obstacles": [
+      { "type": "pillar", "x": 200, "y": 200, "radius": 24 },
+      { "type": "pillar", "x": 1016, "y": 200, "radius": 24 },
+      { "type": "pillar", "x": 200, "y": 600, "radius": 24 },
+      { "type": "pillar", "x": 1016, "y": 600, "radius": 24 },
+      { "type": "wall", "x": 64, "y": 64, "w": 1088, "h": 16 },
+      { "type": "wall", "x": 64, "y": 752, "w": 1088, "h": 16 },
+      { "type": "wall", "x": 64, "y": 64, "w": 16, "h": 704 },
+      { "type": "wall", "x": 1136, "y": 64, "w": 16, "h": 704 }
+    ]
+  },
+  "npcs": [
+    {
+      "id": "skill_vendor",
+      "name": "Trainer",
+      "icon": "⚔",
+      "type": "skill_vendor",
+      "x": 300,
+      "y": 350,
+      "radius": 20,
+      "interactionRadius": 60,
+      "color": "#e67e22",
+      "description": "Buy and upgrade skills. Invest passive points. Respec attributes."
+    },
+    {
+      "id": "item_vendor",
+      "name": "Vendor",
+      "icon": "🛒",
+      "type": "item_vendor",
+      "x": 916,
+      "y": 350,
+      "radius": 20,
+      "interactionRadius": 60,
+      "color": "#27ae60",
+      "description": "Buy and sell equipment. Purchase potions. Sell junk items."
+    },
+    {
+      "id": "waystone",
+      "name": "Way Stone",
+      "icon": "🔵",
+      "type": "waystone",
+      "x": 608,
+      "y": 350,
+      "radius": 32,
+      "interactionRadius": 60,
+      "color": "#3498db",
+      "description": "Travel to discovered dungeon floors. Enter the dungeon."
+    }
+  ],
+  "campfire": {
+    "x": 608,
+    "y": 550,
+    "radius": 40,
+    "healRadius": 60,
+    "description": "Rest by the campfire to fully restore HP and resources."
+  },
+  "playerSpawn": {
+    "x": 608,
+    "y": 720
+  },
+  "theme": {
+    "tilePrimary": "#3a3a2e",
+    "tileSecondary": "#32322a",
+    "tileGrid": "rgba(255,255,255,0.03)",
+    "tileBorder": "#555544"
+  }
+}

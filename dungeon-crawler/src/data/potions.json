@@ -1,0 +1,62 @@
+{
+  "potionTypes": [
+    {
+      "id": "hp_potion",
+      "name": "HP Potion",
+      "icon": "❤️",
+      "description": "Restores 30% of max HP.",
+      "effect": { "type": "heal_percent", "value": 0.3, "resource": "hp" },
+      "cooldownGroup": "shared",
+      "cooldown": 3.0,
+      "maxStack": 5,
+      "gridSize": { "w": 1, "h": 1 },
+      "classRestriction": null,
+      "color": "#cc2222"
+    },
+    {
+      "id": "mana_potion",
+      "name": "Mana Potion",
+      "icon": "💧",
+      "description": "Restores 30% of max mana.",
+      "effect": { "type": "heal_percent", "value": 0.3, "resource": "mana" },
+      "cooldownGroup": "shared",
+      "cooldown": 3.0,
+      "maxStack": 5,
+      "gridSize": { "w": 1, "h": 1 },
+      "classRestriction": ["mage", "necromancer"],
+      "color": "#2255cc"
+    },
+    {
+      "id": "stamina_tonic",
+      "name": "Stamina Tonic",
+      "icon": "⚡",
+      "description": "Instantly refills stamina to full.",
+      "effect": { "type": "fill_resource", "value": 1.0, "resource": "stamina" },
+      "cooldownGroup": "stamina_tonic",
+      "cooldown": 5.0,
+      "maxStack": 3,
+      "gridSize": { "w": 1, "h": 1 },
+      "classRestriction": ["archer"],
+      "color": "#88aa22"
+    },
+    {
+      "id": "rage_tonic",
+      "name": "Rage Tonic",
+      "icon": "🔥",
+      "description": "Instantly gain 50 rage.",
+      "effect": { "type": "add_resource", "value": 50, "resource": "rage" },
+      "cooldownGroup": "rage_tonic",
+      "cooldown": 5.0,
+      "maxStack": 3,
+      "gridSize": { "w": 1, "h": 1 },
+      "classRestriction": ["warrior"],
+      "color": "#cc6622"
+    }
+  ],
+  "pricingBrackets": [
+    { "minLevel": 1,  "maxLevel": 10, "hpMana": 10, "tonic": 15 },
+    { "minLevel": 11, "maxLevel": 20, "hpMana": 25, "tonic": 35 },
+    { "minLevel": 21, "maxLevel": 35, "hpMana": 50, "tonic": 65 },
+    { "minLevel": 36, "maxLevel": 50, "hpMana": 80, "tonic": 100 }
+  ]
+}

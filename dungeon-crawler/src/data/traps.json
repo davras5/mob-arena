@@ -1,0 +1,126 @@
+{
+  "trapTypes": [
+    {
+      "id": "poison",
+      "name": "Poison Trap",
+      "description": "A bubbling puddle of toxic liquid.",
+      "floorAppears": 1,
+      "triggerRadius": 32,
+      "effectRadius": 64,
+      "activationDelay": 0.3,
+      "damage": { "base": 0, "perFloorTier": 3, "type": "dot", "tickRate": 1.0 },
+      "status": { "type": "poisoned", "duration": 4 },
+      "visual": {
+        "color": "#22aa22",
+        "idleRadius": 24,
+        "animation": "bubbling",
+        "activationEffect": "gas_cloud"
+      },
+      "corridorAllowed": true
+    },
+    {
+      "id": "fire",
+      "name": "Fire Trap",
+      "description": "Faint orange glow lines etched into the floor.",
+      "floorAppears": 2,
+      "triggerRadius": 32,
+      "effectRadius": 48,
+      "activationDelay": 0.3,
+      "damage": { "base": 15, "perFloorTier": 5, "type": "instant" },
+      "status": { "type": "burning", "duration": 3 },
+      "visual": {
+        "color": "#ff8800",
+        "idleRadius": 20,
+        "animation": "glow_pulse",
+        "activationEffect": "flame_burst"
+      },
+      "corridorAllowed": false
+    },
+    {
+      "id": "spike",
+      "name": "Spike Trap",
+      "description": "Thin cracks line the floor tiles.",
+      "floorAppears": 3,
+      "triggerRadius": 32,
+      "effectRadius": 20,
+      "activationDelay": 0.3,
+      "damage": { "base": 20, "perFloorTier": 8, "type": "instant" },
+      "status": { "type": "bleeding", "duration": 5 },
+      "visual": {
+        "color": "#888888",
+        "idleRadius": 20,
+        "animation": "none",
+        "activationEffect": "spikes_up"
+      },
+      "corridorAllowed": false
+    },
+    {
+      "id": "explosive",
+      "name": "Explosive Trap",
+      "description": "A small device with a blinking red light.",
+      "floorAppears": 4,
+      "triggerRadius": 32,
+      "effectRadius": 80,
+      "activationDelay": 0.5,
+      "damage": { "base": 30, "perFloorTier": 10, "type": "instant" },
+      "status": null,
+      "knockback": 60,
+      "visual": {
+        "color": "#cc0000",
+        "idleRadius": 16,
+        "animation": "red_blink",
+        "activationEffect": "explosion"
+      },
+      "corridorAllowed": false
+    },
+    {
+      "id": "slow",
+      "name": "Slow Trap",
+      "description": "Faint blue frost runes on the ground.",
+      "floorAppears": 2,
+      "triggerRadius": 32,
+      "effectRadius": 64,
+      "activationDelay": 0.3,
+      "damage": { "base": 0, "perFloorTier": 0, "type": "none" },
+      "status": { "type": "slowed", "duration": 5, "magnitude": 0.5 },
+      "visual": {
+        "color": "#88ccff",
+        "idleRadius": 28,
+        "animation": "shimmer_rotate",
+        "activationEffect": "frost_ring"
+      },
+      "corridorAllowed": true
+    },
+    {
+      "id": "curse",
+      "name": "Curse Trap",
+      "description": "A dark purple sigil pulsing with fell energy.",
+      "floorAppears": 6,
+      "triggerRadius": 32,
+      "effectRadius": 24,
+      "activationDelay": 0.3,
+      "damage": { "base": 0, "perFloorTier": 0, "type": "none" },
+      "status": { "type": "weakened", "duration": 6, "magnitude": 0.25 },
+      "visual": {
+        "color": "#8800aa",
+        "idleRadius": 24,
+        "animation": "pulse_faint",
+        "activationEffect": "dark_swirl"
+      },
+      "corridorAllowed": false
+    }
+  ],
+  "floorTierFormula": "Math.ceil(floorNumber / 2)",
+  "placementRules": {
+    "minSpacing": 48,
+    "doorClearance": 96,
+    "treasureRoomMultiplier": 1.5,
+    "noTrapsRooms": ["entrance", "boss", "safe", "shop"]
+  },
+  "visibilityScaling": {
+    "minOpacity": 0.3,
+    "maxOpacity": 1.0,
+    "fullVisibleDistance": 80,
+    "fadeStartDistance": 200
+  }
+}

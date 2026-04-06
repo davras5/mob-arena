@@ -96,8 +96,10 @@ This is the main screen players see 90% of the time. Inspired by Diablo 2's bott
 │ │  │         │   │pot││pot││pot││pot│  │CLIK│  │CLIK│ │         │     │ │
 │ │  │  120/   │   └───┘└───┘└───┘└───┘  └────┘  └────┘ │   78/  │     │ │
 │ │  │   140   │                                          │   100  │     │ │
-│ │   ╲       ╱   [C]har  [K]Skills  [I]nv   [M]ap        ╲       ╱      │ │
-│ │    ╰─────╯                                              ╰─────╯       │ │
+│ │   ╲       ╱   ┌─────┐ ┌──────┐ ┌─────┐  [M]ap        ╲       ╱      │ │
+│ │    ╰─────╯    │ Char │ │Skills│ │ Inv │               ╰─────╯       │ │
+│ │               │  (C) │ │ (K)  │ │ (I) │                              │ │
+│ │               └─────┘ └──────┘ └─────┘                              │ │
 │ │                                                                       │ │
 │ │  ┌─ XP BAR ─────────────────────────────────────────────────────────┐ │ │
 │ │  │ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░░░  4500 / 6000 XP     │ │ │
@@ -148,6 +150,16 @@ This is the main screen players see 90% of the time. Inspired by Diablo 2's bott
 - **Swap arrows**: Small up-arrow button above each slot. Clicking opens a **quick skill picker** flyout showing all learned active skills. Click one to swap it in. This is the fast in-combat way to swap without opening the full Skill Book.
 - **No resource**: If player lacks resource to cast, slot border pulses red briefly on click attempt
 
+#### Panel Buttons (Bottom-Center, Below Hotbars)
+- **Layout**: 3 rectangular buttons in a row between the globes, positioned below the potion/skill slots
+- **Buttons**: `Char` (C), `Skills` (K), `Inv` (I)
+- **Size**: ~50×24px each, small gap between them
+- **Style**: Dark semi-transparent background (#1a1a2e at 80% opacity), light border (#555), white text. Keyboard shortcut shown in parentheses as secondary label.
+- **Hover**: Border brightens to gold (#c9a84c), slight scale-up
+- **Active state**: When the corresponding panel is open, button stays highlighted with gold border
+- **Click**: Toggles the corresponding overlay panel (Character, Skill Book, Inventory). Clicking the same button again closes the panel.
+- **Purpose**: Primary interaction method for most users — keyboard shortcuts (C/K/I) remain as alternatives
+
 #### Quick Skill Picker (Flyout)
 ```
          ┌──┬──┬──┬──┐
@@ -192,6 +204,29 @@ This is the main screen players see 90% of the time. Inspired by Diablo 2's bott
 - **Color**: Red fill with dark red background
 - **Text**: Boss name + HP value
 - **Animation**: Smooth drain. At 50% HP, bar color shifts to angry orange (phase 2 indicator).
+
+#### Enemy Nameplates (Above Each Enemy)
+Floating nameplate rendered above every enemy in combat, showing name, level, and health at a glance.
+
+```
+        Brute  Lv.8
+      ▓▓▓▓▓▓▓▓░░░░
+        (enemy sprite)
+```
+
+- **Position**: Centered above the enemy sprite, offset ~8px above the top edge
+- **Name**: Enemy type name in white, small font (~10px). Bold for elites/champions.
+- **Level**: "Lv.X" displayed right of the name, same font size. Color-coded relative to player level:
+  - Green: ≥3 levels below player (easy)
+  - White: within 2 levels (normal)
+  - Yellow: 3–5 levels above player (challenging)
+  - Red: ≥6 levels above player (dangerous)
+- **Health bar**: Thin bar (~40px wide, 4px tall) below the name text
+  - **Fill color**: Green >50%, Yellow 25–50%, Red <25%
+  - **Background**: Dark gray (#333)
+  - **Border**: 1px black outline for readability against any floor theme
+- **Visibility**: Always visible while the enemy is alive and on-screen. Fades out on death.
+- **Boss exception**: Bosses use the large top-center HP bar instead; no floating nameplate on bosses.
 
 ### 3.2 HUD Behavior
 - All HUD elements render ON TOP of the game canvas (either as canvas overlays or positioned HTML elements)

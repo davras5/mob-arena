@@ -24,11 +24,16 @@ import { SkillManager } from './systems/skillManager.js';
 import { SkillBookUI } from './ui/skillBookUI.js';
 import { SkillVendorUI } from './ui/skillVendorUI.js';
 import { FloorConfig } from './systems/floorConfig.js';
-// Stage 3 imports (uncomment when implemented):
-// import { ItemGenerator } from './systems/itemGenerator.js';
-// import { Inventory } from './systems/inventory.js';
-// import { LootSystem } from './systems/lootSystem.js';
+import { ItemGenerator } from './systems/itemGenerator.js';
+import { Inventory } from './systems/inventory.js';
+import { LootDrop } from './systems/lootDrop.js';
+import { InventoryUI } from './ui/inventoryUI.js';
+import { ItemVendorUI } from './ui/itemVendorUI.js';
 import { StatusEffectManager } from './systems/statusEffects.js';
+import { CharacterUI } from './ui/characterUI.js';
+import { TrapManager } from './systems/traps.js';
+import { DeathScreen } from './ui/deathScreen.js';
+import { GameWindow } from './ui/gameWindow.js';
 
 const MAP_WIDTH = 1600;
 const MAP_HEIGHT = 1600;
@@ -53,7 +58,27 @@ export class Game {
     this.collision = new CollisionSystem(64);
     this.particles = new ParticleSystem();
     this.statusEffects = new StatusEffectManager();
-    this.hud = new HUD();
+    this.hud = new HUD(canvas);
+    this.hud.onPanelClick = (panel) => {
+      if (this.state !== 'PLAYING' && this.state !== 'BASE_CAMP') return;
+      if (panel === 'character') this._openCharacterPanel();
+      else if (panel === 'skillBook') this._openSkillBook();
+      else if (panel === 'inventory') this._openInventory();
+    };
+    // Drag-and-drop: skill → HUD action bar
+    this.hud.onSkillDrop = (skillId, slot) => {
+      if (!this.skillManager) return;
+      if (slot === 'left') this.skillManager.equipToLeft(skillId);
+      else if (slot === 'right') this.skillManager.equipToRight(skillId);
+      this.player.activeSkills = { leftClick: this.skillManager.leftSlot, rightClick: this.skillManager.rightSlot };
+      this._saveProgress();
+    };
+    // Drag-and-drop: potion → HUD hotbar
+    this.hud.onHotbarDrop = (itemId, slot) => {
+      if (!this.inventory) return;
+      this.inventory.assignToHotbar(itemId, slot);
+      this._saveProgress();
+    };
     this.gameOverUI = new GameOverUI();
     this.audio = new AudioSystem();
     this.damageNumbers = new DamageNumbers();
@@ -69,8 +94,17 @@ export class Game {
     this.campManager = null;
     this.skillManager = null;
     this.itemGenerator = null;
-    this.inventory = null; // Stage 3: new Inventory()
+    this.inventory = new Inventory();
+    this.inventoryUI = new InventoryUI();
+    this.itemVendorUI = new ItemVendorUI();
+    this.characterUI = new CharacterUI();
+    // Window instances for non-modal panels
+    this._characterWindow = null;
+    this._skillBookWindow = null;
+    this._inventoryWindow = null;
     this.lootSystem = null;
+    this.trapManager = null; // Created per floor
+    this.deathScreen = new DeathScreen();
 
     this.state = 'MENU';
     this.currentLevel = null;
@@ -124,6 +158,8 @@ export class Game {
 
     // Spectral blades hit cooldowns
     this.bladeHitTimers = new Map();
+
+    this.potionCooldowns = { shared: 0, stamina_tonic: 0, rage_tonic: 0 };
   }
 
   togglePause() {
@@ -157,13 +193,13 @@ export class Game {
     }
 
     // Initialize item generator and loot system
-    // Stage 3: Item & Loot systems
-    // this.itemGenerator = new ItemGenerator(this.itemBasesData, this.affixesData);
-    // this.lootSystem = new LootSystem(this.itemGenerator);
+    this.itemGenerator = new ItemGenerator(this.itemBasesData, this.affixesData);
+    this.lootSystem = new LootDrop(this.itemGenerator, this.lootTablesData);
 
-    // Load inventory (Stage 3)
-    if (this.inventory && this.persistence.data.inventoryData) {
-      this.inventory.loadFromSave(this.persistence.data.inventoryData);
+    // Load inventory
+    const savedInv = this.persistence.getInventory();
+    if (this.inventory && savedInv && Object.keys(savedInv.items || {}).length > 0) {
+      this.inventory.loadFromSave(savedInv);
     }
 
     // Initialize skill manager
@@ -224,6 +260,7 @@ export class Game {
 
   _enterBaseCamp() {
     this.state = 'BASE_CAMP';
+    this.hud.setVisible(true);
     this.dungeonMode = false;
     this.waveSystem = null;
     this._waveShim = null;
@@ -244,6 +281,7 @@ export class Game {
     this.gravitonOrbs = [];
     this.bladeHitTimers = new Map();
     if (this.lootSystem) this.lootSystem.clear();
+    if (this.trapManager) this.trapManager.clear();
 
     // Setup camp
     this.campManager = new CampManager(this.campData);
@@ -284,6 +322,7 @@ export class Game {
       summonToggles: this.skillManager ? { ...this.skillManager.summonStates } : {},
     });
     this.persistence.saveEquipment(JSON.parse(JSON.stringify(this.player.equipment)));
+    this.persistence.saveInventory(this.inventory.toSaveData());
     if (this.skillManager) {
       this.persistence.data.skillManagerData = this.skillManager.toSaveData();
       this.persistence.save();
@@ -366,9 +405,24 @@ export class Game {
 
     // Clear loot from previous floor
     if (this.lootSystem) this.lootSystem.clear();
+    if (this.trapManager) this.trapManager.clear();
+
+    // Generate traps for this floor
+    if (this.trapsData) {
+      this.trapManager = new TrapManager(this.trapsData);
+      const floorData = this.floorConfig.getFloor(this.currentFloor);
+      this.trapManager.generateTraps(
+        this.dungeon.rooms,
+        this.dungeon.corridors || [],
+        this.currentFloor,
+        floorData?.trapDensity,
+        floorData?.trapTypes
+      );
+    }
 
     // Start playing
     this.state = 'PLAYING';
+    this.hud.setVisible(true);
     this.waveAnnouncement = { wave: 0, timer: 2.0, text: `Floor ${floor} - ${levelConfig.name}` };
     this.hud.updateLevelName(`${levelConfig.name} - Floor ${floor}`);
     this.hud.hideBossHP();
@@ -419,6 +473,11 @@ export class Game {
 
       player.update(dt, this.input.moveVector, mapW, mapH);
 
+      // Aim toward mouse in camp (so character faces cursor)
+      const campMouseX = this.input.mouseX + this.renderer.camera.x;
+      const campMouseY = this.input.mouseY + this.renderer.camera.y;
+      player.aimAngle = Math.atan2(campMouseY - player.y, campMouseX - player.x);
+
       // Clamp to camp layout
       if (this.layoutManager) {
         const clamped = this.layoutManager.clampPosition(player.x, player.y, player.radius);
@@ -441,6 +500,13 @@ export class Game {
       if (nearestNPC && this.input.consumeInteract()) {
         this._interactWithNPC(nearestNPC);
       }
+
+      // Update HUD state in camp (same data as dungeon)
+      this.hud.updateHP(player.hp, player.maxHP);
+      this.hud.updateResource(player.resource, player.maxResource, player.resourceColor, player.resourceName);
+      this.hud.updateGold(this.persistence.getGold());
+      this.hud.updateXP(player.xp, player.xpToNext, player.level);
+      this.hud.updateLevelName('Base Camp');
 
       // Announcement decay
       if (this.waveAnnouncement.timer > 0) this.waveAnnouncement.timer -= dt;
@@ -539,13 +605,25 @@ export class Game {
     if (this.input.consumeTab()) {
       this._openSkillBook();
     }
-    if (this.input.consumeInventory()) {
-      // TODO: open inventory UI panel
-      this.waveAnnouncement = { wave: 0, timer: 1.0, text: 'Inventory (coming soon)' };
+    // Inventory (I key)
+    if (this.input.consumeInventory() && (this.state === 'PLAYING' || this.state === 'BASE_CAMP')) {
+      this._openInventory();
     }
+
+    // Potion hotbar (1-4 keys)
+    for (let i = 0; i < 4; i++) {
+      if (this.input.consumeHotbar(i)) {
+        this._usePotion(i);
+      }
+    }
+
     // Skill Book (K key)
     if (this.input.consumeSkillBook() && (this.state === 'PLAYING' || this.state === 'BASE_CAMP')) {
       this._openSkillBook();
+    }
+    // Character panel (C key)
+    if (this.input.consumeCharacter() && (this.state === 'PLAYING' || this.state === 'BASE_CAMP')) {
+      this._openCharacterPanel();
     }
     // Boss chest interaction
     if (this.input.consumeInteract() && this.lootSystem && this.lootSystem.bossChest && !this.lootSystem.bossChest.opened) {
@@ -608,6 +686,12 @@ export class Game {
       }
     }
 
+    // === MOUSE-BASED AIMING (ARPG style) ===
+    // Player always faces the mouse cursor — runs before wave check so it works even without enemies
+    const mouseWorldX = this.input.mouseX + this.renderer.camera.x;
+    const mouseWorldY = this.input.mouseY + this.renderer.camera.y;
+    player.aimAngle = Math.atan2(mouseWorldY - player.y, mouseWorldX - player.x);
+
     // Wave/enemy system reference
     const wave = this.waveSystem || this._waveShim;
     if (!wave) {
@@ -658,12 +742,6 @@ export class Game {
       r.timer -= dt;
     }
     this.rainArrows = this.rainArrows.filter(r => r.timer > 0);
-
-    // === MOUSE-BASED AIMING (ARPG style) ===
-    // Player always faces the mouse cursor
-    const mouseWorldX = this.input.mouseX + this.renderer.camera.x;
-    const mouseWorldY = this.input.mouseY + this.renderer.camera.y;
-    player.aimAngle = Math.atan2(mouseWorldY - player.y, mouseWorldX - player.x);
 
     // Find nearest enemy (for targeting info, not for aiming)
     let nearestEnemy = null;
@@ -1014,6 +1092,33 @@ export class Game {
       this._updateSoulHarvest(dt, wave);
     }
 
+    // Trap system
+    if (this.trapManager && this.state === 'PLAYING') {
+      const triggered = this.trapManager.update(dt, player.x, player.y);
+      for (const t of triggered) {
+        const result = this.trapManager.applyTrigger(t.trap, this.currentFloor);
+        if (result.damage > 0) {
+          this.player.takeDamage(result.damage, 0, { environmental: true });
+          this.damageNumbers.spawn(player.x, player.y - player.radius, Math.round(result.damage), false);
+          this.audio.playerHit();
+        }
+        if (result.status) {
+          const totalSta = (this.player.baseAttributes?.sta || 0) + (this.player.attributes?.sta || 0);
+          this.statusEffects.apply(result.status.type, result.status.duration, result.status.magnitude || 1, 'trap', totalSta);
+        }
+        if (result.knockback) {
+          // Push player away from trap
+          const dx = player.x - t.trap.x;
+          const dy = player.y - t.trap.y;
+          const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+          player.x += (dx / dist) * result.knockback;
+          player.y += (dy / dist) * result.knockback;
+        }
+        this.particles.emit(t.trap.x, t.trap.y, t.trap.trapDef?.visual?.color || '#ff0000', 8);
+      }
+      this.trapManager.removeActivated();
+    }
+
     // Collision: projectiles vs enemies
     this._checkProjectileCollisions();
 
@@ -1052,11 +1157,10 @@ export class Game {
     // Damage numbers
     this.damageNumbers.update(dt);
 
-    // Player death
-    if (player.hp <= 0) {
-      this.state = 'GAME_OVER';
-      this.audio.gameOver();
-      this._showGameOver();
+    // Player death check
+    if (this.player.hp <= 0 && !this.player.dead) {
+      this.player.dead = true;
+      this._handlePlayerDeath();
     }
 
     // Loot system update
@@ -1079,6 +1183,41 @@ export class Game {
     this.hud.updateResource(player.resource, player.maxResource, player.resourceColor, player.resourceName);
     this.hud.updateGold(this.persistence.getGold());
 
+    // Update HUD hotbar display
+    if (this.inventory) {
+      const hotbarState = [];
+      for (let i = 0; i < 4; i++) {
+        const item = this.inventory.getHotbarItem(i);
+        if (item) {
+          const cdGroup = item.cooldownGroup || 'shared';
+          const cdRemaining = Math.max(0, this.potionCooldowns[cdGroup] || 0);
+          const cdTotal = item.cooldown || 3;
+          hotbarState.push({
+            icon: item.icon || '?',
+            stackCount: item.stackCount || 1,
+            cooldownPct: cdRemaining > 0 ? cdRemaining / cdTotal : 0,
+          });
+        } else {
+          hotbarState.push(null);
+        }
+      }
+      this.hud.setHotbar(hotbarState);
+    }
+
+    // Update HUD skill slot cooldowns
+    if (this.skillManager) {
+      const leftId = this.skillManager.leftSlot;
+      const rightId = this.skillManager.rightSlot;
+      const leftCd = leftId ? { remaining: this.skillManager.cooldowns[leftId] || 0, total: this.skillManager.getSkill(leftId)?.cooldown || 1 } : null;
+      const rightCd = rightId ? { remaining: this.skillManager.cooldowns[rightId] || 0, total: this.skillManager.getSkill(rightId)?.cooldown || 1 } : null;
+      this.hud.setSkillCooldowns(leftCd, rightCd);
+    }
+
+    // Potion cooldowns
+    for (const key of Object.keys(this.potionCooldowns)) {
+      if (this.potionCooldowns[key] > 0) this.potionCooldowns[key] -= dt;
+    }
+
     // Status effects
     if (this.statusEffects) {
       this.statusEffects.update(dt);
@@ -1089,6 +1228,7 @@ export class Game {
         this.player.takeDamage(dotDmg, 0, { dot: true, environmental: true });
       }
     }
+    this.hud.setStatusEffects(this.statusEffects.getActiveEffects());
 
   }
 
@@ -2308,13 +2448,10 @@ export class Game {
 
     // Loot drops
     if (this.lootSystem) {
-      const isBoss = enemy.constructor.name === 'Boss';
-      if (this.lootSystem) {
-        if (isBoss) {
-          this.lootSystem.createBossChest(enemy.x, enemy.y, this.currentFloor || 1, this.player.playerClass);
-        } else {
-          this.lootSystem.rollEnemyDrop(enemy, this.currentFloor || 1, this.player.playerClass);
-        }
+      if (isBoss) {
+        this.lootSystem.createBossChest(enemy.x, enemy.y, this.currentFloor || 1, this.player.playerClass);
+      } else {
+        this.lootSystem.rollEnemyDrop(enemy, this.currentFloor || 1, this.player.playerClass);
       }
     }
 
@@ -2429,6 +2566,35 @@ export class Game {
     this._enterBaseCamp();
   }
 
+  async _handlePlayerDeath() {
+    this.audio.gameOver();
+    this.renderer.flash('#ff0000', 0.3);
+
+    // Calculate gold penalty (10%)
+    const currentGold = this.persistence.getGold();
+    const goldLost = Math.floor(currentGold * 0.10);
+    this.persistence.spendGold(goldLost);
+
+    // Count stats
+    const totalKills = Object.values(this.kills).reduce((a, b) => a + b, 0);
+    const roomsCleared = this.dungeonManager ? this.dungeonManager.roomsCleared || 0 : 0;
+
+    // Show death screen
+    const floorName = this.floorConfig.getFloor(this.currentFloor)?.name || 'Unknown';
+    await this.deathScreen.show(
+      this.currentFloor,
+      floorName,
+      goldLost,
+      currentGold - goldLost,
+      roomsCleared,
+      totalKills
+    );
+
+    // Return to camp (floor state is preserved)
+    this._saveProgress();
+    this._enterBaseCamp();
+  }
+
   // === NPC INTERACTION ===
   async _interactWithNPC(npc) {
     switch (npc.type) {
@@ -2438,7 +2604,7 @@ export class Game {
         break;
       case 'vendor':
       case 'item_vendor':
-        // await this._openItemVendor(); // Stage 3: item vendor UI
+        await this._openItemVendor();
         break;
       case 'waystone':
         await this._openWaystone();
@@ -2446,14 +2612,28 @@ export class Game {
     }
   }
 
-  async _openSkillBook() {
+  _openSkillBook() {
     if (!this.skillManager) return;
-    this.paused = true;
-    await this.skillBookUI.show(this.skillManager, this.selectedClass.id);
-    // Sync skill assignments back to player
-    this.player.activeSkills = { leftClick: this.skillManager.leftSlot, rightClick: this.skillManager.rightSlot };
-    this._saveProgress();
-    this.paused = false;
+    if (this._skillBookWindow && this._skillBookWindow.isOpen) {
+      this._skillBookWindow.close();
+      this._skillBookWindow = null;
+      return;
+    }
+
+    const win = new GameWindow({ title: 'Skill Book', width: 520, height: 550, x: 100, y: 40, onClose: () => {
+      this.player.activeSkills = { leftClick: this.skillManager?.leftSlot, rightClick: this.skillManager?.rightSlot };
+      this._skillBookWindow = null;
+      this._saveProgress();
+    }});
+    this._skillBookWindow = win;
+
+    const buildContent = () => {
+      const el = document.createElement('div');
+      this.skillBookUI.buildInto(el, this.skillManager, this.selectedClass.id, () => buildContent());
+      win.setContent(el);
+    };
+    buildContent();
+    win.open();
   }
 
   async _openSkillVendor() {
@@ -2484,6 +2664,166 @@ export class Game {
     this.paused = false;
   }
 
+  _openInventory() {
+    if (this._inventoryWindow && this._inventoryWindow.isOpen) {
+      this._inventoryWindow.close();
+      this._inventoryWindow = null;
+      return;
+    }
+
+    const win = new GameWindow({ title: 'Inventory', width: 680, height: 560, x: 150, y: 30, onClose: () => {
+      this._inventoryWindow = null;
+      this._saveProgress();
+    }});
+    this._inventoryWindow = win;
+
+    const buildContent = () => {
+      const el = document.createElement('div');
+      this.inventoryUI.buildInto(el, this.player, this.inventory, this.skillManager, {
+        atVendor: false,
+        onEquip: (item, slot) => {
+          const current = this.player.equipment[slot];
+          if (current) this.inventory.addItem(current);
+          this.inventory.remove(item.id);
+          this.player.equipment[slot] = item;
+          this.player.recalcAllStats();
+          this._applyPassives();
+          buildContent();
+        },
+        onUnequip: (slot) => {
+          const item = this.player.equipment[slot];
+          if (item && this.inventory.addItem(item)) {
+            this.player.equipment[slot] = null;
+            this.player.recalcAllStats();
+            this._applyPassives();
+            buildContent();
+          }
+        },
+        onDrop: (item) => {
+          this.inventory.remove(item.id);
+          if (this.lootSystem) this.lootSystem.spawnGroundItem(this.player.x, this.player.y, item);
+          buildContent();
+        },
+        onAssignHotbar: (itemId, slot) => {
+          this.inventory.assignToHotbar(itemId, slot);
+          buildContent();
+        },
+      });
+      win.setContent(el);
+    };
+    buildContent();
+    win.open();
+  }
+
+  async _openItemVendor() {
+    // Generate vendor stock (6-8 items appropriate to player level)
+    const stock = [];
+    for (let i = 0; i < 7; i++) {
+      const item = this.itemGenerator.generate(this.player.level, this.selectedClass.id, {
+        minRarity: 'common',
+        rarityBonus: 3,
+      });
+      if (item) stock.push(item);
+    }
+    // Add potions to stock
+    if (this.potionsData) {
+      for (const pt of this.potionsData.potionTypes) {
+        if (pt.classRestriction && !pt.classRestriction.includes(this.selectedClass.id)) continue;
+        const bracket = this.potionsData.pricingBrackets.find(b => this.player.level >= b.minLevel && this.player.level <= b.maxLevel);
+        const price = pt.id.includes('potion') ? (bracket?.hpMana || 10) : (bracket?.tonic || 15);
+        stock.push({
+          id: `vendor_${pt.id}`,
+          baseType: pt.id,
+          name: pt.name,
+          icon: pt.icon,
+          slot: null,
+          rarity: 'common',
+          iLvl: 1,
+          gridW: 1, gridH: 1,
+          isConsumable: true,
+          isStackable: true,
+          maxStack: pt.maxStack,
+          stackCount: 1,
+          effect: pt.effect,
+          cooldownGroup: pt.cooldownGroup,
+          cooldown: pt.cooldown,
+          sellValue: Math.floor(price / 2),
+          buyPrice: price,
+          description: pt.description,
+        });
+      }
+    }
+
+    this.paused = true;
+    await this.itemVendorUI.show(
+      stock,
+      this.inventory,
+      this.player,
+      (item) => { // onBuy
+        const price = item.buyPrice || item.sellValue * 2;
+        if (this.persistence.spendGold(price)) {
+          const buyItem = { ...item, id: `item_${Date.now()}_${Math.random().toString(36).substr(2,5)}` };
+          delete buyItem.buyPrice;
+          this.inventory.addItem(buyItem);
+        }
+      },
+      (itemId) => { // onSell
+        const info = this.inventory.findItemById(itemId);
+        if (info) {
+          this.persistence.addGold(info.item.sellValue || 1);
+          this.inventory.remove(itemId);
+        }
+      },
+      () => { // onSellJunk
+        const value = this.inventory.removeAllJunk();
+        if (value > 0) this.persistence.addGold(value);
+      }
+    );
+    this._saveProgress();
+    this.paused = false;
+  }
+
+  _usePotion(slot) {
+    if (this.state !== 'PLAYING') return;
+    const item = this.inventory.getHotbarItem(slot);
+    if (!item || !item.isConsumable) return;
+
+    // Check cooldown
+    const cdGroup = item.cooldownGroup || 'shared';
+    if ((this.potionCooldowns[cdGroup] || 0) > 0) return;
+    if (cdGroup !== 'shared' && (this.potionCooldowns.shared || 0) > 0) return;
+
+    // Check class restriction
+    if (item.classRestriction && !item.classRestriction.includes(this.selectedClass.id)) return;
+
+    // Use the potion
+    const used = this.inventory.useHotbarItem(slot);
+    if (!used) return;
+
+    // Apply effect
+    const effect = item.effect || used.effect;
+    if (effect) {
+      if (effect.type === 'heal_percent' && effect.resource === 'hp') {
+        this.player.hp = Math.min(this.player.maxHP, this.player.hp + this.player.maxHP * effect.value);
+      } else if (effect.type === 'heal_percent' && effect.resource === 'mana') {
+        this.player.gainResource(this.player.maxResource * effect.value);
+      } else if (effect.type === 'fill_resource') {
+        this.player.resource = this.player.maxResource;
+      } else if (effect.type === 'add_resource') {
+        this.player.gainResource(effect.value);
+      }
+    }
+
+    // Start cooldown
+    this.potionCooldowns[cdGroup] = item.cooldown || 3;
+    if (cdGroup === 'shared') {
+      // Shared cooldown also blocks other shared items
+    }
+
+    this.audio.shoot(); // placeholder potion sound
+    this.hud.updateHP(this.player.hp, this.player.maxHP);
+  }
+
   _applyPassives() {
     if (!this.skillManager) return;
     // Sync passive ranks from skill manager to player
@@ -2498,109 +2838,92 @@ export class Game {
   }
 
   _updateSkillSlotHUD() {
-    if (!this.skillManager) return;
-    const left = this.skillManager.getLeftSkill();
-    const right = this.skillManager.getRightSkill();
-    this.hud.updateSkillSlots(
-      left ? left.skill : null,
-      right ? right.skill : null
-    );
+    if (this.skillManager) {
+      const leftInfo = this.skillManager.getLeftSkill();
+      const rightInfo = this.skillManager.getRightSkill();
+      this.hud.updateSkillSlots(
+        leftInfo ? { icon: leftInfo.skill.icon, name: leftInfo.skill.name, resourceCost: leftInfo.skill.resourceCost } : null,
+        rightInfo ? { icon: rightInfo.skill.icon, name: rightInfo.skill.name, resourceCost: rightInfo.skill.resourceCost } : null
+      );
+    }
+  }
+
+  _openCharacterPanel() {
+    if (this._characterWindow && this._characterWindow.isOpen) {
+      this._characterWindow.close();
+      this._characterWindow = null;
+      return;
+    }
+
+    const win = new GameWindow({ title: 'Character', width: 380, height: 520, x: 50, y: 50, onClose: () => { this._characterWindow = null; this._saveProgress(); } });
+    this._characterWindow = win;
+
+    const buildContent = () => {
+      const el = document.createElement('div');
+      this.characterUI.buildInto(el, this.player,
+        (attrName) => { // onAllocate
+          if (this.player.attributePointsAvailable > 0) {
+            this.player.attributes[attrName] = (this.player.attributes[attrName] || 0) + 1;
+            this.player.attributePointsAvailable--;
+            this.player.recalcAllStats();
+            this._applyPassives();
+            buildContent(); // rebuild
+          }
+        },
+        (goldCost) => { // onResetAttributes
+          if (this.persistence.spendGold(goldCost)) {
+            const totalPoints = Object.values(this.player.attributes).reduce((a, b) => a + b, 0);
+            this.player.attributePointsAvailable += totalPoints;
+            this.player.attributes = { str: 0, int: 0, agi: 0, sta: 0 };
+            this.player.recalcAllStats();
+            this._applyPassives();
+            buildContent(); // rebuild
+          }
+        }
+      );
+      win.setContent(el);
+    };
+    buildContent();
+    win.open();
   }
 
   // _openShop() removed — replaced by itemVendorUI
 
   async _openWaystone() {
-    // Build floor list for waystone UI
     const floorList = [];
     for (let f = 1; f <= this.floorConfig.getTotalFloors(); f++) {
       const fc = this.floorConfig.getFloor(f);
-      const dungeon = this.persistence.getDungeon();
-      const unlocked = f === 1 || (dungeon.discoveredFloors && dungeon.discoveredFloors.includes(f));
       floorList.push({
-        id: `floor_${f}`,
-        icon: fc.icon || (f === 10 ? '\u2b50' : '\u25aa'),
-        name: `Floor ${f} - ${fc.name || 'Unknown'}`,
-        description: `Level ${fc.playerLevelReq || f} required`,
-        unlocked,
+        id: f,
+        icon: fc.icon || '',
+        name: fc.name || `Floor ${f}`,
+        description: fc.description || '',
         floor: f,
         levelReq: fc.playerLevelReq || f,
       });
     }
 
-    // Reuse waystone UI but with floor data
-    const result = await this._showFloorPicker(floorList);
-    if (result && result.floor) {
+    this.paused = true;
+    const result = await this.waystoneUI.show(floorList, this.player.level, this.persistence);
+    this.paused = false;
+
+    if (result.action === 'travel') {
       const fc = this.floorConfig.getFloor(result.floor);
-      const reqLevel = fc.playerLevelReq || fc.levelReq || result.floor;
+      const reqLevel = fc.playerLevelReq || result.floor;
       if (this.player.level < reqLevel) {
         this.waveAnnouncement = { wave: 0, timer: 2.0, text: `Requires Level ${reqLevel}!` };
         return;
       }
-
-      // Unlock floor 1 waystone
-      this.persistence.discoverFloor(1);
-
-      // Reset dungeon run state
-      this.kills = { grunt: 0, rusher: 0, brute: 0, ranged: 0, splitter: 0, necromancer_enemy: 0, burrower: 0, shielder: 0, bomber: 0, boss: 0 };
-
-      // Enter dungeon at specified floor
       this.currentFloor = result.floor;
-      this.dungeonMode = true;
+      this.persistence.discoverFloor(result.floor);
       const levelConfig = this.floorConfig.toLevelConfig(result.floor);
-      this.currentLevel = levelConfig;
       this._startDungeonFloor(levelConfig, result.floor);
+    } else if (result.action === 'camp') {
+      this._enterBaseCamp();
     }
   }
 
-  async _showFloorPicker(floorList) {
-    const container = document.getElementById('waystone-panel');
-    container.classList.remove('hidden');
-    container.innerHTML = '';
-
-    return new Promise((resolve) => {
-      let html = `
-        <div class="waystone-header">
-          <h2>Dungeon Way Stone</h2>
-          <p class="waystone-subtitle">Select a floor to enter</p>
-        </div>
-        <div class="waystone-list">
-      `;
-
-      for (const fl of floorList) {
-        const canEnter = fl.unlocked && this.player.level >= fl.levelReq;
-        const stateClass = !fl.unlocked ? 'locked' : canEnter ? 'unlocked' : 'locked';
-
-        html += `
-          <div class="waystone-dest ${stateClass}" data-floor="${fl.floor}">
-            <span class="waystone-icon">${fl.icon}</span>
-            <div class="waystone-info">
-              <div class="waystone-name">${fl.name}</div>
-              <div class="waystone-desc">${fl.description}</div>
-            </div>
-            <div class="waystone-status">
-              ${!fl.unlocked ? '\ud83d\udd12' : canEnter ? '\u27a4' : 'Lv' + fl.levelReq}
-            </div>
-          </div>
-        `;
-      }
-
-      html += `</div>`;
-      html += `<button class="waystone-close-btn" id="waystone-close">Back to Camp</button>`;
-      container.innerHTML = html;
-
-      for (const dest of container.querySelectorAll('.waystone-dest.unlocked')) {
-        dest.addEventListener('click', () => {
-          container.classList.add('hidden');
-          resolve({ floor: parseInt(dest.dataset.floor) });
-        });
-      }
-
-      container.querySelector('#waystone-close').addEventListener('click', () => {
-        container.classList.add('hidden');
-        resolve(null);
-      });
-    });
-  }
+  // _showFloorPicker removed — now handled by WaystoneUI.show()
 
   render() {
     const r = this.renderer;
@@ -2647,11 +2970,17 @@ export class Game {
       }
 
       r.drawFlash();
-      return;
+
+      // Full HUD in camp (same as dungeon)
+      this.hud.render({ canvasWidth: this.canvas.width, canvasHeight: this.canvas.height });
+
+      // Crosshair handled below (no early return)
     }
 
+    // === DUNGEON / PLAYING RENDERING ===
     const wave = this.waveSystem || this._waveShim;
 
+    if (this.state !== 'BASE_CAMP') {
     // Frost aura
     if (this.player.frostAuraRadius > 0) {
       r.drawFrostAura(this.player, this.player.frostAuraRadius * (this.player.aoeRadiusMult || 1));
@@ -2672,6 +3001,32 @@ export class Game {
 
     // Fire trails
     r.drawFireTrails(this.fireTrails);
+
+    // Render traps
+    if (this.trapManager) {
+      const visibleTraps = this.trapManager.getVisibleTraps(
+        this.renderer.camera.x, this.renderer.camera.y,
+        this.canvas.width, this.canvas.height,
+        this.player.x, this.player.y
+      );
+      for (const t of visibleTraps) {
+        const sx = t.x - this.renderer.camera.x;
+        const sy = t.y - this.renderer.camera.y;
+        const ctx = this.renderer.ctx;
+        ctx.save();
+        ctx.globalAlpha = t.opacity;
+        ctx.fillStyle = t.trapDef?.visual?.color || '#ff0000';
+        ctx.beginPath();
+        ctx.arc(sx, sy, t.trapDef?.visual?.idleRadius || 16, 0, Math.PI * 2);
+        ctx.fill();
+        // Pulsing animation for visible traps
+        ctx.globalAlpha = t.opacity * 0.3 * (0.5 + 0.5 * Math.sin(performance.now() / 500));
+        ctx.beginPath();
+        ctx.arc(sx, sy, (t.trapDef?.visual?.idleRadius || 16) * 1.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
 
     // Corpses (necromancer)
     r.drawCorpses(this.corpses);
@@ -2770,8 +3125,16 @@ export class Game {
     // Screen flash overlay
     r.drawFlash();
 
+    } // end if (state !== 'BASE_CAMP') — dungeon rendering
+
+    // Canvas HUD (Diablo 2-style globes and action bar)
+    this.hud.render({
+      canvasWidth: this.canvas.width,
+      canvasHeight: this.canvas.height,
+    });
+
     // Mouse crosshair (ARPG cursor)
-    if (this.state === 'PLAYING' && this.input.mouseX > 0) {
+    if ((this.state === 'PLAYING' || this.state === 'BASE_CAMP') && this.input.mouseX > 0) {
       const cx = this.input.mouseX;
       const cy = this.input.mouseY;
       const ctx = r.ctx;

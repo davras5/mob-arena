@@ -2,34 +2,34 @@ const ENEMY_TYPES = {
   grunt: {
     color: '#e74c3c',
     radius: 12,
-    baseHP: 20,
-    baseSpeed: 50,
-    damage: 10,
+    baseHP: 30,
+    baseSpeed: 70,
+    damage: 5,
     xp: 10,
   },
   rusher: {
     color: '#e67e22',
     radius: 10,
-    baseHP: 12,
-    baseSpeed: 100,
-    damage: 8,
+    baseHP: 20,
+    baseSpeed: 120,
+    damage: 4,
     xp: 12,
   },
   brute: {
     color: '#8e44ad',
     radius: 18,
-    baseHP: 60,
-    baseSpeed: 35,
-    damage: 20,
-    xp: 25,
+    baseHP: 80,
+    baseSpeed: 45,
+    damage: 12,
+    xp: 18,
   },
   ranged: {
     color: '#27ae60',
     radius: 11,
-    baseHP: 15,
-    baseSpeed: 40,
-    damage: 12,
-    xp: 15,
+    baseHP: 25,
+    baseSpeed: 60,
+    damage: 6,
+    xp: 14,
     attackRange: 200,
     shootCooldown: 2.0,
     projectileSpeed: 180,
@@ -37,9 +37,9 @@ const ENEMY_TYPES = {
   splitter: {
     color: '#f39c12',
     radius: 14,
-    baseHP: 25,
-    baseSpeed: 45,
-    damage: 8,
+    baseHP: 35,
+    baseSpeed: 65,
+    damage: 5,
     xp: 15,
     splitsInto: 'grunt',
     splitCount: 2,
@@ -47,10 +47,10 @@ const ENEMY_TYPES = {
   necromancer_enemy: {
     color: '#6c3483',
     radius: 13,
-    baseHP: 18,
-    baseSpeed: 35,
-    damage: 10,
-    xp: 20,
+    baseHP: 40,
+    baseSpeed: 55,
+    damage: 7,
+    xp: 16,
     attackRange: 180,
     shootCooldown: 2.5,
     projectileSpeed: 160,
@@ -59,35 +59,36 @@ const ENEMY_TYPES = {
   burrower: {
     color: '#784212',
     radius: 12,
-    baseHP: 30,
-    baseSpeed: 60,
-    damage: 15,
-    xp: 18,
+    baseHP: 35,
+    baseSpeed: 75,
+    damage: 8,
+    xp: 16,
     burrowCycle: 3.0,
   },
   shielder: {
     color: '#5d6d7e',
     radius: 16,
-    baseHP: 45,
-    baseSpeed: 30,
-    damage: 12,
-    xp: 22,
+    baseHP: 50,
+    baseSpeed: 50,
+    damage: 6,
+    xp: 18,
     shieldAngle: true,
   },
   bomber: {
     color: '#c0392b',
     radius: 10,
-    baseHP: 10,
-    baseSpeed: 70,
-    damage: 25,
-    xp: 15,
+    baseHP: 15,
+    baseSpeed: 80,
+    damage: 3,
+    xp: 12,
     explodeOnDeath: true,
     explosionRadius: 50,
+    explosionDamage: 25,
   },
 };
 
 export class Enemy {
-  constructor(type, x, y, wave) {
+  constructor(type, x, y, level) {
     const def = ENEMY_TYPES[type];
     this.type = type;
     this.x = x;
@@ -99,10 +100,15 @@ export class Enemy {
     this.damage = def.damage;
     this.xp = def.xp;
 
-    // Scale by wave
-    const hpMult = Math.pow(1.1, wave - 1);
-    this.maxHP = Math.round(def.baseHP * hpMult);
+    // Level scaling (DESIGN_BRIEF 7.4)
+    this.level = level || 1;
+    const lvl = this.level;
+    this.maxHP = Math.round(def.baseHP * (1 + 0.12 * (lvl - 1)));
     this.hp = this.maxHP;
+    this.damage = Math.round(this.damage * (1 + 0.10 * (lvl - 1)));
+    this.speed = this.speed * (1 + 0.01 * (lvl - 1));
+    // XP scales with level
+    this.xp = Math.round(this.xp * lvl);
 
     this.attackRange = def.attackRange || 0;
     this.shootCooldown = def.shootCooldown || 0;
@@ -142,6 +148,10 @@ export class Enemy {
     // Bomber
     this.explodeOnDeath = def.explodeOnDeath || false;
     this.explosionRadius = def.explosionRadius || 0;
+    this.explosionDamage = def.explosionDamage || 0;
+    if (this.explosionDamage) {
+      this.explosionDamage = Math.round(this.explosionDamage * (1 + 0.10 * (lvl - 1)));
+    }
 
     // Necromancer enemy resurrects
     this.resurrects = def.resurrects || false;

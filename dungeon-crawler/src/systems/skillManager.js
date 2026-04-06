@@ -388,9 +388,11 @@ export class SkillManager {
 
   loadFromSave(data) {
     if (!data) return;
-    this.learnedSkills = data.learnedSkills || {};
-    this.leftSlot = data.leftSlot || null;
-    this.rightSlot = data.rightSlot || null;
+    if (data.learnedSkills && Object.keys(data.learnedSkills).length > 0) {
+      this.learnedSkills = data.learnedSkills;
+    }
+    if (data.leftSlot) this.leftSlot = data.leftSlot;
+    if (data.rightSlot) this.rightSlot = data.rightSlot;
     this.summonStates = data.summonStates || {};
     this.passiveRanks = data.passiveRanks || {};
     this.passivePoints = data.passivePoints || 0;

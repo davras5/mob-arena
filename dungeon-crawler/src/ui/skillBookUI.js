@@ -4,6 +4,9 @@ export class SkillBookUI {
     this.selectedSkillId = null;
     this._resolve = null;
     this._keyHandler = null;
+    // For buildInto mode
+    this._container = null;
+    this._onRefresh = null;
   }
 
   /**
@@ -31,6 +34,58 @@ export class SkillBookUI {
       };
       document.addEventListener('keydown', this._keyHandler);
     });
+  }
+
+  /**
+   * Render skill book content into a given container (no overlay, no ESC handling).
+   * Used by GameWindow to embed the skill book inside a panel.
+   * @param {HTMLElement} container - DOM element to render into
+   * @param {SkillManager} skillManager
+   * @param {string} playerClass
+   * @param {Function} onRefresh - called when content needs rebuilding (e.g. after skill assignment)
+   */
+  buildInto(container, skillManager, playerClass, onRefresh) {
+    this.selectedSkillId = null;
+    this._container = container;
+    this._onRefresh = onRefresh || null;
+
+    // Clear the container
+    container.innerHTML = '';
+
+    // Build content directly into the container
+    this._buildContentInto(container, skillManager, playerClass);
+  }
+
+  /**
+   * Shared content builder: appends active skills, passives, summon toggles,
+   * and loadout sections into a target element.
+   */
+  _buildContentInto(target, skillManager, playerClass) {
+    // Gather data
+    const actives = skillManager.getAllActives().filter(s => s.isLearned);
+    const passives = skillManager.getPassives();
+    const summons = skillManager.getSummonToggles();
+    const isNecro = playerClass === 'necromancer';
+
+    // --- Active Skills Section ---
+    target.appendChild(this._buildSectionTitle('ACTIVE SKILLS'));
+    target.appendChild(this._buildActiveGrid(actives, skillManager));
+
+    // --- Passive Skills Section ---
+    if (passives.length > 0) {
+      target.appendChild(this._buildSectionTitle('PASSIVE SKILLS'));
+      target.appendChild(this._buildPassiveSection(passives));
+    }
+
+    // --- Summon Toggles (Necro only) ---
+    if (isNecro && summons.length > 0) {
+      target.appendChild(this._buildSectionTitle('SUMMON TOGGLES'));
+      target.appendChild(this._buildSummonSection(summons, skillManager));
+    }
+
+    // --- Current Loadout Section ---
+    target.appendChild(this._buildSectionTitle('CURRENT LOADOUT'));
+    target.appendChild(this._buildLoadoutSection(skillManager));
   }
 
   // ---------------------------------------------------------------------------
@@ -81,31 +136,7 @@ export class SkillBookUI {
     });
     panel.appendChild(content);
 
-    // Gather data
-    const actives = skillManager.getAllActives().filter(s => s.isLearned);
-    const passives = skillManager.getPassives();
-    const summons = skillManager.getSummonToggles();
-    const isNecro = playerClass === 'necromancer';
-
-    // --- Active Skills Section ---
-    content.appendChild(this._buildSectionTitle('ACTIVE SKILLS'));
-    content.appendChild(this._buildActiveGrid(actives, skillManager));
-
-    // --- Passive Skills Section ---
-    if (passives.length > 0) {
-      content.appendChild(this._buildSectionTitle('PASSIVE SKILLS'));
-      content.appendChild(this._buildPassiveSection(passives));
-    }
-
-    // --- Summon Toggles (Necro only) ---
-    if (isNecro && summons.length > 0) {
-      content.appendChild(this._buildSectionTitle('SUMMON TOGGLES'));
-      content.appendChild(this._buildSummonSection(summons, skillManager));
-    }
-
-    // --- Current Loadout Section ---
-    content.appendChild(this._buildSectionTitle('CURRENT LOADOUT'));
-    content.appendChild(this._buildLoadoutSection(skillManager));
+    this._buildContentInto(content, skillManager, playerClass);
 
     document.body.appendChild(overlay);
 
@@ -269,6 +300,13 @@ export class SkillBookUI {
         if (this.selectedSkillId !== skill.id) card.style.borderColor = '#333';
       });
 
+      // Drag-and-drop support (for dragging skills to HUD action bar slots)
+      card.draggable = true;
+      card.addEventListener('dragstart', (e) => {
+        e.dataTransfer.setData('application/skill', JSON.stringify({ skillId: skill.id, type: 'active' }));
+        e.dataTransfer.effectAllowed = 'move';
+      });
+
       card.dataset.skillId = skill.id;
       grid.appendChild(card);
     }
@@ -277,9 +315,10 @@ export class SkillBookUI {
   }
 
   _selectSkillCard(card, skillId) {
-    // Deselect all cards
-    if (this.overlay) {
-      for (const c of this.overlay.querySelectorAll('[data-skill-id]')) {
+    // Deselect all cards (check both overlay and container modes)
+    const root = this.overlay || this._container;
+    if (root) {
+      for (const c of root.querySelectorAll('[data-skill-id]')) {
         c.style.borderColor = '#333';
         c.style.backgroundColor = '#222244';
       }
@@ -572,7 +611,13 @@ export class SkillBookUI {
     // Re-read playerClass from skillManager
     const playerClass = skillManager.playerClass;
 
-    // Tear down and rebuild
+    // If in buildInto mode, call the onRefresh callback so the parent rebuilds
+    if (this._container && this._onRefresh) {
+      this._onRefresh();
+      return;
+    }
+
+    // Overlay mode: tear down and rebuild
     if (this.overlay && this.overlay.parentNode) {
       this.overlay.parentNode.removeChild(this.overlay);
     }

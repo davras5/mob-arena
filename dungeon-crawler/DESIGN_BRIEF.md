@@ -689,10 +689,12 @@ When hovering an inventory item, show side-by-side comparison with currently equ
 - **Resource Globe** (bottom-right): Same shape, color per class (orange=Rage, blue=Mana, green=Stamina).
 - **Potion Hotbar** (bottom-center-left): 4 slots, keys 1–4, radial cooldown overlay.
 - **Skill Slots** (bottom-center-right): 2 larger slots (LMB/RMB), swap arrows open quick picker flyout.
+- **Panel Buttons** (bottom-center, below hotbars): 3 clickable buttons — `Char` (C), `Skills` (K), `Inv` (I) — that toggle their respective overlay panels. Primary interaction method; keyboard shortcuts are secondary.
 - **XP Bar**: Thin bar spanning full bottom panel width.
 - **Minimap** (top-left): Small, expands to full map on Tab.
 - **Info** (top-right): Floor, Level, Gold.
 - **Boss HP Bar** (top-center): Only visible during boss fights.
+- **Enemy Nameplates** (above each enemy): Name, level (color-coded vs player level), and thin health bar rendered above every non-boss enemy. Always visible while alive and on-screen.
 
 ### 12.2 Overlay Panels
 - **Inventory + Equipment** (I): Left side = equipment doll (6 slots), right side = 10x6 grid. Item tooltips with comparison.

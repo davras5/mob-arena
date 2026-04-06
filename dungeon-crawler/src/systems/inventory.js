@@ -1,148 +1,334 @@
-const EQUIPMENT_SLOTS = ['weapon', 'helmet', 'chest', 'gloves', 'boots', 'amulet', 'ring1', 'ring2'];
-const BAG_SIZE = 48;
-
 export class Inventory {
   constructor() {
-    this.equipment = {
-      weapon: null,
-      helmet: null,
-      chest: null,
-      gloves: null,
-      boots: null,
-      amulet: null,
-      ring1: null,
-      ring2: null,
-    };
-    this.bag = new Array(BAG_SIZE).fill(null);
+    this.cols = 10;
+    this.rows = 6;
+    this.grid = Array.from({ length: this.rows }, () => new Array(this.cols).fill(null));
+    this.items = {};
+    this.hotbar = [null, null, null, null];
   }
 
-  // Add item to first free bag slot. Returns slot index or -1 if full.
-  addToBag(item) {
-    for (let i = 0; i < this.bag.length; i++) {
-      if (this.bag[i] === null) {
-        this.bag[i] = item;
-        return i;
-      }
-    }
-    return -1; // Bag full
-  }
+  /**
+   * Check if an item (with gridW, gridH) can fit at position (col, row).
+   * All cells in the rectangle must be null or already occupied by this same item.
+   */
+  canPlace(item, col, row) {
+    const w = item.gridW || 1;
+    const h = item.gridH || 1;
 
-  // Remove item from bag slot
-  removeFromBag(slotIndex) {
-    const item = this.bag[slotIndex];
-    this.bag[slotIndex] = null;
-    return item;
-  }
-
-  // Equip item from bag to equipment slot. Returns previously equipped item (or null).
-  equip(bagSlotIndex) {
-    const item = this.bag[bagSlotIndex];
-    if (!item) return null;
-
-    let targetSlot = item.slot;
-    // Ring can go in ring1 or ring2
-    if (targetSlot === 'ring') {
-      targetSlot = this.equipment.ring1 === null ? 'ring1' : 'ring2';
+    if (col < 0 || row < 0 || col + w > this.cols || row + h > this.rows) {
+      return false;
     }
 
-    if (!EQUIPMENT_SLOTS.includes(targetSlot)) return null;
-
-    const prev = this.equipment[targetSlot];
-    this.equipment[targetSlot] = item;
-    this.bag[bagSlotIndex] = prev; // Swap: old equipped goes to bag slot
-
-    return prev;
-  }
-
-  // Unequip item to bag. Returns true if successful.
-  unequip(equipSlot) {
-    const item = this.equipment[equipSlot];
-    if (!item) return false;
-
-    const bagSlot = this.addToBag(item);
-    if (bagSlot === -1) return false; // Bag full
-
-    this.equipment[equipSlot] = null;
-    return true;
-  }
-
-  // Get total stats from all equipped items
-  getEquipmentStats() {
-    const stats = {
-      weaponDamageMin: 0,
-      weaponDamageMax: 0,
-      totalArmor: 0,
-      damageBonus: 0,
-      maxHPBonus: 0,
-      maxResourceBonus: 0,
-      armorBonus: 0,
-      critChanceBonus: 0,
-      attackSpeedBonus: 0,
-      moveSpeedBonus: 0,
-      lifestealBonus: 0,
-      goldFindBonus: 0,
-      xpBonusPercent: 0,
-      hpRegenBonus: 0,
-      resourceRegenBonus: 0,
-      speedMod: 1,
-    };
-
-    for (const slot of EQUIPMENT_SLOTS) {
-      const item = this.equipment[slot];
-      if (!item) continue;
-
-      // Base stats
-      if (item.baseStats) {
-        if (item.baseStats.damageMin) stats.weaponDamageMin = item.baseStats.damageMin;
-        if (item.baseStats.damageMax) stats.weaponDamageMax = item.baseStats.damageMax;
-        if (item.baseStats.armor) stats.totalArmor += item.baseStats.armor;
-      }
-
-      if (item.speedMod) stats.speedMod *= item.speedMod;
-
-      // Affixes
-      for (const affix of (item.affixes || [])) {
-        if (stats[affix.statKey] !== undefined) {
-          stats[affix.statKey] += affix.value;
+    for (let r = row; r < row + h; r++) {
+      for (let c = col; c < col + w; c++) {
+        const cell = this.grid[r][c];
+        if (cell !== null && cell !== item.id) {
+          return false;
         }
       }
     }
 
-    // Armor bonus from affixes adds to total
-    stats.totalArmor += stats.armorBonus;
-
-    return stats;
+    return true;
   }
 
-  // Is bag full?
+  /**
+   * Place item in grid. Fill all cells with item.id. Store item in this.items.
+   */
+  place(item, col, row) {
+    const w = item.gridW || 1;
+    const h = item.gridH || 1;
+
+    for (let r = row; r < row + h; r++) {
+      for (let c = col; c < col + w; c++) {
+        this.grid[r][c] = item.id;
+      }
+    }
+
+    this.items[item.id] = item;
+  }
+
+  /**
+   * Remove item from grid. Clear all cells that reference this itemId.
+   * Remove from this.items. Return the item object.
+   */
+  remove(itemId) {
+    const item = this.items[itemId];
+    if (!item) return null;
+
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (this.grid[r][c] === itemId) {
+          this.grid[r][c] = null;
+        }
+      }
+    }
+
+    delete this.items[itemId];
+    return item;
+  }
+
+  /**
+   * Find the first position where item fits (scan top-left to bottom-right).
+   * If found, place it and return true. Otherwise return false.
+   */
+  autoPlace(item) {
+    const w = item.gridW || 1;
+    const h = item.gridH || 1;
+
+    for (let r = 0; r <= this.rows - h; r++) {
+      for (let c = 0; c <= this.cols - w; c++) {
+        if (this.canPlace(item, c, r)) {
+          this.place(item, c, r);
+          return true;
+        }
+      }
+    }
+
+    return false;
+  }
+
+  /**
+   * Return the item at this cell, or null.
+   */
+  getItemAt(col, row) {
+    if (col < 0 || row < 0 || col >= this.cols || row >= this.rows) {
+      return null;
+    }
+
+    const itemId = this.grid[row][col];
+    if (!itemId) return null;
+
+    return this.items[itemId] || null;
+  }
+
+  /**
+   * Return true if there's no space for even a 1x1 item.
+   */
   isFull() {
-    return this.bag.every(slot => slot !== null);
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (this.grid[r][c] === null) {
+          return false;
+        }
+      }
+    }
+    return true;
   }
 
-  // Count items in bag
-  bagCount() {
-    return this.bag.filter(s => s !== null).length;
+  /**
+   * Return array of all items in inventory.
+   */
+  getItems() {
+    return Object.values(this.items);
   }
 
-  // Serialization
+  /**
+   * Return array of items with rarity === 'junk'.
+   */
+  getJunkItems() {
+    return this.getItems().filter(item => item.rarity === 'junk');
+  }
+
+  /**
+   * Return total sell value of all junk items.
+   */
+  getJunkValue() {
+    return this.getJunkItems().reduce((total, item) => total + (item.sellValue || 0), 0);
+  }
+
+  /**
+   * Remove all junk items, return total sell value.
+   */
+  removeAllJunk() {
+    const junkItems = this.getJunkItems();
+    let totalValue = 0;
+
+    for (const item of junkItems) {
+      totalValue += item.sellValue || 0;
+      // Also clear hotbar references
+      for (let s = 0; s < this.hotbar.length; s++) {
+        if (this.hotbar[s] === item.id) {
+          this.hotbar[s] = null;
+        }
+      }
+      this.remove(item.id);
+    }
+
+    return totalValue;
+  }
+
+  /**
+   * Assign a potion/consumable to hotbar slot (0-3).
+   * Validates slot is 0-3 and item exists.
+   */
+  assignToHotbar(itemId, slot) {
+    if (slot < 0 || slot > 3) return false;
+    if (!this.items[itemId]) return false;
+
+    this.hotbar[slot] = itemId;
+    return true;
+  }
+
+  /**
+   * Clear hotbar slot.
+   */
+  removeFromHotbar(slot) {
+    if (slot < 0 || slot > 3) return;
+    this.hotbar[slot] = null;
+  }
+
+  /**
+   * Return item for hotbar slot, or null.
+   */
+  getHotbarItem(slot) {
+    if (slot < 0 || slot > 3) return null;
+    const itemId = this.hotbar[slot];
+    if (!itemId) return null;
+    return this.items[itemId] || null;
+  }
+
+  /**
+   * Consume one from a stacked item. If stack reaches 0, remove from
+   * inventory and hotbar. Return the item data (for applying effect) or null.
+   */
+  useHotbarItem(slot) {
+    if (slot < 0 || slot > 3) return null;
+
+    const itemId = this.hotbar[slot];
+    if (!itemId) return null;
+
+    const item = this.items[itemId];
+    if (!item) {
+      this.hotbar[slot] = null;
+      return null;
+    }
+
+    // Copy item data before potential removal so caller can apply effects
+    const itemData = { ...item };
+
+    if (item.stackCount !== undefined && item.stackCount > 0) {
+      item.stackCount--;
+      if (item.stackCount <= 0) {
+        this.hotbar[slot] = null;
+        this.remove(itemId);
+      }
+    } else {
+      // Non-stackable consumable: just remove it
+      this.hotbar[slot] = null;
+      this.remove(itemId);
+    }
+
+    return itemData;
+  }
+
+  /**
+   * Serialize grid, items, and hotbar for localStorage.
+   */
   toSaveData() {
     return {
-      equipment: { ...this.equipment },
-      bag: [...this.bag],
+      cols: this.cols,
+      rows: this.rows,
+      grid: this.grid.map(row => [...row]),
+      items: JSON.parse(JSON.stringify(this.items)),
+      hotbar: [...this.hotbar],
     };
   }
 
+  /**
+   * Restore from saved data.
+   */
   loadFromSave(data) {
     if (!data) return;
-    if (data.equipment) {
-      for (const slot of EQUIPMENT_SLOTS) {
-        this.equipment[slot] = data.equipment[slot] || null;
+
+    if (data.cols !== undefined) this.cols = data.cols;
+    if (data.rows !== undefined) this.rows = data.rows;
+
+    if (data.grid) {
+      this.grid = data.grid.map(row => [...row]);
+    } else {
+      this.grid = Array.from({ length: this.rows }, () => new Array(this.cols).fill(null));
+    }
+
+    if (data.items) {
+      this.items = JSON.parse(JSON.stringify(data.items));
+    } else {
+      this.items = {};
+    }
+
+    if (data.hotbar) {
+      this.hotbar = [...data.hotbar];
+    } else {
+      this.hotbar = [null, null, null, null];
+    }
+  }
+
+  /**
+   * Return { item, col, row } or null. Col/row is the top-left cell of the item.
+   */
+  findItemById(itemId) {
+    const item = this.items[itemId];
+    if (!item) return null;
+
+    for (let r = 0; r < this.rows; r++) {
+      for (let c = 0; c < this.cols; c++) {
+        if (this.grid[r][c] === itemId) {
+          // Verify this is the top-left corner: no cell above or to the left
+          // should also hold this itemId
+          const isTop = r === 0 || this.grid[r - 1][c] !== itemId;
+          const isLeft = c === 0 || this.grid[r][c - 1] !== itemId;
+          if (isTop && isLeft) {
+            return { item, col: c, row: r };
+          }
+        }
       }
     }
-    if (data.bag) {
-      for (let i = 0; i < BAG_SIZE; i++) {
-        this.bag[i] = data.bag[i] || null;
+
+    return null;
+  }
+
+  /**
+   * Smart add: if stackable and matching stack exists with room, increment count.
+   * Otherwise autoPlace. Return true/false.
+   */
+  addItem(item) {
+    // Handle stackable items (potions)
+    if (item.stackable && item.baseType) {
+      // Try to find an existing stack of the same baseType with room
+      const existingItems = this.getItems();
+      for (const existing of existingItems) {
+        if (
+          existing.baseType === item.baseType &&
+          existing.stackable &&
+          existing.stackCount !== undefined
+        ) {
+          const maxStack = existing.maxStack || 5;
+          const addCount = item.stackCount || 1;
+          if (existing.stackCount + addCount <= maxStack) {
+            existing.stackCount += addCount;
+            return true;
+          } else if (existing.stackCount < maxStack) {
+            // Partially fill this stack, then try to place the remainder
+            const spaceLeft = maxStack - existing.stackCount;
+            existing.stackCount = maxStack;
+            const remainder = addCount - spaceLeft;
+            if (remainder > 0) {
+              const newStack = { ...item, stackCount: remainder };
+              return this.autoPlace(newStack);
+            }
+            return true;
+          }
+          // This stack is full, keep looking for another
+        }
       }
+
+      // No existing stack found (or all full) -- place as new stack
+      if (item.stackCount === undefined) {
+        item.stackCount = 1;
+      }
+      return this.autoPlace(item);
     }
+
+    // Non-stackable item
+    return this.autoPlace(item);
   }
 }

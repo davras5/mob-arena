@@ -163,6 +163,15 @@ export class DungeonGenerator {
       room.height = size.h;
     }
 
+    // Add waystone to entrance room
+    const entranceRoomForWaystone = rooms.find(r => r.type === 'entrance');
+    if (entranceRoomForWaystone) {
+      entranceRoomForWaystone.waystone = {
+        x: entranceRoomForWaystone.x + entranceRoomForWaystone.width / 2,
+        y: entranceRoomForWaystone.y + entranceRoomForWaystone.height / 2 + 40,
+      };
+    }
+
     // Build corridors
     const corridors = [];
     const connectedPairs = new Set();
@@ -513,6 +522,18 @@ export class DungeonGenerator {
           worldObs.y = obs.y + room.y;
         }
         allObstacles.push(worldObs);
+      }
+    }
+
+    // Add waystone obstacles from entrance rooms
+    for (const room of dungeon.rooms) {
+      if (room.waystone) {
+        allObstacles.push({
+          type: 'waystone',
+          x: room.waystone.x,
+          y: room.waystone.y,
+          radius: 20,
+        });
       }
     }
 

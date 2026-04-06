@@ -92,6 +92,15 @@ export class DungeonRoomManager {
         x: room.x + room.width / 2,
         y: room.y + room.height / 2,
       };
+      // Add stairs as renderable obstacle
+      if (this.layoutManager) {
+        this.layoutManager.obstacles.push({
+          type: 'stairs',
+          x: this.stairsPosition.x,
+          y: this.stairsPosition.y,
+          radius: 30,
+        });
+      }
       return { type: 'boss_defeated', room };
     }
 
@@ -107,7 +116,7 @@ export class DungeonRoomManager {
     return alive.length === 0;
   }
 
-  isPlayerOnStairs(px, py) {
+  isPlayerNearStairs(px, py) {
     if (!this.stairsPosition) return false;
     const dx = px - this.stairsPosition.x;
     const dy = py - this.stairsPosition.y;

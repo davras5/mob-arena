@@ -442,14 +442,14 @@ One mega-dungeon with **10 floors**, entered from camp. Each floor is procedural
 
 ### 7.2 Floor Layout
 Each floor contains:
-- **Entrance room** (safe, waystone, no traps)
+- **Entrance room** (safe, **always contains a Way Stone**, no traps, player spawns here when entering or after death)
 - **Combat rooms** (regular enemies + random traps)
 - **Side boss rooms** (optional, off critical path, extra rewards, no traps)
 - **Treasure rooms** (chests + higher trap density — risk/reward)
 - **Shop room** (wandering merchant — limited stock, higher prices than camp, no traps)
 - **Corridors** (connect rooms, may contain low-damage traps)
 - **Main boss room** (must defeat to unlock stairs down, no traps)
-- **Stairs** (appear after main boss defeated, lead to next floor)
+- **Stairs** (spawn in the boss room after the main boss is defeated; player must walk to them and **press E to descend** — no auto-teleport)
 
 ### 7.3 Floor Progression & Level Requirements
 
@@ -490,11 +490,18 @@ Each floor contains:
 **Boss scaling:** Bosses use 5x base enemy HP, 2x base enemy damage, and follow the same per-level multipliers.
 
 ### 7.5 Waystones
-- One waystone per floor, located in the entrance room.
-- Interacting with a waystone **teleports you to camp** and **saves floor progress**.
-- From camp waystone, you can travel to any previously discovered floor's waystone.
-- Floor state (cleared rooms, opened chests) persists until fully cleared.
-- Waystone discovery is automatic on first entering a floor.
+- **Every floor has exactly one Way Stone**, placed in the **entrance room** (the room where the player spawns when entering or descending).
+- The Way Stone is a visible blue glowing object — players must walk near it and **press E** to interact.
+- Interacting opens the Waystone Travel UI: travel to camp, return to discovered floors, or close.
+- Floor state (cleared rooms, opened chests, defeated bosses) persists until the player fully clears the floor.
+- Waystone discovery is automatic on first entering a floor (`persistence.discoverFloor()`).
+- Camp also has a Way Stone NPC that opens the same UI.
+
+### 7.5.1 Stairs (Floor Descent)
+- Stairs spawn in the **center of the boss room** after the main boss is defeated.
+- Stairs are **interactive, not auto-teleport** — player must walk to them and press **E** to descend.
+- A "[E] Descend to next floor" prompt appears when the player is in proximity.
+- On descent: player transitions to the next floor's entrance room (where the new floor's Way Stone is located).
 
 ### 7.6 Death Penalty
 On death:

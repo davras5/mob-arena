@@ -48,8 +48,16 @@ export class Renderer {
     this.camera.y = player.y - this.canvas.height / 2;
 
     // Clamp
-    this.camera.x = Math.max(0, Math.min(this.mapWidth - this.canvas.width, this.camera.x));
-    this.camera.y = Math.max(0, Math.min(this.mapHeight - this.canvas.height, this.camera.y));
+    if (this.mapWidth <= this.canvas.width) {
+      this.camera.x = (this.mapWidth - this.canvas.width) / 2;
+    } else {
+      this.camera.x = Math.max(0, Math.min(this.mapWidth - this.canvas.width, this.camera.x));
+    }
+    if (this.mapHeight <= this.canvas.height) {
+      this.camera.y = (this.mapHeight - this.canvas.height) / 2;
+    } else {
+      this.camera.y = Math.max(0, Math.min(this.mapHeight - this.canvas.height, this.camera.y));
+    }
   }
 
   clear() {
@@ -232,6 +240,26 @@ export class Renderer {
         ctx.font = 'bold 11px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('STAIRS', sx, sy + obs.radius + 14);
+      } else if (obs.type === 'waystone') {
+        ctx.save();
+        ctx.globalAlpha = 0.6 + Math.sin(Date.now() / 500) * 0.2;
+        const wGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, obs.radius || 20);
+        wGrad.addColorStop(0, '#5dade2');
+        wGrad.addColorStop(0.5, '#2980b9');
+        wGrad.addColorStop(1, 'rgba(52, 152, 219, 0)');
+        ctx.fillStyle = wGrad;
+        ctx.beginPath();
+        ctx.arc(sx, sy, obs.radius || 20, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#ecf0f1';
+        ctx.beginPath();
+        ctx.arc(sx, sy, (obs.radius || 20) * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        ctx.fillStyle = '#3498db';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('Way Stone', sx, sy + (obs.radius || 20) + 14);
       }
     }
   }

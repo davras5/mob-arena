@@ -338,6 +338,7 @@ export class Game {
   }
 
   _startDungeonFloor(levelConfig, floor) {
+    this.persistence.discoverFloor(floor);
     // Configure renderer theme
     this.renderer.setTheme(levelConfig);
 
@@ -471,6 +472,8 @@ export class Game {
       const mapW = this.campData.mapWidth;
       const mapH = this.campData.mapHeight;
 
+      const playerPrevX = player.x;
+      const playerPrevY = player.y;
       player.update(dt, this.input.moveVector, mapW, mapH);
 
       // Aim toward mouse in camp (so character faces cursor)
@@ -480,7 +483,7 @@ export class Game {
 
       // Clamp to camp layout
       if (this.layoutManager) {
-        const clamped = this.layoutManager.clampPosition(player.x, player.y, player.radius);
+        const clamped = this.layoutManager.clampPosition(player.x, player.y, player.radius, playerPrevX, playerPrevY);
         player.x = clamped.x;
         player.y = clamped.y;
       }
@@ -558,8 +561,28 @@ export class Game {
         }
       }
 
+      // Dungeon waystone interaction
+      this._nearWaystone = false;
+      if (this.dungeon) {
+        const entrance = this.dungeon.rooms.find(r => r.id === this.dungeon.entranceRoomId);
+        if (entrance && entrance.waystone) {
+          const wdx = player.x - entrance.waystone.x;
+          const wdy = player.y - entrance.waystone.y;
+          if (Math.sqrt(wdx * wdx + wdy * wdy) < 50) {
+            this._nearWaystone = true;
+            if (this.input.consumeInteract()) {
+              this._openWaystone();
+              return;
+            }
+          }
+        }
+      }
+
       // Check stairs
-      if (this.dungeonManager.isPlayerOnStairs(player.x, player.y)) {
+      this._nearStairs = this.dungeonManager && this.dungeonManager.isPlayerNearStairs
+        ? this.dungeonManager.isPlayerNearStairs(player.x, player.y)
+        : false;
+      if (this._nearStairs && this.input.consumeInteract()) {
         this._transitionToNextFloor();
         return;
       }
@@ -668,11 +691,13 @@ export class Game {
     }
 
     // Player movement (runs regardless of wave state)
+    const playerPrevX = player.x;
+    const playerPrevY = player.y;
     player.update(dt, this.input.moveVector, mapW, mapH);
 
     // Layout-aware clamping for player
     if (this.layoutManager) {
-      const clamped = this.layoutManager.clampPosition(player.x, player.y, player.radius);
+      const clamped = this.layoutManager.clampPosition(player.x, player.y, player.radius, playerPrevX, playerPrevY);
       player.x = clamped.x;
       player.y = clamped.y;
 
@@ -808,6 +833,9 @@ export class Game {
       for (const e of wave.enemies) {
         if (e.dead) continue;
 
+        const ePrevX = e.x;
+        const ePrevY = e.y;
+
         // Mage decoy override target
         if (e._decoyTarget && player.decoy) {
           e.update(dt, player.decoy.x, player.decoy.y);
@@ -834,9 +862,28 @@ export class Game {
           }
         }
 
-        // Clamp enemies to map / obstacles
-        if (this.layoutManager) {
-          const clamped = this.layoutManager.clampPosition(e.x, e.y, e.radius);
+        // Wall collision for enemies
+        if (this.layoutManager && this.layoutManager.rooms.length > 0) {
+          // Tunneling check for fast-moving enemies
+          const moveDist = Math.sqrt((e.x - ePrevX) ** 2 + (e.y - ePrevY) ** 2);
+          if (moveDist > 32) {
+            const steps = Math.ceil(moveDist / 32);
+            for (let s = 1; s < steps; s++) {
+              const t = s / steps;
+              const mx = ePrevX + (e.x - ePrevX) * t;
+              const my = ePrevY + (e.y - ePrevY) * t;
+              if (!this.layoutManager.isWalkable(mx, my)) {
+                e.x = ePrevX;
+                e.y = ePrevY;
+                break;
+              }
+            }
+          }
+          const clamped = this.layoutManager.clampPosition(e.x, e.y, e.radius, ePrevX, ePrevY);
+          e.x = clamped.x;
+          e.y = clamped.y;
+        } else if (this.layoutManager) {
+          const clamped = this.layoutManager.clampPosition(e.x, e.y, e.radius, ePrevX, ePrevY);
           e.x = clamped.x;
           e.y = clamped.y;
         } else {
@@ -919,6 +966,14 @@ export class Game {
         if (hit) {
           p.dead = true;
           this.particles.emit(hit.x, hit.y, 4, '#888', { speed: 40, life: 0.2 });
+        }
+      }
+
+      // Tile-based wall collision (dungeon walls)
+      if (!p.dead && this.layoutManager && this.layoutManager.rooms.length > 0) {
+        if (!this.layoutManager.isWalkable(p.x, p.y)) {
+          p.dead = true;
+          this.particles.emit(p.x, p.y, '#888', 4);
         }
       }
     }
@@ -3097,6 +3152,30 @@ export class Game {
 
     // Damage numbers
     this.damageNumbers.render(r.ctx, r.camera);
+
+    // Stairs interaction prompt
+    if (this._nearStairs && this.dungeonManager && this.dungeonManager.stairsPosition) {
+      const sp = this.dungeonManager.stairsPosition;
+      const sx = sp.x - r.camera.x;
+      const sy = sp.y - r.camera.y;
+      r.ctx.font = 'bold 13px "Segoe UI", sans-serif';
+      r.ctx.fillStyle = '#f1c40f';
+      r.ctx.textAlign = 'center';
+      r.ctx.fillText('[E] Descend to next floor', sx, sy + 45);
+    }
+
+    // Waystone interaction prompt (in dungeon)
+    if (this._nearWaystone && this.dungeon) {
+      const entrance = this.dungeon.rooms.find(r2 => r2.id === this.dungeon.entranceRoomId);
+      if (entrance && entrance.waystone) {
+        const wx = entrance.waystone.x - r.camera.x;
+        const wy = entrance.waystone.y - r.camera.y;
+        r.ctx.font = 'bold 13px "Segoe UI", sans-serif';
+        r.ctx.fillStyle = '#3498db';
+        r.ctx.textAlign = 'center';
+        r.ctx.fillText('[E] Use Way Stone', wx, wy + 35);
+      }
+    }
 
     // Minimap
     if (this.dungeonMode && this.dungeon && this.dungeonManager) {

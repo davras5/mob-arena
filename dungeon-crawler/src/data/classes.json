@@ -21,7 +21,15 @@
     "attackType": "melee",
     "meleeArc": 90,
     "knockback": 15,
-    "defaultSkills": { "leftClick": "slash", "rightClick": "slash" },
+    "specs": ["guardian", "berserker"],
+    "attacks": {
+      "guardian":  { "primary": "warrior_guardian_bash",   "secondary": "warrior_guardian_parry" },
+      "berserker": { "primary": "warrior_berserker_cleave", "secondary": "warrior_berserker_whirlwind" }
+    },
+    "defaultEquippedAttacks": {
+      "leftClick":  "warrior_guardian_bash",
+      "rightClick": "warrior_berserker_whirlwind"
+    },
     "statBars": { "hp": 5, "damage": 4, "speed": 2, "defense": 5 }
   },
   "mage": {
@@ -45,7 +53,15 @@
       "armor": 1
     },
     "attackType": "ranged",
-    "defaultSkills": { "leftClick": "wand_bolt", "rightClick": "wand_bolt" },
+    "specs": ["pyromancer", "cryomancer"],
+    "attacks": {
+      "pyromancer": { "primary": "mage_pyromancer_flame_bolt", "secondary": "mage_pyromancer_fireball" },
+      "cryomancer": { "primary": "mage_cryomancer_frost_shard", "secondary": "mage_cryomancer_frost_nova" }
+    },
+    "defaultEquippedAttacks": {
+      "leftClick":  "mage_pyromancer_flame_bolt",
+      "rightClick": "mage_cryomancer_frost_nova"
+    },
     "statBars": { "hp": 2, "damage": 5, "speed": 3, "defense": 1 }
   },
   "archer": {
@@ -71,7 +87,15 @@
     "attackType": "ranged",
     "pierce": 1,
     "firstHitBonus": 0.2,
-    "defaultSkills": { "leftClick": "shoot", "rightClick": "shoot" },
+    "specs": ["marksman", "beastmaster"],
+    "attacks": {
+      "marksman":    { "primary": "archer_marksman_aimed_shot", "secondary": "archer_marksman_multishot" },
+      "beastmaster": { "primary": "archer_beastmaster_quick_shot", "secondary": "archer_beastmaster_call_beast" }
+    },
+    "defaultEquippedAttacks": {
+      "leftClick":  "archer_marksman_aimed_shot",
+      "rightClick": "archer_beastmaster_call_beast"
+    },
     "statBars": { "hp": 3, "damage": 3, "speed": 5, "defense": 2 }
   },
   "necromancer": {
@@ -96,7 +120,15 @@
     },
     "attackType": "ranged",
     "lifesteal": 0.15,
-    "defaultSkills": { "leftClick": "necrotic_bolt", "rightClick": "necrotic_bolt" },
+    "specs": ["plaguebringer", "bone_lord"],
+    "attacks": {
+      "plaguebringer": { "primary": "necromancer_plaguebringer_plague_bolt", "secondary": "necromancer_plaguebringer_outbreak" },
+      "bone_lord":     { "primary": "necromancer_bone_lord_bone_spear",      "secondary": "necromancer_bone_lord_raise_dead" }
+    },
+    "defaultEquippedAttacks": {
+      "leftClick":  "necromancer_plaguebringer_plague_bolt",
+      "rightClick": "necromancer_bone_lord_raise_dead"
+    },
     "statBars": { "hp": 3, "damage": 2, "speed": 3, "defense": 2 }
   }
 }

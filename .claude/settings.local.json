@@ -23,7 +23,22 @@
       "Bash(node --check dungeon-crawler/src/ui/characterUI.js)",
       "Bash(node --check src/renderer.js)",
       "Bash(node --check src/ui/classPicker.js)",
-      "Bash(node --check src/ui/skillVendorUI.js)"
+      "Bash(node --check src/ui/skillVendorUI.js)",
+      "Bash(node -e \"console.log\\(JSON.stringify\\(JSON.parse\\(require\\('fs'\\).readFileSync\\('src/data/classes.json','utf8'\\)\\),null,2\\)\\)\")",
+      "Bash(node -e \"console.log\\(JSON.stringify\\(JSON.parse\\(require\\('fs'\\).readFileSync\\('src/data/skills.json','utf8'\\)\\),null,2\\)\\)\")",
+      "Bash(node --input-type=module -e \"import\\('./src/systems/persistence.js'\\).then\\(m => { const p = new m.Persistence\\(\\); console.log\\('persistence loads'\\); console.log\\('default class:', p.getCharacter\\(\\).class\\); console.log\\('default attacks:', p.getEquippedAttacks\\(\\)\\); console.log\\('skill tree:', p.getSkillTree\\(\\)\\); console.log\\('skill points:', p.getSkillPointsAvailable\\(\\)\\); console.log\\('free respec used:', p.getFreeRespecUsed\\(\\)\\); }\\).catch\\(e => { console.error\\(e\\); process.exit\\(1\\); }\\);\")",
+      "Bash(cp /tmp/persistence-test.mjs c:/Users/DavidRasner/Documents/GitHub/mob-arena/dungeon-crawler/persistence-test.mjs)",
+      "Bash(node persistence-test.mjs)",
+      "Bash(rm persistence-test.mjs)",
+      "Bash(ls c:/Users/DavidRasner/Documents/GitHub/mob-arena/dungeon-crawler/*.json)",
+      "Bash(cp c:/Users/DavidRasner/Documents/GitHub/mob-arena/dungeon-crawler/src/systems/skillTreeEngine.js /tmp/skillTreeEngine.mjs)",
+      "Bash(cp c:/Users/DavidRasner/Documents/GitHub/mob-arena/dungeon-crawler/src/data/skills.json /tmp/skills.json)",
+      "Bash(cp c:/Users/DavidRasner/Documents/GitHub/mob-arena/dungeon-crawler/src/systems/skillTreeEngine.js c:/Users/DavidRasner/Documents/GitHub/mob-arena/dungeon-crawler/_engine.mjs)",
+      "Bash(cp c:/Users/DavidRasner/Documents/GitHub/mob-arena/dungeon-crawler/src/systems/skillManager.js c:/Users/DavidRasner/Documents/GitHub/mob-arena/dungeon-crawler/_manager_orig.mjs)",
+      "Bash(cp src/systems/skillTreeEngine.js _engine.mjs)",
+      "Bash(cp src/systems/skillManager.js _manager_orig.mjs)",
+      "Bash(sed \"s|from './skillTreeEngine.js'|from './_engine.mjs'|\" _manager_orig.mjs)",
+      "Bash(rm _manager_orig.mjs)"
     ]
   }
 }

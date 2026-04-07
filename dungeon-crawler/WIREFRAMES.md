@@ -90,16 +90,18 @@ This is the main screen players see 90% of the time. Inspired by Diablo 2's bott
 │ ┌─────────────────────────────────────────────────────────────────────────┐ │
 │ │                         BOTTOM ACTION BAR                              │ │
 │ │                                                                       │ │
-│ │    ╭─────╮                                              ╭─────╮       │ │
-│ │   ╱  HP   ╲    ┌───┐┌───┐┌───┐┌───┐  ┌────┐  ┌────┐  ╱ MANA  ╲      │ │
-│ │  │  GLOBE  │   │ 1 ││ 2 ││ 3 ││ 4 │  │ L  │  │ R  │ │  GLOBE  │     │ │
-│ │  │         │   │pot││pot││pot││pot│  │CLIK│  │CLIK│ │         │     │ │
-│ │  │  120/   │   └───┘└───┘└───┘└───┘  └────┘  └────┘ │   78/  │     │ │
-│ │  │   140   │                                          │   100  │     │ │
-│ │   ╲       ╱   ┌─────┐ ┌──────┐ ┌─────┐  [M]ap        ╲       ╱      │ │
-│ │    ╰─────╯    │ Char │ │Skills│ │ Inv │               ╰─────╯       │ │
-│ │               │  (C) │ │ (K)  │ │ (I) │                              │ │
-│ │               └─────┘ └──────┘ └─────┘                              │ │
+│ │    ╭─────╮                                                ╭─────╮     │ │
+│ │   ╱  HP   ╲    ┌────┐┌────┐ ┌──┐┌──┐┌──┐┌──┐┌──┐         ╱ MANA  ╲   │ │
+│ │  │  GLOBE  │   │ L  ││ R  │ │1 ││2 ││3 ││4 ││5 │        │  GLOBE  │  │ │
+│ │  │         │   │CLIK││CLIK│ │  ││  ││  ││  ││  │        │         │  │ │
+│ │  │  120/   │   └────┘└────┘ └──┘└──┘└──┘└──┘└──┘        │   78/  │  │ │
+│ │  │   140   │     ▲     ▲      ▲   ▲   ▲   ▲   ▲          │   100  │  │ │
+│ │   ╲       ╱   mouse  mouse   key key key key key          ╲       ╱   │ │
+│ │    ╰─────╯                                                  ╰─────╯    │ │
+│ │              ┌─────┐ ┌──────┐ ┌─────┐                                 │ │
+│ │              │ Char │ │Skills│ │ Inv │                                 │ │
+│ │              │  (C) │ │ (K)  │ │ (I) │                                 │ │
+│ │              └─────┘ └──────┘ └─────┘                                 │ │
 │ │                                                                       │ │
 │ │  ┌─ XP BAR ─────────────────────────────────────────────────────────┐ │ │
 │ │  │ ▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓░░░░░░░░░░░░░░░░░░░░  4500 / 6000 XP     │ │ │
@@ -126,49 +128,63 @@ This is the main screen players see 90% of the time. Inspired by Diablo 2's bott
 - **Text**: Current/Max (e.g., "78/100")
 - **Animation**: Smooth fill/drain. Mana pulses blue when regenerating. Rage glows brighter as it fills.
 
-#### Potion Hotbar (Bottom-Center-Left)
-- **Layout**: 4 square slots in a row, numbered 1–4
-- **Size**: ~36px per slot
-- **Display**: Potion icon + stack count overlay (bottom-right corner)
-- **Empty slot**: Dark gray with dotted border
-- **Cooldown**: Radial clock-wipe overlay (dark, semi-transparent) during shared cooldown
-- **Interaction**: Press 1–4 to use. Right-click to remove from hotbar. Drag from inventory to assign.
+#### Unified Action Bar (Bottom-Center, between the globes)
+The action bar holds **7 freely-bindable slots**. Each slot can contain an **attack** (any of the player's 4 class attacks) or a **consumable** (HP potion, mana potion, rage tonic, scroll of teleport, etc.). There is no separate potion bar — everything lives here.
 
-**Potion Hotbar Assignment Flow:**
-1. Potions bought or looted go into the **inventory grid** first (as 1x1 stackable items).
-2. To assign a potion to the hotbar: open Inventory (I), right-click potion → "Assign to Hotbar" → pick slot 1–4. Or drag potion from grid onto a hotbar slot.
-3. Using a potion via hotbar (pressing 1–4) consumes one from the linked inventory stack.
-4. If the linked stack runs empty, the hotbar slot shows the potion icon grayed out with a red "0" count.
-5. Assigning a new potion type to an occupied slot replaces the old assignment.
+**Slot layout** (left to right):
 
-#### Skill Slots (Bottom-Center-Right)
-- **Layout**: 2 larger square slots side by side, labeled "LMB" and "RMB" (or mouse icons)
-- **Size**: ~48px per slot
-- **Display**: Skill icon + skill name below in small text
-- **Resource cost**: Small text below slot showing cost (e.g., "15 mana")
-- **Swap arrows**: Small up-arrow button above each slot. Clicking opens a **quick skill picker** flyout showing all 4 of the class's attacks (both specs' primary + secondary). Click one to swap it in. This is the fast in-combat way to swap without opening the full Skill Book.
+| Visual | Trigger | Size | Purpose |
+|--------|---------|------|---------|
+| **`LMB`** square | Left mouse button | ~48px | Combat-priority slot. Hold-to-fire while LMB held. |
+| **`RMB`** square | Right mouse button | ~48px | Combat-priority slot. Hold-to-fire while RMB held. |
+| Small gap |  |  | Visual separator |
+| **`1`** square | Keyboard `1` | ~38px | Tap-to-fire (no auto-repeat on hold) |
+| **`2`** square | Keyboard `2` | ~38px | " |
+| **`3`** square | Keyboard `3` | ~38px | " |
+| **`4`** square | Keyboard `4` | ~38px | " |
+| **`5`** square | Keyboard `5` | ~38px | " |
 
-**Cooldown Visualization (REQUIRED — applies to BOTH primary and secondary attacks)**
+LMB/RMB are rendered ~25% larger than the keyboard slots so the player's eye anchors on them as the "primary combat" pair, with the keyboard row reading as a secondary belt.
+
+**Slot rendering (per slot):**
+- **Filled slot**: icon centered, slot border in slot-type color (gold for attacks, blue for consumables, gray for empty)
+- **Resource cost** (attacks only): tiny text under the slot, e.g. "18 mp" or "25 rage"
+- **Stack count** (consumables only): tiny number bottom-right of the icon, e.g. "x4"
+- **Empty slot**: dark gray dotted border, no icon
+- **Bound but empty consumable** (stack hit 0): icon shown desaturated/grayed with "0" overlay and a thin yellow border. Tooltip: "Bound to HP Potion — next stack auto-fills here"
+- **Hover**: full tooltip with name, description, cooldown, cost, source spec (for attacks)
+- **Right-click on slot**: clears the binding (slot becomes empty)
+- **Drag from another slot** OR **drag from inventory** → re-bind
+
+**Swap controls (LMB/RMB only, optional flyout):**
+- A small up-arrow above each combat slot opens the **Quick Skill Picker** (see below) for fast in-combat attack swapping
+- Keyboard slots 1–5 don't have swap arrows (smaller, less central) — re-bind via drag-from-inventory or via the Skill Book
+
+**Cooldown visualization (REQUIRED — applies to all 7 slots when bound to attacks; applies to consumable slots only for the consumable's cooldown):**
 
 ```
    READY              ON COOLDOWN              READY-FLASH
                        (1.4s left)            (just came up)
    ┌──────┐            ┌──────┐                ┌══════┐
-   │      │            │ ░░░  │                ║      ║   ← class-color
+   │      │            │ ░░░  │                ║      ║   ← slot-type
    │  🔥  │            │ ▓1.4 │                ║  🔥  ║     border pulse
    │      │            │ ░░░  │                ║      ║     150ms
    └──────┘            └──────┘                ╚══════╝
    Flame Bolt          Flame Bolt              Flame Bolt
 ```
 
-- **Radial clock-wipe**: Dark semi-transparent overlay (#000 at 70% alpha) covers the icon and sweeps clockwise from 12 o'clock as the cooldown elapses. The fully-uncovered icon == ready.
+- **Radial clock-wipe**: Dark semi-transparent overlay (#000 at 70% alpha) covers the icon and sweeps clockwise from 12 o'clock as the cooldown elapses. Fully-uncovered icon = ready.
 - **Grayscale icon**: While on cooldown, the icon is desaturated to gray. Returns to full color the moment the cooldown finishes.
 - **Numeric remaining**: Small white text (~10px) centered on the icon showing seconds remaining (e.g., `1.4`). **Only shown if cooldown > 1.5s** — primary attacks (0.5–1.0s cooldowns) skip the number to avoid flicker spam.
-- **Ready-flash**: When a secondary attack comes off cooldown, the slot border pulses class color for 150ms + a soft "tick" sound plays. **Primary attacks do NOT play the ready sound** (would be obnoxious at 0.6s intervals) but the icon still un-grays instantly.
+- **Ready-flash**: When a secondary attack OR consumable comes off cooldown, the slot border pulses class color for 150ms + a soft "tick" sound plays. **Primary attacks do NOT play the ready sound** (would be obnoxious at 0.6s intervals) but the icon still un-grays instantly.
 - **Click-while-on-cooldown**: Slot border pulses red briefly + soft error tick sound. No resource consumed.
-- **No resource (separate from cooldown)**: If the player has the cooldown ready but lacks the resource (mana/rage/stamina) to cast, the slot border pulses red, the resource globe flashes, and a small "Not enough mana" floats above the action bar. No cooldown is started.
+- **No resource** (separate from cooldown): If the player has the cooldown ready but lacks the resource (mana/rage/stamina) to cast, the slot border pulses red, the resource globe flashes, and a small "Not enough mana" floats above the action bar. No cooldown is started.
 
-**Why both primaries and secondaries get the visualization:** Even though primaries cooldowns are short (0.5–1.0s), they ARE on cooldown during their swing animation and the player needs to feel the rhythm. The radial wipe makes attack speed visible (important for buffs like Frenzy that increase attack speed — the player should literally see the wipe spin faster).
+**Shared cooldown across slots:** If the same attack is bound to multiple slots (e.g., Fireball on RMB AND slot 3), all instances show the **same** cooldown wipe and become unavailable simultaneously when cast from any of them. Same applies to potions: all HP-potion-bound slots share the HP potion cooldown.
+
+**Auto-refill rule for consumable slots:** When a bound consumable's stack drops to 0, the slot stays in "bound but empty" state. The next time a stack of that consumable type enters the player's inventory (loot pickup, vendor purchase), the routing system silently links it to the bound slot — the player doesn't need to re-drag. This is the modern ARPG default and prevents fiddly hotbar management mid-dungeon.
+
+**Why both primaries and secondaries get the cooldown viz:** Even though primary attack cooldowns are short (0.5–1.0s), they ARE on cooldown during their swing animation. The radial wipe makes attack speed visible — important for buffs like Frenzy that increase attack speed (the player should literally see the wipe spin faster).
 
 #### Panel Buttons (Bottom-Center, Below Hotbars)
 - **Layout**: 3 rectangular buttons in a row between the globes, positioned below the potion/skill slots
@@ -198,13 +214,14 @@ This is the main screen players see 90% of the time. Inspired by Diablo 2's bott
                │CLIK│
                └────┘
 ```
-- Appears above the skill slot on click of the swap arrow
-- **Always shows exactly 4 attacks** (both specs' primary + secondary) in a fixed 2×2 layout, grouped by spec — instant muscle memory
-- Icons currently equipped in the OTHER slot are shown with a thin gold border (so you don't double-equip the same attack to both slots — but you CAN if you want)
-- **Hover an icon** → small tooltip shows attack name, resource cost, cooldown, and how many tree points the player has invested in that spec
+- Appears above an LMB or RMB slot when its swap arrow is clicked. Keyboard slots 1–5 do NOT have swap arrows — re-bind those via drag-from-inventory or via the Skill Book attack picker.
+- **Always shows exactly 4 attacks** (both specs' primary + secondary) in a fixed 2×2 layout, grouped by spec — instant muscle memory.
+- Icons currently bound to the OTHER mouse slot or to any keyboard slot are shown with a thin gold border (so you don't accidentally double-bind without realizing — but you CAN if you want).
+- **Hover an icon** → small tooltip shows attack name, resource cost, cooldown, and how many tree points the player has invested in that spec.
 - Click icon to assign. ESC or click-away to close.
 - Game continues running while flyout is open (risk/reward of swapping mid-combat).
 - Attacks for which the spec tree has zero investment are still selectable (the attack still works at base power) — they're just dimmed slightly to indicate "untrained".
+- The picker only handles attacks. To bind a consumable to LMB/RMB, drag the consumable from inventory directly onto the slot.
 
 #### XP Bar (Very Bottom)
 - **Shape**: Thin horizontal bar spanning the full width of the bottom panel
@@ -446,7 +463,7 @@ A focused view of attributes and detailed stats. Can also be accessed from the I
 
 ## 6. SKILL BOOK PANEL (Hotkey: K)
 
-The Skill Book is the central screen for spending skill points, viewing both spec trees, and assigning attacks to LMB/RMB. There is **no Skill Vendor** — all progression happens here.
+The Skill Book is the central screen for spending skill points, viewing both spec trees, and assigning attacks to the **7-slot action bar** (LMB / RMB / 1 / 2 / 3 / 4 / 5). There is **no Skill Vendor** — all progression happens here.
 
 ### 6.0 Layout Overview
 
@@ -457,14 +474,20 @@ The Skill Book is the central screen for spending skill points, viewing both spe
 │                                                                        │
 │  ┌─ ACTION BAR ───────────────────────────────────────────────────┐    │
 │  │                                                                │    │
-│  │     ┌────────────────┐              ┌────────────────┐         │    │
-│  │     │  LMB           │              │  RMB           │         │    │
-│  │     │  ⚔  Bash       │              │  🌀 Whirlwind  │         │    │
-│  │     │  Guardian      │              │  Berserker     │         │    │
-│  │     │  +10 rage/hit  │              │  40 rage  6s   │         │    │
-│  │     └────────────────┘              └────────────────┘         │    │
+│  │   ┌──────┐┌──────┐  ┌────┐┌────┐┌────┐┌────┐┌────┐             │    │
+│  │   │ LMB  ││ RMB  │  │ 1  ││ 2  ││ 3  ││ 4  ││ 5  │             │    │
+│  │   │  ⚔   ││  🌀  │  │ 🛡 ││ 🧪 ││ ⚗  ││    ││ 📜 │             │    │
+│  │   │ Bash ││ Whirl│  │Parry│ HP ││Rage││empty│Tele│             │    │
+│  │   │+10rg ││40rg  │  │25rg ││ x4 ││ x3 ││    ││ x2 │             │    │
+│  │   └──────┘└──────┘  └────┘└────┘└────┘└────┘└────┘             │    │
+│  │     ▲       ▲                                                  │    │
+│  │   Guardian Berserker                                           │    │
 │  │                                                                │    │
-│  │   Click a slot → picker shows all 4 class attacks. Drag also.  │    │
+│  │   • Click a slot → picker (attacks tab + consumables tab)      │    │
+│  │   • Drag from inventory or another slot to re-bind             │    │
+│  │   • Right-click a slot → clear binding                         │    │
+│  │   • Spec-mismatch ⚠ shown next to attack slots in untrained    │    │
+│  │     specs (still works, just at base power)                    │    │
 │  └────────────────────────────────────────────────────────────────┘    │
 │                                                                        │
 │  ╔═[ ⛨ GUARDIAN  (12 pts) ]══╗  ┌─[ ⚔ BERSERKER  (6 pts) ]──────┐     │
@@ -532,10 +555,19 @@ The Skill Book is the central screen for spending skill points, viewing both spe
 - **Cross-tab indicator** — When the player has unspent skill points, BOTH spec tabs show a small green pulse dot to remind them they can invest in either tree.
 
 ### 6.2 Action Bar Section (Top)
-- **Two large slots**: LMB and RMB. Each shows the currently equipped attack's icon, name, spec, and a one-line summary of cost/cooldown.
-- **Click a slot** → Opens a 4-attack picker (same layout as the in-combat Quick Skill Picker, but bigger and with full descriptions). Player picks any of the 4 class attacks.
-- **Drag-and-drop** → Player can drag any of the 4 attack icons (shown beneath the spec tree as a small reference row) directly onto either slot.
-- **Spec mismatch warning** — If the player equips an attack from a spec they have ZERO points in, a small ⚠ icon appears next to the slot and a hover tooltip says "You haven't invested in [Spec Name] — this attack will work at base power. Spend points in the [Spec Name] tree to scale it." Non-blocking.
+The top of the Skill Book shows the **same 7-slot action bar** as the HUD, full size and with full descriptions. This is where players bind attacks AND consumables.
+
+- **7 slots total**: 2 large mouse slots (`LMB`, `RMB`) + 5 keyboard slots (`1`–`5`). LMB/RMB are rendered larger to mirror the in-combat HUD.
+- **Each slot displays**: icon, name, source (spec for attacks, "Consumable" for items), cost or stack count, cooldown.
+- **Click a slot** → opens the **Attack/Consumable Picker** (a tabbed flyout):
+  - **Attacks tab**: 2×2 grid of all 4 class attacks (both specs' primary + secondary), grouped by spec
+  - **Consumables tab**: list of all stackable items currently in inventory (HP/Mana potions, tonics, scrolls). Empty if none.
+  - Click any entry to bind to the slot. Picker closes.
+- **Drag-and-drop**: Drag any attack from the spec-tree's attack icons (shown beneath the active spec tab as a small reference row), or drag any consumable from inventory, directly onto a slot. Same drag-source can also drop into another slot to swap/rebind.
+- **Right-click a slot** → clears the binding (slot becomes empty).
+- **Spec mismatch warning**: If a slot holds an attack from a spec the player has ZERO points in, a small ⚠ icon appears on the slot. Hover tooltip: "You haven't invested in [Spec Name] — this attack will work at base power. Spend points in the [Spec Name] tree to scale it." Non-blocking.
+- **Same attack on multiple slots is allowed** — they share cooldown (see HUD §3 cooldown viz).
+- **Empty consumable slot indicator**: A consumable slot whose stack hit 0 stays bound (shown grayed with "0" overlay) and auto-refills from inventory when a new stack is acquired.
 
 ### 6.3 Tree Investment Flow
 1. Player opens Skill Book (K)
@@ -573,8 +605,9 @@ Shown whenever the player hovers a node, an attack slot, or the capstone:
 ### 6.8 Empty / New Character State
 A brand-new level-1 character has 0 invested points in either tree. The Skill Book shows:
 - Both spec tabs at "(0 pts)"
-- All 4 attack slots already populated with the class's spec primaries (LMB defaults to Spec 1 primary, RMB defaults to Spec 2 primary, so the player can immediately try both spec attack styles before deciding)
-- A small banner at the top: "Welcome! You earn 1 skill point per level. Spend them in either tree — try both attacks first to see which playstyle you prefer. Your first respec is free."
+- **LMB** pre-bound to Spec 1 primary attack, **RMB** pre-bound to Spec 2 primary attack — so the player can immediately fight using both spec attack styles and decide which playstyle they prefer
+- **Slots 1–5 all empty** — the player binds them to attacks or consumables as they choose
+- A small banner at the top: "Welcome! You earn 1 skill point per level. Spend them in either tree — try both LMB/RMB attacks first to see which playstyle you prefer. Drag potions and skills onto slots 1–5 as you collect them. Your first respec is free."
 
 ### 6.9 Hybrid Build Visualization
 For a hybrid player (points in both trees), the inactive tab still shows the invested point count in its label (e.g., `[ ⚔ BERSERKER (6 pts) ]`), so the player always knows their split at a glance without switching tabs.

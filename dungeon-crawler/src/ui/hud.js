@@ -54,10 +54,26 @@ export class HUD {
     this._enemyAlive = 0;
     this._enemyTotal = 0;
 
-    this._leftSkill = null;
-    this._rightSkill = null;
+    // === v3 spec-tree HUD state ===
+    // Unified 7-slot action bar. Each entry is null OR
+    //   { binding: { type, id }, icon, name, label,
+    //     resourceCost, stackCount, cooldownRemaining, cooldownTotal,
+    //     specColor, untrained, lastReadyFlash }
+    // Slots are keyed by canonical slot id (matches skillManager).
+    this._slots = {
+      leftClick:  null,
+      rightClick: null,
+      slot1: null, slot2: null, slot3: null, slot4: null, slot5: null,
+    };
 
-    this._hotbar = [null, null, null, null];
+    // Just-ready tick animations: map of slotId → time of last flash (seconds)
+    this._readyFlashUntil = {};
+
+    // Click-while-on-cooldown red pulse: map of slotId → expiry time
+    this._errorFlashUntil = {};
+
+    // No-resource red pulse: map of slotId → expiry time
+    this._noResourceFlashUntil = {};
 
     this._statusEffects = [];
     this._statusEffectTooltipEls = [];
@@ -177,10 +193,16 @@ export class HUD {
   }
 
   _createDropZones() {
-    // Invisible HTML drop targets over the canvas-rendered HUD slots
-    // Positioned in render() to match actual slot positions
-    this.onSkillDrop = null;   // (skillId, slot) => {} — set by game.js
-    this.onHotbarDrop = null;  // (itemId, slot) => {} — set by game.js
+    // Invisible HTML drop targets over the canvas-rendered HUD slots.
+    // Positioned in render() to match actual slot positions.
+    //
+    // Drop callbacks (set by game.js):
+    //   onHotbarDrop(payload, slotId) — payload = { type, id } from inventory or skill book
+    //   onSlotClick(slotId)           — clicking the slot opens the picker (LMB/RMB only)
+    //   onSlotSwapClick(slotId)       — clicking the swap arrow on LMB/RMB
+    this.onHotbarDrop = null;
+    this.onSlotClick = null;
+    this.onSlotSwapClick = null;
 
     const dropContainer = document.createElement('div');
     dropContainer.id = 'hud-drop-zones';
@@ -189,48 +211,74 @@ export class HUD {
       height: '120px', pointerEvents: 'none', zIndex: '99',
     });
 
-    // Skill slots (LMB, RMB)
-    this._skillDropZones = [];
-    for (const slotName of ['left', 'right']) {
+    // One drop zone per slot (LMB, RMB, slot1..slot5)
+    this._slotZones = {};
+    const slotIds = ['leftClick', 'rightClick', 'slot1', 'slot2', 'slot3', 'slot4', 'slot5'];
+    for (const slotId of slotIds) {
       const zone = document.createElement('div');
       Object.assign(zone.style, {
         position: 'absolute', width: '48px', height: '48px',
-        pointerEvents: 'auto', borderRadius: '4px',
+        pointerEvents: 'auto', borderRadius: '4px', cursor: 'pointer',
       });
-      zone.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; zone.style.background = 'rgba(200, 180, 100, 0.3)'; zone.style.border = '2px solid #c9a84c'; });
-      zone.addEventListener('dragleave', () => { zone.style.background = ''; zone.style.border = ''; });
-      zone.addEventListener('drop', (e) => {
-        e.preventDefault();
-        zone.style.background = ''; zone.style.border = '';
-        try {
-          const data = JSON.parse(e.dataTransfer.getData('application/skill'));
-          if (data && data.skillId && this.onSkillDrop) this.onSkillDrop(data.skillId, slotName);
-        } catch {}
-      });
-      dropContainer.appendChild(zone);
-      this._skillDropZones.push({ el: zone, slot: slotName });
-    }
 
-    // Hotbar slots (1-4)
-    this._hotbarDropZones = [];
-    for (let i = 0; i < 4; i++) {
-      const zone = document.createElement('div');
-      Object.assign(zone.style, {
-        position: 'absolute', width: '36px', height: '36px',
-        pointerEvents: 'auto', borderRadius: '3px',
+      zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        zone.style.background = 'rgba(200, 180, 100, 0.3)';
+        zone.style.border = '2px solid #c9a84c';
       });
-      zone.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; zone.style.background = 'rgba(200, 180, 100, 0.3)'; zone.style.border = '2px solid #c9a84c'; });
-      zone.addEventListener('dragleave', () => { zone.style.background = ''; zone.style.border = ''; });
+      zone.addEventListener('dragleave', () => {
+        zone.style.background = '';
+        zone.style.border = '';
+      });
       zone.addEventListener('drop', (e) => {
         e.preventDefault();
-        zone.style.background = ''; zone.style.border = '';
+        zone.style.background = '';
+        zone.style.border = '';
+        // Accept either an attack drop (from skill book) or an item drop (from inventory)
+        let payload = null;
         try {
-          const data = JSON.parse(e.dataTransfer.getData('application/item'));
-          if (data && data.itemId && this.onHotbarDrop) this.onHotbarDrop(data.itemId, i);
+          const a = e.dataTransfer.getData('application/x-attack');
+          if (a) payload = JSON.parse(a);
         } catch {}
+        if (!payload) {
+          try {
+            const i = e.dataTransfer.getData('application/x-consumable');
+            if (i) payload = JSON.parse(i);
+          } catch {}
+        }
+        // Legacy fallbacks (Phase 4 will sweep these out)
+        if (!payload) {
+          try {
+            const a = e.dataTransfer.getData('application/skill');
+            if (a) {
+              const d = JSON.parse(a);
+              if (d.skillId) payload = { type: 'attack', id: d.skillId };
+            }
+          } catch {}
+        }
+        if (!payload) {
+          try {
+            const i = e.dataTransfer.getData('application/item');
+            if (i) {
+              const d = JSON.parse(i);
+              if (d.itemId) payload = { type: 'consumable', id: d.itemId };
+            }
+          } catch {}
+        }
+        if (payload && this.onHotbarDrop) {
+          this.onHotbarDrop(payload, slotId);
+        }
       });
+
+      // Click on slot — game.js decides what to do (typically: open picker for LMB/RMB,
+      // do nothing for keyboard slots since drag-from-inventory is the rebind path).
+      zone.addEventListener('click', () => {
+        if (this.onSlotClick) this.onSlotClick(slotId);
+      });
+
       dropContainer.appendChild(zone);
-      this._hotbarDropZones.push({ el: zone, index: i });
+      this._slotZones[slotId] = zone;
     }
 
     document.body.appendChild(dropContainer);
@@ -267,9 +315,75 @@ export class HUD {
     this._gold = gold;
   }
 
+  // === v3 unified action bar API ===
+  //
+  // Canonical setter — call once per frame from game.js with the resolved
+  // state of every slot. The HUD treats `null` slots as empty.
+  //
+  // Each slot entry shape:
+  //   {
+  //     binding:          { type: 'attack'|'consumable', id: string },
+  //     icon:             string (emoji or character),
+  //     name:             string (short display name),
+  //     resourceCost:     number (0 = free),
+  //     stackCount:       number|null (consumables only; null hides badge),
+  //     cooldownRemaining: number,
+  //     cooldownTotal:     number,
+  //     specColor:        string|null (e.g. '#5a7a95' for Guardian; null for consumables),
+  //     untrained:        boolean (attack from a spec the player has 0 points in — shows ⚠),
+  //     specMismatchTooltip: string|null,
+  //   }
+  setSlots(slots) {
+    if (!slots) return;
+    for (const k of Object.keys(this._slots)) {
+      // Detect cooldown finishing this frame so we can ready-flash on the
+      // next render call. Only secondaries (cooldownTotal > 1.5s) chirp.
+      const next = slots[k] || null;
+      const prev = this._slots[k];
+      if (prev && next
+          && prev.cooldownRemaining > 0
+          && (next.cooldownRemaining || 0) <= 0
+          && (prev.cooldownTotal || 0) > 1.5) {
+        this._readyFlashUntil[k] = (performance.now() / 1000) + 0.15;
+      }
+      this._slots[k] = next;
+    }
+  }
+
+  /**
+   * Trigger a one-shot red error pulse on a slot — used when the player
+   * tried to cast an empty / on-cooldown / no-resource slot. Distinct
+   * tooltip messages can be passed by the caller.
+   */
+  flashSlotError(slotId, kind = 'cooldown') {
+    const now = performance.now() / 1000;
+    if (kind === 'no_resource') {
+      this._noResourceFlashUntil[slotId] = now + 0.4;
+    } else {
+      this._errorFlashUntil[slotId] = now + 0.25;
+    }
+  }
+
+  // ---- Backward-compatible shims (Phase 4 sweep will remove these) ----
   updateSkillSlots(leftSkill, rightSkill) {
-    this._leftSkill = leftSkill;
-    this._rightSkill = rightSkill;
+    // legacy 2-slot API — wrap into new 7-slot shape
+    if (leftSkill !== undefined) this._slots.leftClick = leftSkill ? this._wrapLegacySkill(leftSkill) : null;
+    if (rightSkill !== undefined) this._slots.rightClick = rightSkill ? this._wrapLegacySkill(rightSkill) : null;
+  }
+
+  _wrapLegacySkill(skill) {
+    return {
+      binding: { type: 'attack', id: skill.id || 'unknown' },
+      icon: skill.icon || '?',
+      name: skill.name || '',
+      resourceCost: skill.resourceCost || 0,
+      stackCount: null,
+      cooldownRemaining: skill.cooldownRemaining || 0,
+      cooldownTotal: skill.cooldownTotal || 0,
+      specColor: null,
+      untrained: false,
+      specMismatchTooltip: null,
+    };
   }
 
   updateWave(wave) {
@@ -315,19 +429,35 @@ export class HUD {
     this._statusEffects = effects || [];
   }
 
+  // Legacy 4-slot potion hotbar API — wrap into the new 7-slot model.
+  // Items become consumable bindings on slot1..slot4. Phase 4 wiring will
+  // call setSlots() directly and remove this shim.
   setHotbar(hotbarItems) {
-    this._hotbar = hotbarItems || [null, null, null, null];
+    if (!hotbarItems) return;
+    for (let i = 0; i < 4; i++) {
+      const item = hotbarItems[i];
+      const slotKey = 'slot' + (i + 1);
+      if (!item) {
+        this._slots[slotKey] = null;
+      } else {
+        this._slots[slotKey] = {
+          binding: { type: 'consumable', id: item.id || item.baseType || 'unknown' },
+          icon: item.icon || '?',
+          name: item.name || '',
+          resourceCost: 0,
+          stackCount: item.stackCount || item.count || null,
+          cooldownRemaining: item.cooldownRemaining || 0,
+          cooldownTotal: item.cooldownTotal || 0,
+          specColor: null,
+          untrained: false,
+          specMismatchTooltip: null,
+        };
+      }
+    }
   }
 
-  setSkillCooldowns(leftCd, rightCd) {
-    if (this._leftSkill) {
-      this._leftSkill.cooldownRemaining = leftCd?.remaining ?? 0;
-      this._leftSkill.cooldownTotal = leftCd?.total ?? 1;
-    }
-    if (this._rightSkill) {
-      this._rightSkill.cooldownRemaining = rightCd?.remaining ?? 0;
-      this._rightSkill.cooldownTotal = rightCd?.total ?? 1;
-    }
+  setSkillCooldowns(/* leftCd, rightCd */) {
+    // No-op shim — cooldowns are now part of setSlots() payloads.
   }
 
   // ========================
@@ -350,9 +480,12 @@ export class HUD {
       if (state.xp !== undefined) { this._xp = state.xp; this._xpToNext = state.xpToNext; this._level = state.level; }
       if (state.gold !== undefined) this._gold = state.gold;
       if (state.floorName) this._floorName = state.floorName;
-      if (state.leftSkill) this._leftSkill = state.leftSkill;
-      if (state.rightSkill) this._rightSkill = state.rightSkill;
-      if (state.hotbar) this._hotbar = state.hotbar;
+      // Legacy fields — game.js may still pass these during the Phase 4 transition
+      if (state.leftSkill) this._slots.leftClick = this._wrapLegacySkill(state.leftSkill);
+      if (state.rightSkill) this._slots.rightClick = this._wrapLegacySkill(state.rightSkill);
+      if (state.hotbar) this.setHotbar(state.hotbar);
+      // New canonical field — preferred path
+      if (state.slots) this.setSlots(state.slots);
       if (state.statusEffects) this._statusEffects = state.statusEffects;
       if (state.bossHP > 0) {
         this._bossHP = state.bossHP;
@@ -450,59 +583,50 @@ export class HUD {
     ctx.fillText(`${Math.ceil(this._resource)}/${Math.ceil(this._maxResource)}`, resGlobeX, resGlobeY + 2);
     ctx.shadowBlur = 0;
 
-    // ---- Center area layout ----
+    // ---- Unified 7-slot Action Bar (center) ----
+    //
+    // Layout: [LMB] [RMB] gap [1] [2] [3] [4] [5]
+    // LMB/RMB are ~25% larger to anchor as primary combat slots.
+    // Stored layout (for drop zone positioning):
+    //   this._slotLayout = { slotId: { x, y, size } }
     const centerX = W / 2;
     const centerY = barY + (barHeight - xpBarHeight) / 2;
 
-    // Potion hotbar (center-left)
-    const potionSize = Math.max(28, Math.round(barHeight * 0.38));
-    const potionGap = 4;
-    const potionTotalW = 4 * potionSize + 3 * potionGap;
-    const hotkeysWidth = 80;
-    const skillSize = Math.max(36, Math.round(barHeight * 0.48));
-    const skillGap = 6;
-    const skillTotalW = 2 * skillSize + skillGap;
+    const mouseSlotSize = Math.max(40, Math.round(barHeight * 0.50));
+    const keySlotSize   = Math.max(32, Math.round(barHeight * 0.40));
+    const slotGap   = 5;
+    const groupGap  = 14; // visual separator between mouse pair and key row
 
-    // Total center content width
-    const totalContentW = potionTotalW + hotkeysWidth + skillTotalW;
-    const contentStartX = centerX - totalContentW / 2;
+    const mouseRowW = 2 * mouseSlotSize + slotGap;
+    const keyRowW   = 5 * keySlotSize + 4 * slotGap;
+    const totalW    = mouseRowW + groupGap + keyRowW;
 
-    const potionStartX = contentStartX;
-    const potionY = centerY - potionSize / 2;
+    const startX = centerX - totalW / 2;
+    const mouseY = centerY - mouseSlotSize / 2;
+    const keyY   = centerY - keySlotSize / 2;
 
-    for (let i = 0; i < 4; i++) {
-      const x = potionStartX + i * (potionSize + potionGap);
-      this._drawHotbarSlot(ctx, x, potionY, potionSize, this._hotbar[i], i + 1);
+    this._slotLayout = {};
+
+    // LMB / RMB
+    const mouseSlotIds = [
+      { id: 'leftClick',  label: 'LMB' },
+      { id: 'rightClick', label: 'RMB' },
+    ];
+    for (let i = 0; i < mouseSlotIds.length; i++) {
+      const x = startX + i * (mouseSlotSize + slotGap);
+      const cfg = mouseSlotIds[i];
+      this._slotLayout[cfg.id] = { x, y: mouseY, size: mouseSlotSize };
+      this._drawActionBarSlot(ctx, x, mouseY, mouseSlotSize, this._slots[cfg.id], cfg.label, cfg.id);
     }
 
-    // Hotkey labels [C] [K] [I]
-    const hotkeyX = potionStartX + potionTotalW + hotkeysWidth / 2;
-    ctx.fillStyle = 'rgba(180, 170, 150, 0.3)';
-    ctx.font = `${Math.max(9, potionSize * 0.28)}px "Segoe UI", Arial, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    const labels = ['C', 'K', 'I'];
-    const labelSpacing = 22;
-    for (let i = 0; i < labels.length; i++) {
-      const lx = hotkeyX + (i - 1) * labelSpacing;
-      // Bracket background
-      ctx.fillStyle = 'rgba(60, 55, 45, 0.5)';
-      const bw = 18;
-      const bh = 16;
-      ctx.fillRect(lx - bw / 2, centerY - bh / 2, bw, bh);
-      ctx.strokeStyle = 'rgba(120, 110, 80, 0.35)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(lx - bw / 2, centerY - bh / 2, bw, bh);
-      ctx.fillStyle = 'rgba(180, 170, 150, 0.4)';
-      ctx.fillText(labels[i], lx, centerY);
+    // Keyboard slots 1–5
+    const keysStartX = startX + mouseRowW + groupGap;
+    for (let i = 0; i < 5; i++) {
+      const x = keysStartX + i * (keySlotSize + slotGap);
+      const slotId = 'slot' + (i + 1);
+      this._slotLayout[slotId] = { x, y: keyY, size: keySlotSize };
+      this._drawActionBarSlot(ctx, x, keyY, keySlotSize, this._slots[slotId], String(i + 1), slotId);
     }
-
-    // Skill slots (center-right)
-    const skillStartX = potionStartX + potionTotalW + hotkeysWidth;
-    const skillY = centerY - skillSize / 2;
-
-    this._drawSkillSlot(ctx, skillStartX, skillY, skillSize, this._leftSkill, 'LMB');
-    this._drawSkillSlot(ctx, skillStartX + skillSize + skillGap, skillY, skillSize, this._rightSkill, 'RMB');
 
     // ---- XP Bar (very bottom) ----
     const xpY = H - xpBarHeight;
@@ -573,35 +697,24 @@ export class HUD {
     ctx.restore();
 
     // Position HTML drop zones to match canvas-rendered slots
-    this._positionDropZones(potionStartX, potionY, potionSize, potionGap, skillStartX, skillY, skillSize, skillGap);
+    this._positionDropZones();
   }
 
-  _positionDropZones(potionStartX, potionY, potionSize, potionGap, skillStartX, skillY, skillSize, skillGap) {
-    if (!this._hotbarDropZones || !this._skillDropZones) return;
+  _positionDropZones() {
+    if (!this._slotZones || !this._slotLayout) return;
     const canvas = this.canvas;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
     const scaleX = rect.width / canvas.width;
     const scaleY = rect.height / canvas.height;
 
-    for (let i = 0; i < 4; i++) {
-      const x = potionStartX + i * (potionSize + potionGap);
-      const zone = this._hotbarDropZones[i].el;
-      zone.style.left = `${rect.left + x * scaleX}px`;
-      zone.style.bottom = `${window.innerHeight - rect.top - (potionY + potionSize) * scaleY}px`;
-      zone.style.width = `${potionSize * scaleX}px`;
-      zone.style.height = `${potionSize * scaleY}px`;
-    }
-
-    const slots = [
-      { x: skillStartX, zone: this._skillDropZones[0] },
-      { x: skillStartX + skillSize + skillGap, zone: this._skillDropZones[1] },
-    ];
-    for (const s of slots) {
-      s.zone.el.style.left = `${rect.left + s.x * scaleX}px`;
-      s.zone.el.style.bottom = `${window.innerHeight - rect.top - (skillY + skillSize) * scaleY}px`;
-      s.zone.el.style.width = `${skillSize * scaleX}px`;
-      s.zone.el.style.height = `${skillSize * scaleY}px`;
+    for (const [slotId, layout] of Object.entries(this._slotLayout)) {
+      const zone = this._slotZones[slotId];
+      if (!zone) continue;
+      zone.style.left = `${rect.left + layout.x * scaleX}px`;
+      zone.style.bottom = `${window.innerHeight - rect.top - (layout.y + layout.size) * scaleY}px`;
+      zone.style.width = `${layout.size * scaleX}px`;
+      zone.style.height = `${layout.size * scaleY}px`;
     }
   }
 
@@ -731,17 +844,42 @@ export class HUD {
   }
 
   // ========================
-  // Hotbar slot rendering
+  // Action bar slot rendering (canonical, used for all 7 slots)
   // ========================
+  //
+  // `slot` shape: see HUD.setSlots() docstring above. `label` is the
+  // hotkey label drawn outside the slot ("LMB", "RMB", "1"–"5"). `slotId`
+  // is the canonical id used for ready-flash / error-flash lookups.
 
-  _drawHotbarSlot(ctx, x, y, size, item, keyNum) {
+  _drawActionBarSlot(ctx, x, y, size, slot, label, slotId) {
+    const now = this._pulseTime;
+    const hasErrorFlash = (this._errorFlashUntil[slotId] || 0) > now;
+    const hasNoResourceFlash = (this._noResourceFlashUntil[slotId] || 0) > now;
+    const readyFlashActive = (this._readyFlashUntil[slotId] || 0) > now;
+
     // Slot background
     ctx.fillStyle = '#1a1a1a';
     ctx.fillRect(x, y, size, size);
 
-    // Border
-    ctx.strokeStyle = 'rgba(100, 85, 50, 0.5)';
-    ctx.lineWidth = 1.5;
+    // Border — color depends on state
+    let borderColor = 'rgba(120, 100, 55, 0.6)';
+    let borderWidth = size > 40 ? 2 : 1.5;
+    if (hasErrorFlash || hasNoResourceFlash) {
+      borderColor = `rgba(255, 60, 60, ${0.55 + 0.45 * Math.sin(now * 14)})`;
+      borderWidth = 2;
+    } else if (readyFlashActive) {
+      const remaining = (this._readyFlashUntil[slotId] - now) / 0.15;
+      borderColor = `rgba(255, 215, 80, ${remaining})`;
+      borderWidth = 2;
+    } else if (slot && slot.specColor) {
+      // Tint slot border with the spec color (subtly)
+      borderColor = this._withAlpha(slot.specColor, 0.55);
+    } else if (!slot) {
+      // Empty slot — dotted dark border
+      borderColor = 'rgba(80, 70, 50, 0.45)';
+    }
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = borderWidth;
     ctx.strokeRect(x + 0.5, y + 0.5, size - 1, size - 1);
 
     // Inner bevel
@@ -749,125 +887,98 @@ export class HUD {
     ctx.lineWidth = 1;
     ctx.strokeRect(x + 2, y + 2, size - 4, size - 4);
 
-    if (item) {
-      // Icon (emoji)
-      if (item.icon) {
-        ctx.font = `${Math.round(size * 0.5)}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
+    if (slot) {
+      const isOnCD = slot.cooldownRemaining > 0 && slot.cooldownTotal > 0;
+      const isStackEmpty = slot.binding && slot.binding.type === 'consumable'
+        && (slot.stackCount === 0 || slot.stackCount === '0');
+
+      // Icon — desaturated/dimmed when on cooldown or stack empty
+      if (slot.icon) {
+        ctx.save();
+        if (isOnCD || isStackEmpty || slot.untrained) {
+          ctx.globalAlpha = isStackEmpty ? 0.35 : 0.55;
+        }
+        ctx.font = `${Math.round(size * 0.48)}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#fff';
-        ctx.fillText(item.icon, x + size / 2, y + size / 2);
+        ctx.fillText(slot.icon, x + size / 2, y + size / 2 - 1);
+        ctx.restore();
       }
 
-      // Stack count (bottom-right)
-      if (item.stackCount && item.stackCount > 0) {
-        ctx.font = `bold ${Math.max(8, size * 0.28)}px "Segoe UI", Arial, sans-serif`;
+      // Stack count (bottom-right) for consumables. "0" still shown so the
+      // player knows the slot is bound but empty (auto-refill pending).
+      if (slot.binding && slot.binding.type === 'consumable' && slot.stackCount != null) {
+        ctx.font = `bold ${Math.max(8, size * 0.26)}px "Segoe UI", Arial, sans-serif`;
         ctx.textAlign = 'right';
         ctx.textBaseline = 'bottom';
-        ctx.fillStyle = '#fff';
+        ctx.fillStyle = isStackEmpty ? '#cc4040' : '#fff';
         ctx.shadowColor = '#000';
         ctx.shadowBlur = 3;
-        ctx.fillText(item.stackCount, x + size - 3, y + size - 2);
+        ctx.fillText(slot.stackCount, x + size - 3, y + size - 2);
         ctx.shadowBlur = 0;
       }
 
-      // Cooldown clock-wipe overlay
-      if (item.cooldownPct && item.cooldownPct > 0) {
-        this._drawClockWipe(ctx, x, y, size, item.cooldownPct);
-      }
-    }
-
-    // Key number label (top-left)
-    ctx.font = `${Math.max(8, size * 0.26)}px "Segoe UI", Arial, sans-serif`;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    ctx.fillStyle = 'rgba(160, 150, 130, 0.6)';
-    ctx.fillText(keyNum, x + 3, y + 2);
-  }
-
-  // ========================
-  // Skill slot rendering
-  // ========================
-
-  _drawSkillSlot(ctx, x, y, size, skill, label) {
-    // Slot background
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillRect(x, y, size, size);
-
-    // Border (thicker than potions)
-    const hasNoResource = skill && skill._noResourceFlash;
-    ctx.strokeStyle = hasNoResource
-      ? `rgba(255, 60, 60, ${0.5 + 0.5 * Math.sin(this._pulseTime * 12)})`
-      : 'rgba(120, 100, 55, 0.6)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(x + 0.5, y + 0.5, size - 1, size - 1);
-
-    // Inner bevel
-    ctx.strokeStyle = 'rgba(70, 60, 35, 0.4)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x + 3, y + 3, size - 6, size - 6);
-
-    if (skill) {
-      // Skill icon
-      if (skill.icon) {
-        ctx.font = `${Math.round(size * 0.45)}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#fff';
-        ctx.fillText(skill.icon, x + size / 2, y + size / 2 - 2);
-      }
-
-      // Skill name below
-      if (skill.name) {
+      // Resource cost (bottom-left) for attacks with cost > 0
+      if (slot.binding && slot.binding.type === 'attack' && slot.resourceCost > 0) {
         ctx.font = `${Math.max(7, size * 0.18)}px "Segoe UI", Arial, sans-serif`;
-        ctx.textAlign = 'center';
+        ctx.textAlign = 'left';
         ctx.textBaseline = 'bottom';
-        ctx.fillStyle = 'rgba(200, 190, 170, 0.7)';
-        ctx.fillText(skill.name, x + size / 2, y + size - 2);
-      }
-
-      // Cooldown clock-wipe overlay
-      if (skill.cooldownRemaining > 0 && skill.cooldownTotal > 0) {
-        const cdPct = skill.cooldownRemaining / skill.cooldownTotal;
-        this._drawClockWipe(ctx, x, y, size, cdPct);
-        // Cooldown seconds text
-        ctx.font = `bold ${Math.round(size * 0.35)}px "Segoe UI", Arial, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#fff';
+        ctx.fillStyle = 'rgba(120, 180, 220, 0.85)';
         ctx.shadowColor = '#000';
-        ctx.shadowBlur = 4;
-        ctx.fillText(Math.ceil(skill.cooldownRemaining), x + size / 2, y + size / 2);
+        ctx.shadowBlur = 2;
+        ctx.fillText(slot.resourceCost, x + 3, y + size - 2);
         ctx.shadowBlur = 0;
       }
 
-      // Prominent gold swap arrow (top-right corner) — click to swap skill
-      const arrowSize = Math.max(12, Math.round(size * 0.32));
-      const ax = x + size - arrowSize - 1;
-      const ay = y + 1;
-      ctx.save();
-      ctx.fillStyle = 'rgba(10, 8, 6, 0.75)';
-      ctx.fillRect(ax, ay, arrowSize, arrowSize);
-      ctx.strokeStyle = UI_THEME.gold;
-      ctx.lineWidth = 1;
-      ctx.strokeRect(ax + 0.5, ay + 0.5, arrowSize - 1, arrowSize - 1);
-      ctx.font = `bold ${Math.round(arrowSize * 0.85)}px "Segoe UI", Arial, sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillStyle = UI_THEME.goldBright;
-      ctx.shadowColor = 'rgba(201, 168, 76, 0.6)';
-      ctx.shadowBlur = 4;
-      ctx.fillText('\u21C4', ax + arrowSize / 2, ay + arrowSize / 2 + 1);
-      ctx.shadowBlur = 0;
-      ctx.restore();
+      // Untrained warning (small ⚠ top-right) — attack from a spec the player has 0 points in
+      if (slot.untrained) {
+        ctx.font = `${Math.max(8, size * 0.22)}px "Segoe UI", Arial, sans-serif`;
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'top';
+        ctx.fillStyle = '#ffb830';
+        ctx.shadowColor = '#000';
+        ctx.shadowBlur = 2;
+        ctx.fillText('\u26A0', x + size - 3, y + 2);
+        ctx.shadowBlur = 0;
+      }
+
+      // Cooldown clock-wipe overlay
+      if (isOnCD) {
+        const cdPct = slot.cooldownRemaining / slot.cooldownTotal;
+        this._drawClockWipe(ctx, x, y, size, cdPct);
+        // Numeric remaining — ONLY for cooldowns > 1.5s (per WIREFRAMES §3)
+        if (slot.cooldownTotal > 1.5) {
+          ctx.font = `bold ${Math.round(size * 0.32)}px "Segoe UI", Arial, sans-serif`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillStyle = '#fff';
+          ctx.shadowColor = '#000';
+          ctx.shadowBlur = 4;
+          ctx.fillText(slot.cooldownRemaining.toFixed(1), x + size / 2, y + size / 2);
+          ctx.shadowBlur = 0;
+        }
+      }
     }
 
-    // Label above slot (LMB / RMB)
+    // Hotkey / mouse-button label above the slot
     ctx.font = `bold ${Math.max(8, size * 0.22)}px "Segoe UI", Arial, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
     ctx.fillStyle = 'rgba(180, 170, 140, 0.55)';
     ctx.fillText(label, x + size / 2, y - 3);
+  }
+
+  // Helper: convert a hex color to rgba with the given alpha
+  _withAlpha(hex, alpha) {
+    if (typeof hex !== 'string' || !hex.startsWith('#')) return `rgba(120, 100, 55, ${alpha})`;
+    const h = hex.replace('#', '');
+    const expanded = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+    if (expanded.length !== 6) return `rgba(120, 100, 55, ${alpha})`;
+    const r = parseInt(expanded.substr(0, 2), 16);
+    const g = parseInt(expanded.substr(2, 2), 16);
+    const b = parseInt(expanded.substr(4, 2), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
   }
 
   // ========================

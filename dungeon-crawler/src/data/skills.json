@@ -1,618 +1,1273 @@
 {
+  "_schemaVersion": 3,
+  "_doc": "Spec-tree skill system. See DESIGN_BRIEF.md §5 and src/systems/skillTreeEngine.js for the effect DSL.",
+
   "warrior": {
-    "actives": [
-      {
-        "id": "slash",
-        "name": "Slash",
-        "icon": "⚔️",
-        "type": "active",
-        "tier": 0,
-        "goldCost": 0,
-        "isDefault": true,
+    "guardian": {
+      "label": "Guardian",
+      "color": "#5a7a95",
+      "icon": "⛨",
+      "description": "Defensive specialization. Parries, reflects damage, outlasts the enemy.",
+      "primary": {
+        "id": "warrior_guardian_bash",
+        "name": "Bash",
+        "icon": "⚔",
+        "slotHint": "primary",
         "attackType": "melee",
-        "requiresWeapon": ["sword", "axe", "dagger"],
-        "description": "Basic melee sweep. Hits in arc. Generates rage.",
-        "resourceCost": 0,
-        "resourceGeneration": 10,
-        "cooldown": 0.7,
-        "levels": [
-          { "damage": 22, "arc": 90, "range": 80, "knockback": 10 },
-          { "damage": 26, "arc": 95, "range": 85, "knockback": 12 },
-          { "damage": 32, "arc": 100, "range": 85, "knockback": 14 },
-          { "damage": 39, "arc": 110, "range": 90, "knockback": 16 },
-          { "damage": 46, "arc": 120, "range": 90, "knockback": 18, "bonus": "Slash cleaves in 360° at max rage" }
-        ]
+        "weaponReq": ["sword", "axe", "dagger"],
+        "baseDamage": 14,
+        "baseCooldown": 0.7,
+        "baseCost": 0,
+        "resourceGenerated": 10,
+        "range": 80,
+        "arc": 90,
+        "knockback": 10,
+        "description": "Heavy single-target swing. Generates rage."
       },
-      {
-        "id": "shield_block",
-        "name": "Shield Block",
-        "icon": "🛡️",
-        "type": "active",
-        "tier": 1,
-        "goldCost": 50,
-        "attackType": "buff",
-        "description": "Block incoming damage for 1s.",
-        "resourceCost": 15,
-        "cooldown": 1.5,
-        "levels": [
-          { "duration": 1.0, "damageReduction": 0.6 },
-          { "duration": 1.1, "damageReduction": 0.65 },
-          { "duration": 1.2, "damageReduction": 0.7, "bonus": "Reflects 10% damage" },
-          { "duration": 1.3, "damageReduction": 0.75, "bonus": "Reflects 15% damage" },
-          { "duration": 1.5, "damageReduction": 0.8, "bonus": "Reflects 20% damage, stuns attackers 0.5s" }
-        ]
+      "secondary": {
+        "id": "warrior_guardian_parry",
+        "name": "Parry Stance",
+        "icon": "🛡",
+        "slotHint": "secondary",
+        "attackType": "self_buff",
+        "weaponReq": ["sword", "axe", "dagger"],
+        "baseDamage": 0,
+        "baseCooldown": 6.0,
+        "baseCost": 25,
+        "duration": 2.0,
+        "frontalBlockPct": 1.0,
+        "reflectPct": 0.5,
+        "description": "Channel for 2s: blocks all frontal damage and reflects 50% back."
       },
-      {
-        "id": "shield_charge",
-        "name": "Shield Charge",
-        "icon": "💨",
-        "type": "active",
-        "tier": 2,
-        "goldCost": 150,
-        "attackType": "dash",
-        "description": "Dash forward, deal damage + knockback.",
-        "resourceCost": 25,
-        "cooldown": 4.0,
-        "levels": [
-          { "damage": 30, "distance": 150, "knockback": 40 },
-          { "damage": 36, "distance": 160, "knockback": 45 },
-          { "damage": 44, "distance": 170, "knockback": 50, "bonus": "+0.3s stun" },
-          { "damage": 53, "distance": 180, "knockback": 55, "bonus": "+0.5s stun" },
-          { "damage": 63, "distance": 200, "knockback": 60, "bonus": "+0.8s stun, leaves fire trail" }
-        ]
+      "tree": [
+        {
+          "id": "iron_hide",
+          "tier": 1,
+          "maxRank": 5,
+          "name": "Iron Hide",
+          "description": "+3% armor per rank.",
+          "effects": [
+            { "type": "player_stat", "stat": "armorPct", "perRank": 0.03 }
+          ]
+        },
+        {
+          "id": "stalwart",
+          "tier": 1,
+          "maxRank": 5,
+          "name": "Stalwart",
+          "description": "+15 max HP per rank.",
+          "effects": [
+            { "type": "player_stat", "stat": "maxHP", "perRank": 15 }
+          ]
+        },
+        {
+          "id": "heavy_hands",
+          "tier": 1,
+          "maxRank": 5,
+          "name": "Heavy Hands",
+          "description": "Bash damage +8% per rank.",
+          "effects": [
+            { "type": "damage_pct", "target": "warrior_guardian_bash", "perRank": 0.08 }
+          ]
+        },
+        {
+          "id": "reinforced_stance",
+          "tier": 2,
+          "maxRank": 3,
+          "name": "Reinforced Stance",
+          "description": "Parry Stance duration +0.4s per rank.",
+          "effects": [
+            { "type": "player_stat", "stat": "parryDurationBonus", "perRank": 0.4 }
+          ]
+        },
+        {
+          "id": "spiked_plating",
+          "tier": 2,
+          "maxRank": 3,
+          "name": "Spiked Plating",
+          "description": "Parry reflect +10% per rank.",
+          "effects": [
+            { "type": "player_stat", "stat": "parryReflectBonus", "perRank": 0.10 }
+          ]
+        },
+        {
+          "id": "counterattack",
+          "tier": 2,
+          "maxRank": 3,
+          "name": "Counterattack",
+          "description": "After a successful parry, your next Bash deals +10% damage per rank.",
+          "effects": [
+            {
+              "type": "conditional_trigger",
+              "target": "warrior_guardian_bash",
+              "trigger": "postParry",
+              "perRank": { "damageMult": 0.10 }
+            }
+          ]
+        },
+        {
+          "id": "hold_the_line",
+          "tier": 3,
+          "maxRank": 3,
+          "branchGroup": "guardian_t3",
+          "name": "Hold the Line",
+          "description": "-8% damage taken while moving below 50% speed, per rank.",
+          "effects": [
+            {
+              "type": "conditional_trigger",
+              "trigger": "slowMoving",
+              "perRank": { "damageTakenMult": -0.08 }
+            }
+          ]
+        },
+        {
+          "id": "vigilant",
+          "tier": 3,
+          "maxRank": 3,
+          "branchGroup": "guardian_t3",
+          "name": "Vigilant",
+          "description": "Parry Stance cooldown -0.6s per rank.",
+          "effects": [
+            { "type": "cooldown_flat", "target": "warrior_guardian_parry", "perRank": -0.6 }
+          ]
+        },
+        {
+          "id": "taunting_strike",
+          "tier": 4,
+          "maxRank": 1,
+          "name": "Taunting Strike",
+          "description": "Bash forces nearby enemies to attack you for 3s.",
+          "effects": [
+            {
+              "type": "conditional_trigger",
+              "target": "warrior_guardian_bash",
+              "trigger": "onHit",
+              "effect": { "taunt": { "duration": 3.0, "radius": 120 } }
+            }
+          ]
+        },
+        {
+          "id": "last_stand",
+          "tier": 4,
+          "maxRank": 1,
+          "name": "Last Stand",
+          "description": "Below 30% HP, take 25% less damage.",
+          "effects": [
+            {
+              "type": "conditional_trigger",
+              "trigger": "belowHPPct",
+              "effect": { "hpThreshold": 0.30, "damageTakenMult": -0.25 }
+            }
+          ]
+        },
+        {
+          "id": "aegis",
+          "tier": 5,
+          "maxRank": 1,
+          "name": "Aegis",
+          "description": "CAPSTONE — Once per fight, when reduced below 20% HP, become invulnerable for 3s and reflect 100% damage taken back at attackers.",
+          "effects": [
+            { "type": "capstone_hook", "hookId": "guardian_aegis" }
+          ]
+        }
+      ]
+    },
+
+    "berserker": {
+      "label": "Berserker",
+      "color": "#a0303a",
+      "icon": "⚔",
+      "description": "Offensive specialization. High damage, AoE, attack-speed scaling, fragile.",
+      "primary": {
+        "id": "warrior_berserker_cleave",
+        "name": "Cleave",
+        "icon": "🗡",
+        "slotHint": "primary",
+        "attackType": "melee",
+        "weaponReq": ["sword", "axe", "dagger"],
+        "baseDamage": 11,
+        "baseCooldown": 0.8,
+        "baseCost": 0,
+        "resourceGenerated": 8,
+        "range": 80,
+        "arc": 130,
+        "knockback": 6,
+        "description": "Wide-arc swing. Hits all enemies in a frontal cone. Generates rage."
       },
-      {
-        "id": "whirlwind",
+      "secondary": {
+        "id": "warrior_berserker_whirlwind",
         "name": "Whirlwind",
         "icon": "🌀",
-        "type": "active",
-        "tier": 3,
-        "goldCost": 400,
-        "attackType": "channel",
-        "description": "Spin AoE for 2s.",
-        "resourceCost": 40,
-        "cooldown": 8.0,
-        "levels": [
-          { "dps": 15, "duration": 2.0, "radius": 70 },
-          { "dps": 18, "duration": 2.1, "radius": 75 },
-          { "dps": 22, "duration": 2.2, "radius": 80, "bonus": "Pulls enemies toward you" },
-          { "dps": 26, "duration": 2.4, "radius": 85, "bonus": "Pulls + slows 20%" },
-          { "dps": 32, "duration": 2.6, "radius": 95, "bonus": "Pulls + slows 30% + 0.3s stun on end" }
-        ]
+        "slotHint": "secondary",
+        "attackType": "channel_aoe",
+        "weaponReq": ["sword", "axe", "dagger"],
+        "baseDamage": 18,
+        "baseCooldown": 6.0,
+        "baseCost": 40,
+        "duration": 2.0,
+        "tickInterval": 0.25,
+        "radius": 100,
+        "moveWithPlayer": false,
+        "description": "Spin in place for 2s, dealing AoE damage to all surrounding enemies."
       },
-      {
-        "id": "war_cry",
-        "name": "War Cry",
-        "icon": "📢",
-        "type": "active",
-        "tier": 3,
-        "goldCost": 400,
-        "attackType": "buff",
-        "description": "Buff: damage boost for 5s.",
-        "resourceCost": 30,
-        "cooldown": 12.0,
-        "levels": [
-          { "damageBuff": 0.20, "duration": 5.0 },
-          { "damageBuff": 0.24, "duration": 5.5 },
-          { "damageBuff": 0.28, "duration": 6.0, "bonus": "+10% attack speed" },
-          { "damageBuff": 0.33, "duration": 6.5, "bonus": "+15% attack speed" },
-          { "damageBuff": 0.40, "duration": 7.0, "bonus": "+20% attack speed" }
-        ]
-      },
-      {
-        "id": "cleave",
-        "name": "Cleave",
-        "icon": "🪓",
-        "type": "active",
-        "tier": 4,
-        "goldCost": 1000,
-        "attackType": "melee",
-        "description": "Wide-arc melee hitting all enemies in front.",
-        "resourceCost": 35,
-        "cooldown": 6.0,
-        "levels": [
-          { "damage": 40, "arc": 160, "range": 100 },
-          { "damage": 48, "arc": 170, "range": 105 },
-          { "damage": 58, "arc": 180, "range": 110, "bonus": "Enemies bleed for 3s" },
-          { "damage": 70, "arc": 200, "range": 115, "bonus": "Bleed + shockwave at edge" },
-          { "damage": 84, "arc": 220, "range": 120, "bonus": "Bleed + shockwave + 0.5s stun" }
-        ]
-      },
-      {
-        "id": "earthquake",
-        "name": "Earthquake",
-        "icon": "💥",
-        "type": "active",
-        "tier": 5,
-        "goldCost": 2500,
-        "attackType": "aoe",
-        "description": "Massive AoE stun + damage.",
-        "resourceCost": 60,
-        "cooldown": 20.0,
-        "levels": [
-          { "damage": 80, "radius": 120, "stunDuration": 1.0 },
-          { "damage": 96, "radius": 130, "stunDuration": 1.1 },
-          { "damage": 116, "radius": 140, "stunDuration": 1.3, "bonus": "Cracks slow enemies 30% for 3s" },
-          { "damage": 140, "radius": 155, "stunDuration": 1.5, "bonus": "Cracks + falling rocks (3 hits)" },
-          { "damage": 168, "radius": 170, "stunDuration": 1.8, "bonus": "Cracks + rocks + aftershock at 50% damage" }
-        ]
-      }
-    ],
-    "passives": [
-      { "id": "toughness", "name": "Toughness", "icon": "🛡️", "maxRanks": 5, "description": "+2% damage reduction per rank", "effectPerRank": { "flatDamageReduction": 0.02 } },
-      { "id": "bloodlust", "name": "Bloodlust", "icon": "🩸", "maxRanks": 5, "description": "+1% lifesteal per rank", "effectPerRank": { "lifestealPercent": 0.01 } },
-      { "id": "fury", "name": "Fury", "icon": "😤", "maxRanks": 5, "description": "+5% rage generation per rank", "effectPerRank": { "rageGenerationMult": 0.05 } },
-      { "id": "iron_skin", "name": "Iron Skin", "icon": "🪨", "maxRanks": 5, "description": "+3% armor per rank", "effectPerRank": { "armorPercent": 0.03 } },
-      { "id": "relentless", "name": "Relentless", "icon": "⏩", "maxRanks": 4, "description": "+2% attack speed per rank", "effectPerRank": { "attackSpeedPercent": 0.02 } },
-      { "id": "vitality", "name": "Vitality", "icon": "💚", "maxRanks": 5, "description": "+15 max HP per rank", "effectPerRank": { "maxHPBonus": 15 } },
-      { "id": "berserker_blood", "name": "Berserker Blood", "icon": "🔴", "maxRanks": 3, "description": "+3% damage when below 40% HP per rank", "effectPerRank": { "lowHPDamagePercent": 0.03, "lowHPThreshold": 0.4 } }
-    ]
+      "tree": [
+        {
+          "id": "brutal_edge",
+          "tier": 1,
+          "maxRank": 5,
+          "name": "Brutal Edge",
+          "description": "Cleave damage +10% per rank.",
+          "effects": [
+            { "type": "damage_pct", "target": "warrior_berserker_cleave", "perRank": 0.10 }
+          ]
+        },
+        {
+          "id": "whirling_steel",
+          "tier": 1,
+          "maxRank": 5,
+          "name": "Whirling Steel",
+          "description": "Whirlwind damage +10% per rank.",
+          "effects": [
+            { "type": "damage_pct", "target": "warrior_berserker_whirlwind", "perRank": 0.10 }
+          ]
+        },
+        {
+          "id": "bloodthirst",
+          "tier": 1,
+          "maxRank": 5,
+          "name": "Bloodthirst",
+          "description": "+1% lifesteal per rank.",
+          "effects": [
+            { "type": "player_stat", "stat": "lifestealPct", "perRank": 0.01 }
+          ]
+        },
+        {
+          "id": "frenzy",
+          "tier": 2,
+          "maxRank": 3,
+          "name": "Frenzy",
+          "description": "+4% attack speed per enemy hit in last 3s, per rank (max 5 stacks).",
+          "effects": [
+            {
+              "type": "conditional_trigger",
+              "trigger": "onHit",
+              "perRank": { "attackSpeedStack": 0.04, "stackDuration": 3.0, "maxStacks": 5 }
+            }
+          ]
+        },
+        {
+          "id": "wide_arc",
+          "tier": 2,
+          "maxRank": 3,
+          "name": "Wide Arc",
+          "description": "Cleave hits 15% wider per rank.",
+          "effects": [
+            { "type": "attack_stat", "target": "warrior_berserker_cleave", "stat": "arc", "perRankPct": 0.15 }
+          ]
+        },
+        {
+          "id": "tornado",
+          "tier": 2,
+          "maxRank": 3,
+          "name": "Tornado",
+          "description": "Whirlwind moves with you and lasts +0.3s per rank.",
+          "effects": [
+            { "type": "behavior_swap", "target": "warrior_berserker_whirlwind", "mode": "moveWithPlayer" },
+            { "type": "attack_stat", "target": "warrior_berserker_whirlwind", "stat": "duration", "perRank": 0.3 }
+          ]
+        },
+        {
+          "id": "reckless",
+          "tier": 3,
+          "maxRank": 3,
+          "branchGroup": "berserker_t3",
+          "name": "Reckless",
+          "description": "+12% damage, -5% damage reduction per rank.",
+          "effects": [
+            { "type": "player_stat", "stat": "damagePct", "perRank": 0.12 },
+            { "type": "player_stat", "stat": "damageReductionPct", "perRank": -0.05 }
+          ]
+        },
+        {
+          "id": "endless_carnage",
+          "tier": 3,
+          "maxRank": 3,
+          "branchGroup": "berserker_t3",
+          "name": "Endless Carnage",
+          "description": "Kills during Whirlwind extend its duration by 0.5s per rank.",
+          "effects": [
+            {
+              "type": "conditional_trigger",
+              "target": "warrior_berserker_whirlwind",
+              "trigger": "onKillDuringChannel",
+              "perRank": { "channelExtend": 0.5 }
+            }
+          ]
+        },
+        {
+          "id": "unstoppable",
+          "tier": 4,
+          "maxRank": 1,
+          "name": "Unstoppable",
+          "description": "Immune to slow and root.",
+          "effects": [
+            { "type": "player_stat", "stat": "immuneSlow", "value": true },
+            { "type": "player_stat", "stat": "immuneRoot", "value": true }
+          ]
+        },
+        {
+          "id": "crimson_surge",
+          "tier": 4,
+          "maxRank": 1,
+          "name": "Crimson Surge",
+          "description": "Killing an enemy heals 5% max HP.",
+          "effects": [
+            {
+              "type": "conditional_trigger",
+              "trigger": "onKill",
+              "effect": { "healPctMaxHP": 0.05 }
+            }
+          ]
+        },
+        {
+          "id": "endless_rage",
+          "tier": 5,
+          "maxRank": 1,
+          "name": "Endless Rage",
+          "description": "CAPSTONE — While Whirlwind is active, kills refresh its full duration. Capped at 3 refreshes per cast to prevent infinite loops.",
+          "effects": [
+            { "type": "capstone_hook", "hookId": "berserker_endless_rage" }
+          ]
+        }
+      ]
+    }
   },
+
   "mage": {
-    "actives": [
-      {
-        "id": "wand_bolt",
-        "name": "Wand Bolt",
-        "icon": "🔮",
-        "type": "active",
-        "tier": 0,
-        "goldCost": 0,
-        "isDefault": true,
-        "attackType": "projectile",
-        "requiresWeapon": ["wand", "staff"],
-        "description": "Ranged magic projectile.",
-        "resourceCost": 0,
-        "cooldown": 1.0,
-        "levels": [
-          { "damage": 20, "projectileSpeed": 220, "range": 450 },
-          { "damage": 24, "projectileSpeed": 230, "range": 460 },
-          { "damage": 29, "projectileSpeed": 240, "range": 470 },
-          { "damage": 35, "projectileSpeed": 250, "range": 480 },
-          { "damage": 42, "projectileSpeed": 260, "range": 500, "bonus": "Bolts pierce 1 enemy" }
-        ]
-      },
-      {
-        "id": "fireball",
-        "name": "Fireball",
+    "pyromancer": {
+      "label": "Pyromancer",
+      "color": "#e07030",
+      "icon": "🔥",
+      "description": "Burning DoTs, AoE spread, fire that feeds on itself.",
+      "primary": {
+        "id": "mage_pyromancer_flame_bolt",
+        "name": "Flame Bolt",
         "icon": "🔥",
-        "type": "active",
-        "tier": 1,
-        "goldCost": 50,
+        "slotHint": "primary",
+        "attackType": "projectile",
+        "weaponReq": ["wand", "staff"],
+        "baseDamage": 9,
+        "baseCooldown": 0.6,
+        "baseCost": 0,
+        "projectileSpeed": 320,
+        "range": 480,
+        "statusApply": { "status": "burning", "dps": 5, "duration": 3, "chance": 1.0 },
+        "description": "Fast projectile. Applies Burning."
+      },
+      "secondary": {
+        "id": "mage_pyromancer_fireball",
+        "name": "Fireball",
+        "icon": "💥",
+        "slotHint": "secondary",
         "attackType": "projectile_aoe",
-        "description": "Exploding projectile. AoE.",
-        "resourceCost": 15,
-        "cooldown": 2.0,
-        "levels": [
-          { "damage": 25, "explosionRadius": 40, "projectileSpeed": 200 },
-          { "damage": 30, "explosionRadius": 42, "projectileSpeed": 210 },
-          { "damage": 36, "explosionRadius": 46, "projectileSpeed": 220, "bonus": "+10% explosion radius" },
-          { "damage": 44, "explosionRadius": 50, "projectileSpeed": 230, "bonus": "Hits +1 extra target" },
-          { "damage": 53, "explosionRadius": 55, "projectileSpeed": 240, "bonus": "Leaves burning ground (2s)" }
-        ]
+        "weaponReq": ["wand", "staff"],
+        "baseDamage": 28,
+        "baseCooldown": 2.0,
+        "baseCost": 18,
+        "projectileSpeed": 240,
+        "range": 480,
+        "aoeRadius": 70,
+        "description": "Exploding projectile. Damages all enemies in the blast."
       },
-      {
-        "id": "frost_nova",
+      "tree": [
+        {
+          "id": "burning_soul",
+          "tier": 1, "maxRank": 5,
+          "name": "Burning Soul",
+          "description": "Burning DoT damage +15% per rank.",
+          "effects": [
+            { "type": "status_modify", "status": "burning", "stat": "dpsPct", "perRank": 0.15 }
+          ]
+        },
+        {
+          "id": "kindling",
+          "tier": 1, "maxRank": 5,
+          "name": "Kindling",
+          "description": "Flame Bolt damage +10% per rank.",
+          "effects": [
+            { "type": "damage_pct", "target": "mage_pyromancer_flame_bolt", "perRank": 0.10 }
+          ]
+        },
+        {
+          "id": "hot_hands",
+          "tier": 1, "maxRank": 5,
+          "name": "Hot Hands",
+          "description": "Pyromancer attacks cost -1 mana per rank (min 1).",
+          "effects": [
+            { "type": "cost_flat", "target": "mage_pyromancer_flame_bolt", "perRank": -1, "minValue": 0 },
+            { "type": "cost_flat", "target": "mage_pyromancer_fireball", "perRank": -1, "minValue": 1 }
+          ]
+        },
+        {
+          "id": "wildfire",
+          "tier": 2, "maxRank": 3,
+          "name": "Wildfire",
+          "description": "Burning has 10% chance per tick to spread to nearest enemy, per rank.",
+          "effects": [
+            { "type": "status_modify", "status": "burning", "stat": "spreadChancePerTick", "perRank": 0.10 }
+          ]
+        },
+        {
+          "id": "conflagration",
+          "tier": 2, "maxRank": 3,
+          "name": "Conflagration",
+          "description": "Fireball leaves a +1s burning patch on impact, per rank.",
+          "effects": [
+            {
+              "type": "behavior_swap",
+              "target": "mage_pyromancer_fireball",
+              "mode": "leavesBurningPatch",
+              "perRank": { "patchDuration": 1.0 }
+            }
+          ]
+        },
+        {
+          "id": "heat_wave",
+          "tier": 2, "maxRank": 3,
+          "name": "Heat Wave",
+          "description": "-7% damage taken from burning enemies, per rank.",
+          "effects": [
+            {
+              "type": "conditional_trigger",
+              "trigger": "fromBurningSource",
+              "perRank": { "damageTakenMult": -0.07 }
+            }
+          ]
+        },
+        {
+          "id": "inferno",
+          "tier": 3, "maxRank": 3,
+          "branchGroup": "pyromancer_t3",
+          "name": "Inferno",
+          "description": "Fireball radius +15% per rank.",
+          "effects": [
+            { "type": "attack_stat", "target": "mage_pyromancer_fireball", "stat": "aoeRadius", "perRankPct": 0.15 }
+          ]
+        },
+        {
+          "id": "meteor",
+          "tier": 3, "maxRank": 3,
+          "branchGroup": "pyromancer_t3",
+          "name": "Meteor",
+          "description": "Fireball is replaced by a falling Meteor: slower travel, +damage, +radius. Stacks with rank.",
+          "effects": [
+            { "type": "behavior_swap", "target": "mage_pyromancer_fireball", "mode": "meteor" },
+            { "type": "damage_pct", "target": "mage_pyromancer_fireball", "perRank": 0.20 },
+            { "type": "attack_stat", "target": "mage_pyromancer_fireball", "stat": "aoeRadius", "perRankPct": 0.10 }
+          ]
+        },
+        {
+          "id": "combustion",
+          "tier": 4, "maxRank": 1,
+          "name": "Combustion",
+          "description": "Killing a burning enemy triggers a small fire nova.",
+          "effects": [
+            {
+              "type": "conditional_trigger",
+              "trigger": "onKillBurning",
+              "effect": { "spawnNova": { "radius": 80, "damageMult": 0.6 } }
+            }
+          ]
+        },
+        {
+          "id": "eternal_flame",
+          "tier": 4, "maxRank": 1,
+          "name": "Eternal Flame",
+          "description": "Burning duration +50%.",
+          "effects": [
+            { "type": "status_modify", "status": "burning", "stat": "durationPct", "value": 0.5 }
+          ]
+        },
+        {
+          "id": "phoenix",
+          "tier": 5, "maxRank": 1,
+          "name": "Phoenix",
+          "description": "CAPSTONE — On killing blow, ignite into a fire nova dealing 200% spell damage in a large radius. 8s internal cooldown.",
+          "effects": [
+            { "type": "capstone_hook", "hookId": "pyromancer_phoenix" }
+          ]
+        }
+      ]
+    },
+
+    "cryomancer": {
+      "label": "Cryomancer",
+      "color": "#5fb8e0",
+      "icon": "❄",
+      "description": "Single-target nukes, freeze chains, hard crowd control.",
+      "primary": {
+        "id": "mage_cryomancer_frost_shard",
+        "name": "Frost Shard",
+        "icon": "❄",
+        "slotHint": "primary",
+        "attackType": "projectile",
+        "weaponReq": ["wand", "staff"],
+        "baseDamage": 11,
+        "baseCooldown": 0.6,
+        "baseCost": 0,
+        "projectileSpeed": 360,
+        "range": 480,
+        "pierce": 1,
+        "statusApply": { "status": "slowed", "duration": 2, "slowPct": 0.4, "chance": 1.0 },
+        "description": "Piercing projectile. Slows on hit."
+      },
+      "secondary": {
+        "id": "mage_cryomancer_frost_nova",
         "name": "Frost Nova",
-        "icon": "❄️",
-        "type": "active",
-        "tier": 2,
-        "goldCost": 150,
-        "attackType": "aoe_self",
-        "description": "AoE freeze around player.",
-        "resourceCost": 20,
-        "cooldown": 6.0,
-        "levels": [
-          { "damage": 18, "radius": 100, "freezeDuration": 1.5 },
-          { "damage": 22, "radius": 108, "freezeDuration": 1.6 },
-          { "damage": 26, "radius": 116, "freezeDuration": 1.8, "bonus": "Frozen enemies take +10% damage" },
-          { "damage": 32, "radius": 125, "freezeDuration": 2.0, "bonus": "+15% damage, shatter on kill" },
-          { "damage": 38, "radius": 135, "freezeDuration": 2.3, "bonus": "+20% damage, shatter chain" }
-        ]
+        "icon": "🌨",
+        "slotHint": "secondary",
+        "attackType": "self_aoe",
+        "weaponReq": ["wand", "staff"],
+        "baseDamage": 18,
+        "baseCooldown": 6.0,
+        "baseCost": 22,
+        "aoeRadius": 140,
+        "statusApply": { "status": "frozen", "duration": 2 },
+        "description": "AoE freeze around the player."
       },
-      {
-        "id": "arcane_blink",
-        "name": "Arcane Blink",
-        "icon": "✨",
-        "type": "active",
-        "tier": 2,
-        "goldCost": 150,
-        "attackType": "teleport",
-        "description": "Teleport short distance.",
-        "resourceCost": 15,
-        "cooldown": 5.0,
-        "levels": [
-          { "distance": 120, "invulnDuration": 0.2 },
-          { "distance": 135, "invulnDuration": 0.25 },
-          { "distance": 150, "invulnDuration": 0.3, "bonus": "Leave decoy for 1.5s" },
-          { "distance": 170, "invulnDuration": 0.35, "bonus": "Decoy 2s, explodes on expire" },
-          { "distance": 200, "invulnDuration": 0.4, "bonus": "Decoy 2.5s, 2 charges" }
-        ]
-      },
-      {
-        "id": "chain_lightning",
-        "name": "Chain Lightning",
-        "icon": "⚡",
-        "type": "active",
-        "tier": 3,
-        "goldCost": 400,
-        "attackType": "chain",
-        "description": "Bolt bounces between 3 enemies.",
-        "resourceCost": 25,
-        "cooldown": 5.0,
-        "levels": [
-          { "damage": 22, "chains": 3, "chainRange": 120 },
-          { "damage": 26, "chains": 3, "chainRange": 130 },
-          { "damage": 32, "chains": 4, "chainRange": 140, "bonus": "Stuns last target 0.5s" },
-          { "damage": 39, "chains": 4, "chainRange": 150, "bonus": "Stuns last 2 targets" },
-          { "damage": 46, "chains": 5, "chainRange": 170, "bonus": "Stuns all, can re-hit targets" }
-        ]
-      },
-      {
-        "id": "meteor",
-        "name": "Meteor",
-        "icon": "☄️",
-        "type": "active",
-        "tier": 4,
-        "goldCost": 1000,
-        "attackType": "targeted_aoe",
-        "description": "Targeted AoE nuke.",
-        "resourceCost": 50,
-        "cooldown": 15.0,
-        "levels": [
-          { "damage": 70, "radius": 90, "impactDelay": 0.8 },
-          { "damage": 84, "radius": 95, "impactDelay": 0.75 },
-          { "damage": 102, "radius": 100, "impactDelay": 0.7, "bonus": "Burning ground 3s" },
-          { "damage": 123, "radius": 110, "impactDelay": 0.65, "bonus": "Burning + stun 0.5s" },
-          { "damage": 147, "radius": 120, "impactDelay": 0.6, "bonus": "Burning + stun + 2 smaller meteors" }
-        ]
-      },
-      {
-        "id": "arcane_singularity",
-        "name": "Arcane Singularity",
-        "icon": "🕳️",
-        "type": "active",
-        "tier": 5,
-        "goldCost": 2500,
-        "attackType": "targeted_aoe",
-        "description": "Black hole pulls + damages.",
-        "resourceCost": 70,
-        "cooldown": 25.0,
-        "levels": [
-          { "damage": 50, "dps": 15, "radius": 130, "pullForce": 60, "duration": 3.0 },
-          { "damage": 60, "dps": 18, "radius": 140, "pullForce": 65, "duration": 3.2 },
-          { "damage": 73, "dps": 22, "radius": 150, "pullForce": 70, "duration": 3.4, "bonus": "Slows 30%" },
-          { "damage": 88, "dps": 26, "radius": 160, "pullForce": 80, "duration": 3.6, "bonus": "Slows 40%" },
-          { "damage": 105, "dps": 32, "radius": 180, "pullForce": 90, "duration": 4.0, "bonus": "Slows 50%, explodes on expire" }
-        ]
-      }
-    ],
-    "passives": [
-      { "id": "arcane_potency", "name": "Arcane Potency", "icon": "💎", "maxRanks": 5, "description": "+3% spell damage per rank", "effectPerRank": { "spellDamagePercent": 0.03 } },
-      { "id": "mana_flow", "name": "Mana Flow", "icon": "💧", "maxRanks": 5, "description": "+0.3 mana regen/s per rank", "effectPerRank": { "manaRegenBonus": 0.3 } },
-      { "id": "glass_cannon", "name": "Glass Cannon", "icon": "💀", "maxRanks": 3, "description": "+5% damage, -2% max HP per rank", "effectPerRank": { "allDamagePercent": 0.05, "maxHPPercent": -0.02 } },
-      { "id": "elemental_mastery", "name": "Elemental Mastery", "icon": "🌈", "maxRanks": 5, "description": "+2% elemental effect duration per rank", "effectPerRank": { "statusDurationPercent": 0.02 } },
-      { "id": "spell_shield", "name": "Spell Shield", "icon": "🔵", "maxRanks": 4, "description": "+3% magic damage reduction per rank", "effectPerRank": { "magicDamageReduction": 0.03 } },
-      { "id": "quick_cast", "name": "Quick Cast", "icon": "⏱️", "maxRanks": 5, "description": "-2% cooldown on all spells per rank", "effectPerRank": { "cooldownReduction": 0.02 } },
-      { "id": "overcharge", "name": "Overcharge", "icon": "⚡", "maxRanks": 3, "description": "+4% crit damage per rank", "effectPerRank": { "critDamageBonus": 0.04 } }
-    ]
+      "tree": [
+        {
+          "id": "frostbite",
+          "tier": 1, "maxRank": 5,
+          "name": "Frostbite",
+          "description": "Frost Shard damage +10% per rank.",
+          "effects": [
+            { "type": "damage_pct", "target": "mage_cryomancer_frost_shard", "perRank": 0.10 }
+          ]
+        },
+        {
+          "id": "glacial_will",
+          "tier": 1, "maxRank": 5,
+          "name": "Glacial Will",
+          "description": "+20 max mana per rank.",
+          "effects": [
+            { "type": "player_stat", "stat": "maxMana", "perRank": 20 }
+          ]
+        },
+        {
+          "id": "cold_edge",
+          "tier": 1, "maxRank": 5,
+          "name": "Cold Edge",
+          "description": "+2% crit chance vs slowed/frozen enemies, per rank.",
+          "effects": [
+            {
+              "type": "conditional_trigger",
+              "trigger": "vsSlowedOrFrozen",
+              "perRank": { "critChance": 0.02 }
+            }
+          ]
+        },
+        {
+          "id": "deep_freeze",
+          "tier": 2, "maxRank": 3,
+          "name": "Deep Freeze",
+          "description": "Freeze duration +0.4s per rank.",
+          "effects": [
+            { "type": "status_modify", "status": "frozen", "stat": "duration", "perRank": 0.4 }
+          ]
+        },
+        {
+          "id": "shatter",
+          "tier": 2, "maxRank": 3,
+          "name": "Shatter",
+          "description": "+25% crit damage vs frozen enemies, per rank.",
+          "effects": [
+            {
+              "type": "conditional_trigger",
+              "trigger": "vsFrozen",
+              "perRank": { "critDamageBonus": 0.25 }
+            }
+          ]
+        },
+        {
+          "id": "ice_lance",
+          "tier": 2, "maxRank": 3,
+          "name": "Ice Lance",
+          "description": "Frost Shard +15% damage to slowed targets, per rank.",
+          "effects": [
+            {
+              "type": "conditional_trigger",
+              "target": "mage_cryomancer_frost_shard",
+              "trigger": "vsSlowed",
+              "perRank": { "damageMult": 0.15 }
+            }
+          ]
+        },
+        {
+          "id": "cryostasis",
+          "tier": 3, "maxRank": 3,
+          "branchGroup": "cryomancer_t3",
+          "name": "Cryostasis",
+          "description": "Frost Nova radius +12% per rank.",
+          "effects": [
+            { "type": "attack_stat", "target": "mage_cryomancer_frost_nova", "stat": "aoeRadius", "perRankPct": 0.12 }
+          ]
+        },
+        {
+          "id": "ice_spear",
+          "tier": 3, "maxRank": 3,
+          "branchGroup": "cryomancer_t3",
+          "name": "Ice Spear",
+          "description": "Frost Nova fires a piercing ice spear in your facing direction. Damage +10% per rank.",
+          "effects": [
+            { "type": "behavior_swap", "target": "mage_cryomancer_frost_nova", "mode": "fireIceSpear" },
+            { "type": "damage_pct", "target": "mage_cryomancer_frost_nova", "perRank": 0.10 }
+          ]
+        },
+        {
+          "id": "frostwalker",
+          "tier": 4, "maxRank": 1,
+          "name": "Frostwalker",
+          "description": "Casting Frost Nova teleports you 100px away from the nearest enemy.",
+          "effects": [
+            { "type": "behavior_swap", "target": "mage_cryomancer_frost_nova", "mode": "blinkAway" }
+          ]
+        },
+        {
+          "id": "permafrost",
+          "tier": 4, "maxRank": 1,
+          "name": "Permafrost",
+          "description": "Slowed enemies have their slow effect duration doubled.",
+          "effects": [
+            { "type": "status_modify", "status": "slowed", "stat": "durationPct", "value": 1.0 }
+          ]
+        },
+        {
+          "id": "absolute_zero",
+          "tier": 5, "maxRank": 1,
+          "name": "Absolute Zero",
+          "description": "CAPSTONE — Frozen enemies killed by Frost Shard explode in a smaller Frost Nova that can chain freeze nearby enemies.",
+          "effects": [
+            { "type": "capstone_hook", "hookId": "cryomancer_absolute_zero" }
+          ]
+        }
+      ]
+    }
   },
+
   "archer": {
-    "actives": [
-      {
-        "id": "shoot",
-        "name": "Shoot",
+    "marksman": {
+      "label": "Marksman",
+      "color": "#3a8a4a",
+      "icon": "🎯",
+      "description": "Precision, bleed, multishot, kiting.",
+      "primary": {
+        "id": "archer_marksman_aimed_shot",
+        "name": "Aimed Shot",
         "icon": "🏹",
-        "type": "active",
-        "tier": 0,
-        "goldCost": 0,
-        "isDefault": true,
+        "slotHint": "primary",
         "attackType": "projectile",
-        "requiresWeapon": ["bow", "crossbow"],
-        "description": "Basic ranged arrow.",
-        "resourceCost": 0,
-        "cooldown": 0.5,
-        "levels": [
-          { "damage": 10, "projectileSpeed": 450, "range": 650 },
-          { "damage": 12, "projectileSpeed": 460, "range": 660 },
-          { "damage": 15, "projectileSpeed": 470, "range": 670 },
-          { "damage": 18, "projectileSpeed": 480, "range": 680 },
-          { "damage": 21, "projectileSpeed": 500, "range": 700, "bonus": "20% chance to fire 2 arrows" }
-        ]
+        "weaponReq": ["bow", "crossbow"],
+        "baseDamage": 16,
+        "baseCooldown": 1.0,
+        "baseCost": 0,
+        "projectileSpeed": 480,
+        "range": 650,
+        "description": "Slow, high-damage single arrow."
       },
-      {
-        "id": "multishot",
+      "secondary": {
+        "id": "archer_marksman_multishot",
         "name": "Multishot",
-        "icon": "🎯",
-        "type": "active",
-        "tier": 1,
-        "goldCost": 50,
-        "attackType": "projectile_multi",
-        "description": "Fire 3 arrows in a spread.",
-        "resourceCost": 15,
-        "cooldown": 2.0,
-        "levels": [
-          { "damage": 8, "arrowCount": 3, "spread": 30 },
-          { "damage": 10, "arrowCount": 3, "spread": 28 },
-          { "damage": 12, "arrowCount": 4, "spread": 30, "bonus": "+1 arrow" },
-          { "damage": 14, "arrowCount": 5, "spread": 30, "bonus": "+2 arrows" },
-          { "damage": 17, "arrowCount": 6, "spread": 35, "bonus": "+3 arrows, pierce 1" }
-        ]
+        "icon": "🏹",
+        "slotHint": "secondary",
+        "attackType": "projectile_spread",
+        "weaponReq": ["bow", "crossbow"],
+        "baseDamage": 9,
+        "baseCooldown": 2.5,
+        "baseCost": 18,
+        "projectileSpeed": 420,
+        "range": 600,
+        "arrowCount": 3,
+        "spreadAngleDeg": 22,
+        "description": "Fire 3 arrows in a forward spread."
       },
-      {
-        "id": "evasive_roll",
-        "name": "Evasive Roll",
-        "icon": "🔄",
-        "type": "active",
-        "tier": 2,
-        "goldCost": 150,
-        "attackType": "dash",
-        "description": "Dodge roll with i-frames.",
-        "resourceCost": 25,
-        "cooldown": 3.0,
-        "levels": [
-          { "distance": 120, "invulnDuration": 0.2 },
-          { "distance": 130, "invulnDuration": 0.25 },
-          { "distance": 140, "invulnDuration": 0.3, "bonus": "Fires 2 arrows backward" },
-          { "distance": 150, "invulnDuration": 0.35, "bonus": "3 arrows backward" },
-          { "distance": 170, "invulnDuration": 0.4, "bonus": "3 arrows + 2 charges" }
-        ]
-      },
-      {
-        "id": "poison_arrow",
-        "name": "Poison Arrow",
-        "icon": "☠️",
-        "type": "active",
-        "tier": 2,
-        "goldCost": 150,
+      "tree": [
+        {
+          "id": "sharpshooter",
+          "tier": 1, "maxRank": 5,
+          "name": "Sharpshooter",
+          "description": "Aimed Shot damage +8% per rank.",
+          "effects": [
+            { "type": "damage_pct", "target": "archer_marksman_aimed_shot", "perRank": 0.08 }
+          ]
+        },
+        {
+          "id": "steady_aim",
+          "tier": 1, "maxRank": 5,
+          "name": "Steady Aim",
+          "description": "+2% crit chance per rank.",
+          "effects": [
+            { "type": "player_stat", "stat": "critChancePct", "perRank": 0.02 }
+          ]
+        },
+        {
+          "id": "quiver",
+          "tier": 1, "maxRank": 5,
+          "name": "Quiver",
+          "description": "+6 max stamina per rank.",
+          "effects": [
+            { "type": "player_stat", "stat": "maxStamina", "perRank": 6 }
+          ]
+        },
+        {
+          "id": "hemorrhage",
+          "tier": 2, "maxRank": 3,
+          "name": "Hemorrhage",
+          "description": "Aimed Shot inflicts Bleeding (3 dmg/s for 5s, +1 dmg/rank).",
+          "effects": [
+            {
+              "type": "status_apply_attack",
+              "target": "archer_marksman_aimed_shot",
+              "status": "bleeding",
+              "baseDps": 3,
+              "perRankDps": 1,
+              "duration": 5
+            }
+          ]
+        },
+        {
+          "id": "hunters_mark",
+          "tier": 2, "maxRank": 3,
+          "name": "Hunter's Mark",
+          "description": "Bleeding enemies take +8% damage from all sources, per rank.",
+          "effects": [
+            {
+              "type": "conditional_trigger",
+              "trigger": "vsBleeding",
+              "perRank": { "damageDealtMult": 0.08 }
+            }
+          ]
+        },
+        {
+          "id": "volley",
+          "tier": 2, "maxRank": 3,
+          "name": "Volley",
+          "description": "Multishot fires +1 arrow per rank.",
+          "effects": [
+            { "type": "attack_stat", "target": "archer_marksman_multishot", "stat": "arrowCount", "perRank": 1 }
+          ]
+        },
+        {
+          "id": "piercing_aim",
+          "tier": 3, "maxRank": 3,
+          "branchGroup": "marksman_t3",
+          "name": "Piercing Aim",
+          "description": "Aimed Shot pierces +1 target per rank.",
+          "effects": [
+            { "type": "attack_stat", "target": "archer_marksman_aimed_shot", "stat": "pierce", "perRank": 1 }
+          ]
+        },
+        {
+          "id": "cripple",
+          "tier": 3, "maxRank": 3,
+          "branchGroup": "marksman_t3",
+          "name": "Cripple",
+          "description": "Bleeding enemies are slowed 15% per rank.",
+          "effects": [
+            {
+              "type": "conditional_trigger",
+              "trigger": "onBleed",
+              "perRank": { "applySlow": 0.15 }
+            }
+          ]
+        },
+        {
+          "id": "dead_eye",
+          "tier": 4, "maxRank": 1,
+          "name": "Dead Eye",
+          "description": "Aimed Shot deals +100% damage vs enemies above 90% HP.",
+          "effects": [
+            {
+              "type": "conditional_trigger",
+              "target": "archer_marksman_aimed_shot",
+              "trigger": "vsHighHP",
+              "effect": { "hpThreshold": 0.90, "damageMult": 1.0 }
+            }
+          ]
+        },
+        {
+          "id": "hail_pattern",
+          "tier": 4, "maxRank": 1,
+          "name": "Hail Pattern",
+          "description": "Multishot's spread arc doubles, covering a wider cone.",
+          "effects": [
+            { "type": "attack_stat", "target": "archer_marksman_multishot", "stat": "spreadAngleDeg", "valuePct": 1.0 }
+          ]
+        },
+        {
+          "id": "phantom_archer",
+          "tier": 5, "maxRank": 1,
+          "name": "Phantom Archer",
+          "description": "CAPSTONE — When you crit, summon a phantom that mirrors your next 3 attacks for free.",
+          "effects": [
+            { "type": "capstone_hook", "hookId": "marksman_phantom_archer" }
+          ]
+        }
+      ]
+    },
+
+    "beastmaster": {
+      "label": "Beastmaster",
+      "color": "#8b6a3e",
+      "icon": "🐾",
+      "description": "Animal companions, pet army, support kit.",
+      "primary": {
+        "id": "archer_beastmaster_quick_shot",
+        "name": "Quick Shot",
+        "icon": "🏹",
+        "slotHint": "primary",
         "attackType": "projectile",
-        "description": "DoT arrow. Poisons on hit.",
-        "resourceCost": 20,
-        "cooldown": 4.0,
-        "levels": [
-          { "damage": 12, "poisonDPS": 3, "poisonDuration": 3.0 },
-          { "damage": 14, "poisonDPS": 4, "poisonDuration": 3.2 },
-          { "damage": 17, "poisonDPS": 5, "poisonDuration": 3.5, "bonus": "-15% healing on target" },
-          { "damage": 21, "poisonDPS": 6, "poisonDuration": 3.8, "bonus": "-20% healing, spreads to 1 nearby" },
-          { "damage": 25, "poisonDPS": 8, "poisonDuration": 4.0, "bonus": "-25% healing, spreads to 2 nearby" }
-        ]
+        "weaponReq": ["bow", "crossbow"],
+        "baseDamage": 7,
+        "baseCooldown": 0.5,
+        "baseCost": 0,
+        "projectileSpeed": 480,
+        "range": 600,
+        "description": "Fast, low-damage arrow."
       },
-      {
-        "id": "explosive_trap",
-        "name": "Explosive Trap",
-        "icon": "💣",
-        "type": "active",
-        "tier": 3,
-        "goldCost": 400,
-        "attackType": "placed",
-        "description": "Place a trap that detonates when enemies walk over it.",
-        "resourceCost": 30,
-        "cooldown": 8.0,
-        "levels": [
-          { "damage": 35, "radius": 60, "maxTraps": 1 },
-          { "damage": 42, "radius": 65, "maxTraps": 1 },
-          { "damage": 51, "radius": 70, "maxTraps": 2, "bonus": "Slows enemies 30% for 2s" },
-          { "damage": 61, "radius": 75, "maxTraps": 2, "bonus": "Slows 40%, burns 2s" },
-          { "damage": 74, "radius": 85, "maxTraps": 3, "bonus": "Slows 40%, burns 3s, stun 0.5s" }
-        ]
-      },
-      {
-        "id": "rain_of_arrows",
-        "name": "Rain of Arrows",
-        "icon": "🌧️",
-        "type": "active",
-        "tier": 4,
-        "goldCost": 1000,
-        "attackType": "targeted_aoe",
-        "description": "Targeted AoE barrage.",
-        "resourceCost": 40,
-        "cooldown": 12.0,
-        "levels": [
-          { "dps": 12, "radius": 100, "duration": 2.0 },
-          { "dps": 14, "radius": 108, "duration": 2.1 },
-          { "dps": 17, "radius": 116, "duration": 2.3, "bonus": "Slows enemies 20%" },
-          { "dps": 21, "radius": 125, "duration": 2.5, "bonus": "Slows 30%, poisons" },
-          { "dps": 25, "radius": 140, "duration": 2.8, "bonus": "Slows 40%, poisons, stuns on final hit" }
-        ]
-      },
-      {
-        "id": "phantom_archer",
-        "name": "Phantom Archer",
-        "icon": "👻",
-        "type": "active",
-        "tier": 5,
-        "goldCost": 2500,
+      "secondary": {
+        "id": "archer_beastmaster_call_beast",
+        "name": "Call Beast",
+        "icon": "🐺",
+        "slotHint": "secondary",
         "attackType": "summon",
-        "description": "Clone mirrors your attacks for 5s.",
-        "resourceCost": 60,
-        "cooldown": 20.0,
-        "levels": [
-          { "duration": 5.0, "cloneDamageMult": 0.5 },
-          { "duration": 5.5, "cloneDamageMult": 0.55 },
-          { "duration": 6.0, "cloneDamageMult": 0.6, "bonus": "Clone fires at different target" },
-          { "duration": 6.5, "cloneDamageMult": 0.7, "bonus": "2 targets, clone can crit" },
-          { "damage": 7.0, "cloneDamageMult": 0.8, "bonus": "2 targets, crits, explodes on expire" }
-        ]
-      }
-    ],
-    "passives": [
-      { "id": "steady_aim", "name": "Steady Aim", "icon": "🎯", "maxRanks": 5, "description": "+2% crit chance per rank", "effectPerRank": { "critChanceBonus": 0.02 } },
-      { "id": "fleet_foot", "name": "Fleet Foot", "icon": "👟", "maxRanks": 5, "description": "+3% movement speed per rank", "effectPerRank": { "moveSpeedPercent": 0.03 } },
-      { "id": "piercing_shots", "name": "Piercing Shots", "icon": "➡️", "maxRanks": 3, "description": "+1 pierce per rank", "effectPerRank": { "pierce": 1 } },
-      { "id": "nimble", "name": "Nimble", "icon": "💨", "maxRanks": 5, "description": "+2% dodge chance per rank", "effectPerRank": { "dodgeChanceBonus": 0.02 } },
-      { "id": "marksman", "name": "Marksman", "icon": "🏹", "maxRanks": 4, "description": "+3% ranged damage per rank", "effectPerRank": { "rangedDamagePercent": 0.03 } },
-      { "id": "stamina_reserve", "name": "Stamina Reserve", "icon": "⚡", "maxRanks": 3, "description": "+10 max stamina per rank", "effectPerRank": { "maxStaminaBonus": 10 } },
-      { "id": "lethal_tempo", "name": "Lethal Tempo", "icon": "⏩", "maxRanks": 3, "description": "Kill grants +5% attack speed for 3s per rank", "effectPerRank": { "onKillAttackSpeedPercent": 0.05, "onKillDuration": 3.0 } }
-    ]
-  },
-  "necromancer": {
-    "actives": [
-      {
-        "id": "necrotic_bolt",
-        "name": "Necrotic Bolt",
-        "icon": "💀",
-        "type": "active",
-        "tier": 0,
-        "goldCost": 0,
-        "isDefault": true,
-        "attackType": "projectile",
-        "requiresWeapon": ["wand", "staff"],
-        "description": "Dark magic projectile.",
-        "resourceCost": 0,
-        "cooldown": 1.0,
-        "levels": [
-          { "damage": 12, "projectileSpeed": 250, "range": 400, "lifesteal": 0.15 },
-          { "damage": 14, "projectileSpeed": 260, "range": 410, "lifesteal": 0.16 },
-          { "damage": 17, "projectileSpeed": 270, "range": 420, "lifesteal": 0.18 },
-          { "damage": 21, "projectileSpeed": 280, "range": 430, "lifesteal": 0.20 },
-          { "damage": 25, "projectileSpeed": 290, "range": 450, "lifesteal": 0.22, "bonus": "Splashes to 1 nearby" }
-        ]
+        "weaponReq": ["bow", "crossbow"],
+        "baseDamage": 0,
+        "baseCooldown": 4.0,
+        "baseCost": 25,
+        "atMaxBehavior": "healNearestPet",
+        "atMaxHealPct": 0.30,
+        "description": "Summons next available beast companion. At max count, heals nearest beast for 30% HP."
       },
-      {
-        "id": "bone_spear",
+      "tree": [
+        {
+          "id": "loyal_hound",
+          "tier": 1, "maxRank": 5,
+          "name": "Loyal Hound",
+          "description": "Unlocks Wolf companion. +10% wolf damage and HP per rank. Max 1 wolf at rank 1, max 2 at rank 5.",
+          "effects": [
+            { "type": "unlock_pet", "petId": "wolf", "unlockAtRank": 1 },
+            { "type": "pet_stat", "petId": "wolf", "stat": "damagePct", "perRank": 0.10 },
+            { "type": "pet_stat", "petId": "wolf", "stat": "hpPct", "perRank": 0.10 },
+            { "type": "pet_stat", "petId": "wolf", "stat": "maxCount", "value": 1, "valueAtRank5": 2 }
+          ]
+        },
+        {
+          "id": "pack_leader",
+          "tier": 1, "maxRank": 5,
+          "name": "Pack Leader",
+          "description": "All pets +5% damage per rank.",
+          "effects": [
+            { "type": "pet_stat", "petId": "*", "stat": "damagePct", "perRank": 0.05 }
+          ]
+        },
+        {
+          "id": "tame_the_wild",
+          "tier": 1, "maxRank": 5,
+          "name": "Tame the Wild",
+          "description": "All pets +6% HP per rank.",
+          "effects": [
+            { "type": "pet_stat", "petId": "*", "stat": "hpPct", "perRank": 0.06 }
+          ]
+        },
+        {
+          "id": "sky_hunter",
+          "tier": 2, "maxRank": 3,
+          "name": "Sky Hunter",
+          "description": "Unlocks Hawk companion (ranged attacker, marks targets for +10% damage taken). Max 1.",
+          "effects": [
+            { "type": "unlock_pet", "petId": "hawk", "unlockAtRank": 1 },
+            { "type": "pet_stat", "petId": "hawk", "stat": "maxCount", "value": 1 }
+          ]
+        },
+        {
+          "id": "apex_predator",
+          "tier": 2, "maxRank": 3,
+          "name": "Apex Predator",
+          "description": "Unlocks Bear companion (tank, taunts in radius). Max 1.",
+          "effects": [
+            { "type": "unlock_pet", "petId": "bear", "unlockAtRank": 1 },
+            { "type": "pet_stat", "petId": "bear", "stat": "maxCount", "value": 1 }
+          ]
+        },
+        {
+          "id": "wild_bond",
+          "tier": 2, "maxRank": 3,
+          "name": "Wild Bond",
+          "description": "Pets heal you for +2% of their damage dealt, per rank.",
+          "effects": [
+            { "type": "pet_stat", "petId": "*", "stat": "ownerLifestealPct", "perRank": 0.02 }
+          ]
+        },
+        {
+          "id": "bestial_fury",
+          "tier": 3, "maxRank": 3,
+          "branchGroup": "beastmaster_t3",
+          "name": "Bestial Fury",
+          "description": "Pets gain +4% attack speed per rank.",
+          "effects": [
+            { "type": "pet_stat", "petId": "*", "stat": "attackSpeedPct", "perRank": 0.04 }
+          ]
+        },
+        {
+          "id": "hunters_discipline",
+          "tier": 3, "maxRank": 3,
+          "branchGroup": "beastmaster_t3",
+          "name": "Hunter's Discipline",
+          "description": "Call Beast cooldown -0.4s per rank.",
+          "effects": [
+            { "type": "cooldown_flat", "target": "archer_beastmaster_call_beast", "perRank": -0.4 }
+          ]
+        },
+        {
+          "id": "beast_within",
+          "tier": 4, "maxRank": 1,
+          "name": "Beast Within",
+          "description": "+1 max of each beast type unlocked.",
+          "effects": [
+            { "type": "pet_stat", "petId": "*", "stat": "maxCountBonus", "value": 1 }
+          ]
+        },
+        {
+          "id": "wild_heart",
+          "tier": 4, "maxRank": 1,
+          "name": "Wild Heart",
+          "description": "Pets explode for AoE damage on death.",
+          "effects": [
+            {
+              "type": "conditional_trigger",
+              "trigger": "onPetDeath",
+              "effect": { "spawnNova": { "radius": 80, "damageMult": 1.0 } }
+            }
+          ]
+        },
+        {
+          "id": "spirit_wolf",
+          "tier": 5, "maxRank": 1,
+          "name": "Spirit Wolf",
+          "description": "CAPSTONE — Permanent legendary Spirit Wolf companion (massive damage, persistent across floor transitions, no upkeep cost).",
+          "effects": [
+            { "type": "capstone_hook", "hookId": "beastmaster_spirit_wolf" }
+          ]
+        }
+      ]
+    }
+  },
+
+  "necromancer": {
+    "plaguebringer": {
+      "label": "Plaguebringer",
+      "color": "#7aaa30",
+      "icon": "☣",
+      "description": "Disease that spreads target-to-target. The longer the fight, the worse for the enemy.",
+      "primary": {
+        "id": "necromancer_plaguebringer_plague_bolt",
+        "name": "Plague Bolt",
+        "icon": "☣",
+        "slotHint": "primary",
+        "attackType": "projectile",
+        "weaponReq": ["wand", "staff"],
+        "baseDamage": 6,
+        "baseCooldown": 0.8,
+        "baseCost": 0,
+        "projectileSpeed": 320,
+        "range": 480,
+        "statusApply": { "status": "plague", "dps": 8, "duration": 6, "chance": 1.0 },
+        "description": "Projectile that applies Plague (8 dps for 6s)."
+      },
+      "secondary": {
+        "id": "necromancer_plaguebringer_outbreak",
+        "name": "Outbreak",
+        "icon": "🦠",
+        "slotHint": "secondary",
+        "attackType": "ground_aoe",
+        "weaponReq": ["wand", "staff"],
+        "baseDamage": 8,
+        "baseCooldown": 5.0,
+        "baseCost": 25,
+        "aoeRadius": 100,
+        "duration": 4.0,
+        "statusApply": { "status": "plague", "dps": 8, "duration": 6 },
+        "description": "AoE cloud at target location. Infects all enemies inside with Plague."
+      },
+      "tree": [
+        {
+          "id": "virulent",
+          "tier": 1, "maxRank": 5,
+          "name": "Virulent",
+          "description": "Plague DoT damage +12% per rank.",
+          "effects": [
+            { "type": "status_modify", "status": "plague", "stat": "dpsPct", "perRank": 0.12 }
+          ]
+        },
+        {
+          "id": "foul_reach",
+          "tier": 1, "maxRank": 5,
+          "name": "Foul Reach",
+          "description": "Plague Bolt range +6% per rank.",
+          "effects": [
+            { "type": "attack_stat", "target": "necromancer_plaguebringer_plague_bolt", "stat": "range", "perRankPct": 0.06 }
+          ]
+        },
+        {
+          "id": "decay",
+          "tier": 1, "maxRank": 5,
+          "name": "Decay",
+          "description": "Plague duration +0.5s per rank.",
+          "effects": [
+            { "type": "status_modify", "status": "plague", "stat": "duration", "perRank": 0.5 }
+          ]
+        },
+        {
+          "id": "contagion",
+          "tier": 2, "maxRank": 3,
+          "name": "Contagion",
+          "description": "Plague has 10% chance per tick to spread to nearest uninfected enemy, per rank.",
+          "effects": [
+            { "type": "status_modify", "status": "plague", "stat": "spreadChancePerTick", "perRank": 0.10 }
+          ]
+        },
+        {
+          "id": "festering_wounds",
+          "tier": 2, "maxRank": 3,
+          "name": "Festering Wounds",
+          "description": "Plagued enemies take +6% damage from all sources, per rank.",
+          "effects": [
+            {
+              "type": "conditional_trigger",
+              "trigger": "vsPlagued",
+              "perRank": { "damageDealtMult": 0.06 }
+            }
+          ]
+        },
+        {
+          "id": "necrotic_corrosion",
+          "tier": 2, "maxRank": 3,
+          "name": "Necrotic Corrosion",
+          "description": "Plague reduces enemy armor by 10% per rank.",
+          "effects": [
+            {
+              "type": "conditional_trigger",
+              "trigger": "vsPlagued",
+              "perRank": { "armorMult": -0.10 }
+            }
+          ]
+        },
+        {
+          "id": "pandemic",
+          "tier": 3, "maxRank": 3,
+          "branchGroup": "plaguebringer_t3",
+          "name": "Pandemic",
+          "description": "Killing a plagued enemy spreads Plague to all enemies within 100/150/200px.",
+          "effects": [
+            {
+              "type": "conditional_trigger",
+              "trigger": "onKillPlagued",
+              "perRank": { "spreadRadius": 50, "spreadRadiusBase": 50 }
+            }
+          ]
+        },
+        {
+          "id": "acidic_plague",
+          "tier": 3, "maxRank": 3,
+          "branchGroup": "plaguebringer_t3",
+          "name": "Acidic Plague",
+          "description": "Plague also slows enemies by 5% per rank.",
+          "effects": [
+            { "type": "status_modify", "status": "plague", "stat": "slowPct", "perRank": 0.05 }
+          ]
+        },
+        {
+          "id": "outbreak_mastery",
+          "tier": 4, "maxRank": 1,
+          "name": "Outbreak Mastery",
+          "description": "Outbreak radius +30%.",
+          "effects": [
+            { "type": "attack_stat", "target": "necromancer_plaguebringer_outbreak", "stat": "aoeRadius", "valuePct": 0.30 }
+          ]
+        },
+        {
+          "id": "patient_zero",
+          "tier": 4, "maxRank": 1,
+          "name": "Patient Zero",
+          "description": "Plague never expires on the closest infected enemy in your line of sight.",
+          "effects": [
+            { "type": "capstone_hook", "hookId": "plaguebringer_patient_zero" }
+          ]
+        },
+        {
+          "id": "deaths_echo",
+          "tier": 5, "maxRank": 1,
+          "name": "Death's Echo",
+          "description": "CAPSTONE — A plagued enemy that dies releases a Corpse Explosion (large AoE that re-applies Plague to anything it hits, with 50% reduced re-application duration to break infinite chains).",
+          "effects": [
+            { "type": "capstone_hook", "hookId": "plaguebringer_deaths_echo" }
+          ]
+        }
+      ]
+    },
+
+    "bone_lord": {
+      "label": "Bone Lord",
+      "color": "#d8d2b8",
+      "icon": "💀",
+      "description": "Necromancer that summons skeletons, zombies, and golems to do their bidding.",
+      "primary": {
+        "id": "necromancer_bone_lord_bone_spear",
         "name": "Bone Spear",
         "icon": "🦴",
-        "type": "active",
-        "tier": 1,
-        "goldCost": 50,
+        "slotHint": "primary",
         "attackType": "projectile",
-        "description": "Piercing projectile, passes through enemies.",
-        "resourceCost": 15,
-        "cooldown": 1.5,
-        "levels": [
-          { "damage": 18, "pierce": 3, "projectileSpeed": 300, "range": 500 },
-          { "damage": 22, "pierce": 3, "projectileSpeed": 310, "range": 510 },
-          { "damage": 26, "pierce": 4, "projectileSpeed": 320, "range": 520, "bonus": "+10% damage per pierce" },
-          { "damage": 32, "pierce": 4, "projectileSpeed": 330, "range": 530, "bonus": "+15% per pierce" },
-          { "damage": 38, "pierce": 5, "projectileSpeed": 350, "range": 550, "bonus": "+20% per pierce, explodes at end" }
-        ]
+        "weaponReq": ["wand", "staff"],
+        "baseDamage": 13,
+        "baseCooldown": 0.8,
+        "baseCost": 0,
+        "projectileSpeed": 360,
+        "range": 480,
+        "pierce": 1,
+        "description": "Piercing projectile, passes through enemies."
       },
-      {
-        "id": "corpse_explosion",
-        "name": "Corpse Explosion",
-        "icon": "💥",
-        "type": "active",
-        "tier": 2,
-        "goldCost": 150,
-        "attackType": "aoe",
-        "description": "Detonate nearby corpses for AoE.",
-        "resourceCost": 20,
-        "cooldown": 4.0,
-        "levels": [
-          { "damagePerCorpse": 25, "radius": 60, "corpseRange": 120 },
-          { "damagePerCorpse": 30, "radius": 65, "corpseRange": 130 },
-          { "damagePerCorpse": 36, "radius": 70, "corpseRange": 140, "bonus": "Corpses poison enemies 2s" },
-          { "damagePerCorpse": 44, "radius": 75, "corpseRange": 150, "bonus": "Poison 3s, +1 corpse range" },
-          { "damagePerCorpse": 53, "radius": 85, "corpseRange": 170, "bonus": "Poison 4s, chain explode nearby corpses" }
-        ]
-      },
-      {
-        "id": "dark_pact",
-        "name": "Dark Pact",
-        "icon": "🖤",
-        "type": "active",
-        "tier": 3,
-        "goldCost": 400,
-        "attackType": "sacrifice",
-        "description": "Sacrifice a pet for massive AoE.",
-        "resourceCost": 25,
-        "cooldown": 8.0,
-        "levels": [
-          { "damage": 50, "radius": 80 },
-          { "damage": 60, "radius": 85 },
-          { "damage": 73, "radius": 90, "bonus": "Heals you 20% of damage dealt" },
-          { "damage": 88, "radius": 100, "bonus": "Heals 25%, weakens enemies 3s" },
-          { "damage": 105, "radius": 110, "bonus": "Heals 30%, weakens 4s, spawns 2 skeletons" }
-        ]
-      },
-      {
-        "id": "curse_of_weakness",
-        "name": "Curse of Weakness",
-        "icon": "🔮",
-        "type": "active",
-        "tier": 4,
-        "goldCost": 1000,
-        "attackType": "aoe_debuff",
-        "description": "AoE debuff: enemies take +25% damage for 4s.",
-        "resourceCost": 35,
-        "cooldown": 10.0,
-        "levels": [
-          { "radius": 100, "damageAmp": 0.25, "duration": 4.0 },
-          { "radius": 110, "damageAmp": 0.28, "duration": 4.3 },
-          { "radius": 120, "damageAmp": 0.32, "duration": 4.6, "bonus": "-15% enemy damage" },
-          { "radius": 130, "damageAmp": 0.36, "duration": 5.0, "bonus": "-20% enemy damage, -20% speed" },
-          { "radius": 150, "damageAmp": 0.40, "duration": 5.5, "bonus": "-25% damage, -25% speed, spreads on kill" }
-        ]
-      },
-      {
-        "id": "undead_army",
-        "name": "Undead Army",
-        "icon": "⚰️",
-        "type": "active",
-        "tier": 5,
-        "goldCost": 2500,
-        "attackType": "summon_burst",
-        "description": "Summon 5 skeletons + 3 zombies at once.",
-        "resourceCost": 80,
-        "cooldown": 30.0,
-        "levels": [
-          { "skeletons": 5, "zombies": 3, "petDuration": 12 },
-          { "skeletons": 5, "zombies": 3, "petDuration": 13, "petDamageMult": 1.1 },
-          { "skeletons": 6, "zombies": 3, "petDuration": 14, "petDamageMult": 1.2, "bonus": "Pets explode on death" },
-          { "skeletons": 6, "zombies": 4, "petDuration": 15, "petDamageMult": 1.3, "bonus": "Explode + lifesteal 10%" },
-          { "skeletons": 8, "zombies": 5, "petDuration": 18, "petDamageMult": 1.5, "bonus": "Explode + lifesteal + army is permanent" }
-        ]
-      }
-    ],
-    "summonToggles": [
-      {
-        "id": "summon_skeleton",
-        "name": "Summon Skeleton",
+      "secondary": {
+        "id": "necromancer_bone_lord_raise_dead",
+        "name": "Raise Dead",
         "icon": "💀",
-        "tier": 1,
-        "goldCost": 50,
-        "resourceCost": 30,
-        "cooldown": 3.0,
-        "description": "Auto-summon melee skeleton when below max count.",
-        "levels": [
-          { "maxCount": 2, "petHP": 30, "petDamage": 5, "petSpeed": 80, "petDuration": 15 },
-          { "maxCount": 2, "petHP": 38, "petDamage": 7, "petSpeed": 85, "petDuration": 16 },
-          { "maxCount": 3, "petHP": 48, "petDamage": 9, "petSpeed": 90, "petDuration": 18, "bonus": "Skeletons have 10% lifesteal" },
-          { "maxCount": 3, "petHP": 60, "petDamage": 12, "petSpeed": 95, "petDuration": 20, "bonus": "15% lifesteal, can block" },
-          { "maxCount": 4, "petHP": 75, "petDamage": 15, "petSpeed": 100, "petDuration": 25, "bonus": "20% lifesteal, block, rally cry" }
-        ]
+        "slotHint": "secondary",
+        "attackType": "summon",
+        "weaponReq": ["wand", "staff"],
+        "baseDamage": 0,
+        "baseCooldown": 4.0,
+        "baseCost": 30,
+        "atMaxBehavior": "healNearestPet",
+        "atMaxHealPct": 0.30,
+        "description": "Summons next available undead. At max count, heals nearest pet (or sacrifices it for AoE if Dark Pact is taken)."
       },
-      {
-        "id": "summon_zombie",
-        "name": "Summon Zombie",
-        "icon": "🧟",
-        "tier": 2,
-        "goldCost": 150,
-        "resourceCost": 40,
-        "cooldown": 5.0,
-        "description": "Auto-summon tanky zombie. Explodes on death.",
-        "levels": [
-          { "maxCount": 1, "petHP": 60, "petDamage": 3, "petSpeed": 50, "explosionDamage": 20, "explosionRadius": 50 },
-          { "maxCount": 1, "petHP": 75, "petDamage": 4, "petSpeed": 52, "explosionDamage": 28, "explosionRadius": 55 },
-          { "maxCount": 2, "petHP": 95, "petDamage": 5, "petSpeed": 55, "explosionDamage": 38, "explosionRadius": 60, "bonus": "Explosion poisons 2s" },
-          { "maxCount": 2, "petHP": 120, "petDamage": 7, "petSpeed": 58, "explosionDamage": 50, "explosionRadius": 65, "bonus": "Poison 3s, taunt nearby" },
-          { "maxCount": 3, "petHP": 150, "petDamage": 9, "petSpeed": 60, "explosionDamage": 65, "explosionRadius": 75, "bonus": "Poison 4s, taunt, resurrect once" }
-        ]
-      }
-    ],
-    "passives": [
-      { "id": "soul_tether", "name": "Soul Tether", "icon": "🔗", "maxRanks": 5, "description": "+5% pet HP per rank", "effectPerRank": { "petHPPercent": 0.05 } },
-      { "id": "dark_harvest", "name": "Dark Harvest", "icon": "🌑", "maxRanks": 5, "description": "+2% mana on kill per rank", "effectPerRank": { "manaOnKillPercent": 0.02 } },
-      { "id": "army_of_the_dead", "name": "Army of the Dead", "icon": "⚰️", "maxRanks": 3, "description": "+1 max pet count per rank", "effectPerRank": { "maxPetCountBonus": 1 } },
-      { "id": "necrotic_aura", "name": "Necrotic Aura", "icon": "☠️", "maxRanks": 5, "description": "Pets deal +3% damage per rank", "effectPerRank": { "petDamagePercent": 0.03 } },
-      { "id": "life_tap", "name": "Life Tap", "icon": "💉", "maxRanks": 4, "description": "+1% lifesteal from pet damage per rank", "effectPerRank": { "petLifestealPercent": 0.01 } },
-      { "id": "bone_barrier", "name": "Bone Barrier", "icon": "🛡️", "maxRanks": 3, "description": "+2% damage reduction per active pet per rank", "effectPerRank": { "dmgReductionPerPet": 0.02 } },
-      { "id": "corpse_mastery", "name": "Corpse Mastery", "icon": "💀", "maxRanks": 3, "description": "Corpses last +2s, +10% corpse explosion damage per rank", "effectPerRank": { "corpseDurationBonus": 2, "corpseExplosionDamagePercent": 0.10 } }
-    ]
-  },
-  "skillUpgradeCosts": {
-    "tierBuyCost": { "0": 0, "1": 50, "2": 150, "3": 400, "4": 1000, "5": 2500 },
-    "tierUpgradeBase": { "0": 25, "1": 75, "2": 200, "3": 500, "4": 1200, "5": 3000 },
-    "tierMinLevel": { "0": 1, "1": 1, "2": 5, "3": 10, "4": 20, "5": 30 },
-    "upgradeCostFormula": "tierUpgradeBase * upgradeLevel"
+      "tree": [
+        {
+          "id": "bone_army",
+          "tier": 1, "maxRank": 5,
+          "name": "Bone Army",
+          "description": "Unlocks Skeleton Warriors. Max +1 at ranks 1, 3, 5 (max 3 total). +6% pet damage per rank.",
+          "effects": [
+            { "type": "unlock_pet", "petId": "skeleton", "unlockAtRank": 1 },
+            { "type": "pet_stat", "petId": "skeleton", "stat": "damagePct", "perRank": 0.06 },
+            { "type": "pet_stat", "petId": "skeleton", "stat": "maxCountByRank", "values": [1, 1, 2, 2, 3] }
+          ]
+        },
+        {
+          "id": "marrow_edge",
+          "tier": 1, "maxRank": 5,
+          "name": "Marrow Edge",
+          "description": "Bone Spear damage +8% per rank.",
+          "effects": [
+            { "type": "damage_pct", "target": "necromancer_bone_lord_bone_spear", "perRank": 0.08 }
+          ]
+        },
+        {
+          "id": "soul_tether",
+          "tier": 1, "maxRank": 5,
+          "name": "Soul Tether",
+          "description": "Pet HP +10% per rank.",
+          "effects": [
+            { "type": "pet_stat", "petId": "*", "stat": "hpPct", "perRank": 0.10 }
+          ]
+        },
+        {
+          "id": "shambling_horde",
+          "tier": 2, "maxRank": 3,
+          "name": "Shambling Horde",
+          "description": "Unlocks Zombies (slow, tanky, explode on death). Max 1 / 2 / 2 by rank.",
+          "effects": [
+            { "type": "unlock_pet", "petId": "zombie", "unlockAtRank": 1 },
+            { "type": "pet_stat", "petId": "zombie", "stat": "maxCountByRank", "values": [1, 2, 2] }
+          ]
+        },
+        {
+          "id": "necrotic_aura",
+          "tier": 2, "maxRank": 3,
+          "name": "Necrotic Aura",
+          "description": "Pet damage +6% per rank (additive with other pet bonuses).",
+          "effects": [
+            { "type": "pet_stat", "petId": "*", "stat": "damagePct", "perRank": 0.06 }
+          ]
+        },
+        {
+          "id": "bone_spike",
+          "tier": 2, "maxRank": 3,
+          "name": "Bone Spike",
+          "description": "Bone Spear pierces +1 target per rank.",
+          "effects": [
+            { "type": "attack_stat", "target": "necromancer_bone_lord_bone_spear", "stat": "pierce", "perRank": 1 }
+          ]
+        },
+        {
+          "id": "reanimator",
+          "tier": 3, "maxRank": 3,
+          "branchGroup": "bone_lord_t3",
+          "name": "Reanimator",
+          "description": "Killing an enemy has 8 / 16 / 25% chance to spawn a free skeleton.",
+          "effects": [
+            {
+              "type": "conditional_trigger",
+              "trigger": "onKill",
+              "perRank": { "freePetSpawnChance": { "petId": "skeleton", "values": [0.08, 0.16, 0.25] } }
+            }
+          ]
+        },
+        {
+          "id": "plague_carriers",
+          "tier": 3, "maxRank": 3,
+          "branchGroup": "bone_lord_t3",
+          "name": "Plague Carriers",
+          "description": "Pets apply a small Plague DoT on hit (synergy with Plaguebringer hybrid).",
+          "effects": [
+            {
+              "type": "pet_stat",
+              "petId": "*",
+              "stat": "onHitStatus",
+              "value": { "status": "plague", "dps": 2, "duration": 3 },
+              "perRank": { "dps": 1 }
+            }
+          ]
+        },
+        {
+          "id": "army_of_the_dead",
+          "tier": 4, "maxRank": 1,
+          "name": "Army of the Dead",
+          "description": "+1 max of every pet type.",
+          "effects": [
+            { "type": "pet_stat", "petId": "*", "stat": "maxCountBonus", "value": 1 }
+          ]
+        },
+        {
+          "id": "dark_pact",
+          "tier": 4, "maxRank": 1,
+          "name": "Dark Pact",
+          "description": "Modifies Raise Dead: when at max pet count, sacrifices nearest pet for huge AoE explosion (instead of healing).",
+          "effects": [
+            { "type": "behavior_swap", "target": "necromancer_bone_lord_raise_dead", "mode": "atMaxSacrifice" }
+          ]
+        },
+        {
+          "id": "lich_lord",
+          "tier": 5, "maxRank": 1,
+          "name": "Lich Lord",
+          "description": "CAPSTONE — All pets become elite undead with +50% HP and +50% damage. Permanently summons one Bone Golem (huge persistent tank).",
+          "effects": [
+            { "type": "capstone_hook", "hookId": "bone_lord_lich_lord" }
+          ]
+        }
+      ]
+    }
   }
 }
+

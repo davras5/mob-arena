@@ -203,12 +203,33 @@ There is **no Skill Vendor**. Players do not buy skills with gold. All progressi
 
 **Hybrid is allowed.** A player can spend points across both specializations of their class. All four attacks (both specs' primary + secondary) are unlocked from level 1 and can be assigned to LMB/RMB freely. This enables mixed builds (e.g., a Mage running Flame Bolt LMB + Frost Nova RMB and splitting points between Pyromancer and Cryomancer trees).
 
-### 5.2 Two-Slot Action Bar
-Players assign exactly **2 attacks** at a time:
-- **Left-click slot**: Any of the 4 attacks available to your class
-- **Right-click slot**: Any of the 4 attacks available to your class
+### 5.2 Unified 7-Slot Action Bar
+Players have **7 action bar slots** total:
 
-Both slots can hold the same spec's attacks (pure build) or be mixed across specs (hybrid). The action bar contains nothing else — there is no third slot, no separate ultimate slot. Tree nodes upgrade specific attacks individually, so investment in one tree is wasted if you never assign that spec's attacks to a slot.
+| Slot | Trigger | Default for new character |
+|------|---------|---------------------------|
+| **LMB** | Left mouse button | Spec 1 primary attack |
+| **RMB** | Right mouse button | Spec 2 primary attack |
+| **1** | Keyboard `1` | empty |
+| **2** | Keyboard `2` | empty |
+| **3** | Keyboard `3` | empty |
+| **4** | Keyboard `4` | empty |
+| **5** | Keyboard `5` | empty |
+
+**Every slot can hold either an attack OR a consumable.** There is no longer a separate "potion hotbar". The same slot system handles class attacks (Bash, Fireball, Raise Dead, etc.) and consumables (HP Potion, Mana Potion, Scroll of Teleportation, etc.) interchangeably. Players bind whatever they want, wherever they want.
+
+**Slot behavior rules:**
+- LMB and RMB are **combat-priority slots** — held mouse buttons keep firing the bound action as long as the cooldown allows. You don't hammer the button.
+- Keyboard slots 1–5 fire **once per press**. Holding the key does not auto-repeat (preserves intent — you tap to use a potion or trigger a cooldown).
+- **Same attack on multiple slots shares cooldown and resource cost.** If you bind Fireball to RMB and slot 3, both icons show the same cooldown and casting from either consumes the same mana. There is no exploit for double-binding.
+- **Consumable slots auto-refill from inventory.** When the stack on a consumable slot drops to 0, the slot stays bound to that consumable type. Picking up a new stack of that type from loot or buying from a vendor automatically routes the new stack to the empty slot. The slot displays the consumable icon grayed out (with a count of "0") while empty.
+- Slots can hold the same item/attack as other slots — there is no "uniqueness" constraint.
+
+**Hybrid example:** A pure-Cryomancer Mage might bind Frost Shard to LMB (spam), Frost Nova to RMB (oh-shit button), HP Potion to slot 1, Mana Potion to slot 2, Scroll of Teleportation to slot 5. A hybrid Pyro/Cryo might bind Flame Bolt LMB, Frost Nova RMB, Fireball on slot 1 for a third active attack.
+
+**The 4 class attacks remain freely assignable.** All 4 attacks (both specs' primary + secondary) are unlocked at level 1 and can be bound to any slot — the LMB/RMB defaults are just defaults, not restrictions. Tree node investment still applies per-attack regardless of which slot the attack is in.
+
+**Removed:** the old separate "potion hotbar 1–4" and the "two-slot action bar" constraint. Both are folded into this unified 7-slot model.
 
 ### 5.3 The Eight Specializations
 
@@ -777,7 +798,8 @@ Treasure rooms have **higher trap density** (+50%) as a risk/reward tradeoff for
 - **Shared cooldown**: HP and Mana potions share a 3-second cooldown (can't chug both instantly).
 - **Class-appropriate potions**: Mana potions only usable by Mage/Necro. Stamina Tonics only by Archer. Rage Tonics only by Warrior.
 - **Stacking**: All consumables stack to their `maxStack` value (HP/Mana 5, tonics 3, scrolls 5). Same-type items merge into existing stacks via `inventory.addItem()`.
-- **Hotbar**: Slots 1–4 for quick-use consumables. Drag from inventory to assign.
+- **Hotbar binding**: Consumables share the unified 7-slot action bar with attacks (see §5.2). Drag a consumable stack from inventory onto any slot (LMB, RMB, or 1–5) to bind it. Pressing the slot's key (or clicking the mouse button) consumes one from the stack.
+- **Auto-refill**: When a bound consumable stack hits 0, the slot stays bound to that consumable type and displays grayed out. Picking up or buying a new stack of the same type automatically routes it to the empty slot.
 - **Sources**: Buy from Item Vendor, drop from enemies (low chance), found in treasure chests.
 - Potions occupy inventory grid space (1x1 each, stacks shown as count overlay).
 
@@ -785,7 +807,7 @@ Treasure rooms have **higher trap density** (+50%) as a risk/reward tradeoff for
 A powerful consumable that creates a two-way portal between the dungeon and camp.
 
 **Use flow:**
-1. **In dungeon**: Player uses scroll from hotbar (or assigned slot 1-4)
+1. **In dungeon**: Player uses scroll from any hotbar slot it's bound to (LMB, RMB, or 1–5)
 2. A swirling purple **portal** spawns at the player's current dungeon position
 3. Player is instantly teleported to camp
 4. A matching **return portal** appears in camp near the campfire
@@ -935,16 +957,18 @@ The Trainer no longer sells or upgrades skills. All skill progression happens in
 | Key | Action |
 |-----|--------|
 | WASD | Move |
-| Left Click | Primary action (equipped skill) |
-| Right Click | Secondary action (equipped skill) |
+| Left Click | Fire whatever is bound to LMB slot (attack OR consumable) |
+| Right Click | Fire whatever is bound to RMB slot (attack OR consumable) |
+| 1 / 2 / 3 / 4 / 5 | Fire whatever is bound to action bar slot 1–5 (attack OR consumable) |
 | C | Toggle Character panel |
 | I | Toggle Inventory + Equipment |
 | K | Toggle Skill Book |
 | E | Interact (NPC / Chest / Waystone) |
-| 1–4 | Use consumable from hotbar |
 | Alt (hold) | Show all ground item labels |
 | Tab | Toggle full map |
 | ESC | Close panel / Pause |
+
+> Note: There is no longer a separate "potion hotkey 1–4" — keys 1–5 are unified action bar slots that can hold attacks, consumables, or anything bindable. See §5.2.
 
 ---
 
@@ -961,7 +985,15 @@ The Trainer no longer sells or upgrades skills. All skill progression happens in
     "attributes": { "str": 8, "int": 3, "agi": 5, "sta": 6 },
     "attributePointsAvailable": 0,
     "gold": 342,
-    "equippedAttacks": { "leftClick": "warrior_guardian_bash", "rightClick": "warrior_berserker_whirlwind" },
+    "hotbar": {
+      "leftClick":  { "type": "attack",     "id": "warrior_guardian_bash" },
+      "rightClick": { "type": "attack",     "id": "warrior_berserker_whirlwind" },
+      "slot1":      { "type": "consumable", "id": "hp_potion" },
+      "slot2":      { "type": "consumable", "id": "rage_tonic" },
+      "slot3":      { "type": "attack",     "id": "warrior_guardian_parry" },
+      "slot4":      null,
+      "slot5":      { "type": "consumable", "id": "scroll_of_teleport" }
+    },
     "skillTree": {
       "warrior_guardian": { "iron_hide": 3, "heavy_hands": 5, "counterattack": 2 },
       "warrior_berserker": { "whirling_steel": 5, "tornado": 3, "endless_carnage": 1 }
@@ -987,7 +1019,9 @@ The Trainer no longer sells or upgrades skills. All skill progression happens in
       "item_1": { "baseType": "chainmail", "rarity": "uncommon", "iLvl": 8, "affixes": [...], "gridX": 1, "gridY": 0, "gridW": 2, "gridH": 2 },
       "item_2": { ... }
     },
-    "hotbar": ["item_3", null, null, null]  // 4 slots, references itemId of potion stacks
+    // Note: hotbar binding lives in character.hotbar (above) — not in inventory.
+    // Inventory only stores the items themselves; hotbar slots reference consumables by *baseType*
+    // (e.g., "hp_potion") rather than itemId, so a slot stays bound across stack-refill.
   },
   "dungeon": {
     "discoveredFloors": [1, 2, 3],
@@ -1024,7 +1058,7 @@ The Trainer no longer sells or upgrades skills. All skill progression happens in
 11. **Grid Inventory UI**: Drag-and-drop, tooltips, comparison, junk marking
 12. **Equipment System**: 6 slots, stat bonuses applied to player, class restriction checks
 13. **Loot Drops**: World item objects, proximity auto-pickup, gold auto-pickup, drop tables
-14. **Potion System**: HP/Mana/Stamina/Rage potions, hotbar slots 1–4, shared cooldowns
+14. **Potion System**: HP/Mana/Stamina/Rage potions, bindable to any hotbar slot (LMB/RMB/1–5), shared cooldowns, auto-refill on bound slots
 15. **Item Vendor NPC**: Buy/sell, junk bulk-sell, rotating stock, potion sales
 
 ### Phase 4 — Dungeon Restructure

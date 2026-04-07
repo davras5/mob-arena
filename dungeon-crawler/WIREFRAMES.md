@@ -145,10 +145,30 @@ This is the main screen players see 90% of the time. Inspired by Diablo 2's bott
 - **Layout**: 2 larger square slots side by side, labeled "LMB" and "RMB" (or mouse icons)
 - **Size**: ~48px per slot
 - **Display**: Skill icon + skill name below in small text
-- **Cooldown**: Same radial clock-wipe as potions, plus grayed-out icon
 - **Resource cost**: Small text below slot showing cost (e.g., "15 mana")
 - **Swap arrows**: Small up-arrow button above each slot. Clicking opens a **quick skill picker** flyout showing all 4 of the class's attacks (both specs' primary + secondary). Click one to swap it in. This is the fast in-combat way to swap without opening the full Skill Book.
-- **No resource**: If player lacks resource to cast, slot border pulses red briefly on click attempt
+
+**Cooldown Visualization (REQUIRED — applies to BOTH primary and secondary attacks)**
+
+```
+   READY              ON COOLDOWN              READY-FLASH
+                       (1.4s left)            (just came up)
+   ┌──────┐            ┌──────┐                ┌══════┐
+   │      │            │ ░░░  │                ║      ║   ← class-color
+   │  🔥  │            │ ▓1.4 │                ║  🔥  ║     border pulse
+   │      │            │ ░░░  │                ║      ║     150ms
+   └──────┘            └──────┘                ╚══════╝
+   Flame Bolt          Flame Bolt              Flame Bolt
+```
+
+- **Radial clock-wipe**: Dark semi-transparent overlay (#000 at 70% alpha) covers the icon and sweeps clockwise from 12 o'clock as the cooldown elapses. The fully-uncovered icon == ready.
+- **Grayscale icon**: While on cooldown, the icon is desaturated to gray. Returns to full color the moment the cooldown finishes.
+- **Numeric remaining**: Small white text (~10px) centered on the icon showing seconds remaining (e.g., `1.4`). **Only shown if cooldown > 1.5s** — primary attacks (0.5–1.0s cooldowns) skip the number to avoid flicker spam.
+- **Ready-flash**: When a secondary attack comes off cooldown, the slot border pulses class color for 150ms + a soft "tick" sound plays. **Primary attacks do NOT play the ready sound** (would be obnoxious at 0.6s intervals) but the icon still un-grays instantly.
+- **Click-while-on-cooldown**: Slot border pulses red briefly + soft error tick sound. No resource consumed.
+- **No resource (separate from cooldown)**: If the player has the cooldown ready but lacks the resource (mana/rage/stamina) to cast, the slot border pulses red, the resource globe flashes, and a small "Not enough mana" floats above the action bar. No cooldown is started.
+
+**Why both primaries and secondaries get the visualization:** Even though primaries cooldowns are short (0.5–1.0s), they ARE on cooldown during their swing animation and the player needs to feel the rhythm. The radial wipe makes attack speed visible (important for buffs like Frenzy that increase attack speed — the player should literally see the wipe spin faster).
 
 #### Panel Buttons (Bottom-Center, Below Hotbars)
 - **Layout**: 3 rectangular buttons in a row between the globes, positioned below the potion/skill slots
@@ -213,25 +233,38 @@ This is the main screen players see 90% of the time. Inspired by Diablo 2's bott
 - **Animation**: Smooth drain. At 50% HP, bar color shifts to angry orange (phase 2 indicator).
 
 #### Enemy Nameplates (Above Each Enemy)
-Floating nameplate rendered above every enemy in combat, showing name, level, and health at a glance.
+Floating nameplate rendered above every enemy in combat, showing name, level, threat tier, and health at a glance.
 
 ```
-        Brute  Lv.8
-      ▓▓▓▓▓▓▓▓░░░░
-        (enemy sprite)
+Minion:                         Elite:                         Champion:
+
+     Grunt  Lv.8              ❯ Vicious Grunt  Lv.8          ★ Bloodrage Grunt  Lv.8
+   ▓▓▓▓▓▓▓▓░░░░                ▓▓▓▓▓▓▓▓▓░░░                  ▓▓▓▓▓▓▓▓▓▓▓░
+   (enemy sprite)              (enemy sprite)                 (enemy sprite)
+                               +slight size bump              +larger size bump
+                               +silver name                   +gold name + gold outline
 ```
 
-- **Position**: Centered above the enemy sprite, offset ~8px above the top edge
-- **Name**: Enemy type name in white, small font (~10px). Bold for elites/champions.
-- **Level**: "Lv.X" displayed right of the name, same font size. Color-coded relative to player level:
+- **Position**: Centered above the enemy sprite, offset ~8px above the top edge.
+- **Threat tier badge** (NEW): Prefixed icon in front of the name indicating enemy tier. See §7.4.1 of DESIGN_BRIEF.md for full spec.
+  - **Minion** — no badge (default enemies, ~88% of spawns)
+  - **Elite** — silver chevron `❯`, name drawn in silver (#c0c0c0), slightly bolder font, HP bar ~20% wider
+  - **Champion** — gold star `★`, name drawn in gold (#ffd24a), bold + 1px outline, HP bar ~40% wider and taller, enemy sprite rendered at 1.15× scale
+  - **Boss** — no nameplate (uses top-center boss bar instead)
+- **Name**: Enemy type name. For Elites and Champions, the name includes a **modifier prefix** from the affix roll (e.g., "Vicious Grunt", "Swift Armored Brute"). Champion names may use curated flavor names from a lookup table for stronger identity.
+- **Level**: "Lv.X" displayed right of the name, same font size. **Color-coded relative to player level**:
   - Green: ≥3 levels below player (easy)
   - White: within 2 levels (normal)
   - Yellow: 3–5 levels above player (challenging)
   - Red: ≥6 levels above player (dangerous)
-- **Health bar**: Thin bar (~40px wide, 4px tall) below the name text
+- **Health bar**: Thin bar below the name text
+  - **Minion size**: 40px wide × 4px tall
+  - **Elite size**: 48px wide × 5px tall
+  - **Champion size**: 56px wide × 6px tall, with a gold 1px outline
   - **Fill color**: Green >50%, Yellow 25–50%, Red <25%
   - **Background**: Dark gray (#333)
   - **Border**: 1px black outline for readability against any floor theme
+- **Affix tooltip** (Elite/Champion only): Holding **Alt** (the same key used for ground item labels) displays a small tooltip below each elite/champion's nameplate listing its modifier names (e.g., "Vicious: +25% damage / Swift: +30% move speed"). This lets the player identify dangerous combinations at a glance.
 - **Visibility**: Always visible while the enemy is alive and on-screen. Fades out on death.
 - **Boss exception**: Bosses use the large top-center HP bar instead; no floating nameplate on bosses.
 
@@ -624,7 +657,6 @@ If `freeRespecUsed === false`, the cost line shows `Cost: FREE (one-time)` and t
 - **Cannot afford**: Button text turns red and shows "Need 425g (have 342g)". Disabled.
 - **Free respec available**: Gold star badge ★ on the Tree Respec section, button highlighted gold.
 - **After confirming**: Gold deducted (or `freeRespecUsed` flag set), all tree nodes refunded, brief gold-coin animation flying to the player's gold counter, screen briefly dims, Skill Book opens automatically so the player can immediately re-spend.
-- **Can't afford**: Buy button grayed out, price in red
 
 ---
 
@@ -680,32 +712,34 @@ Accessed by interacting with the Item Vendor NPC at camp.
 Accessed at any waystone (camp or dungeon entrance rooms).
 
 ```
-┌────────────────────────────────────────────────────┐
-│               WAYSTONE TRAVEL                [X]   │
-│                                                    │
-│  ┌──────────────────────────────────────────────┐  │
-│  │                                              │  │
-│  │  1.  Dark Cellar       Lv.1    ✓ CLEARED    │  │
-│  │  2.  Cursed Crypt      Lv.3    ✓ CLEARED    │  │
-│  │  3.  Molten Cavern     Lv.6    ▶ IN PROGRESS│  │
-│  │      (3/8 rooms cleared)                     │  │
-│  │  4.  Frozen Depths     Lv.10   ● DISCOVERED │  │
-│  │  5.  Blighted Sewers   Lv.14   🔒 LOCKED    │  │
-│  │      (Requires player level 14)              │  │
-│  │  6.  Bone Spire        Lv.18   🔒 LOCKED    │  │
-│  │  7.  Shadow Realm      Lv.23   🔒 LOCKED    │  │
-│  │  8.  Sunken Temple     Lv.28   🔒 LOCKED    │  │
-│  │  9.  Ashen Battlefield Lv.34   🔒 LOCKED    │  │
-│  │  10. The Hollow        Lv.42   🔒 LOCKED    │  │
-│  │                                              │  │
-│  └──────────────────────────────────────────────┘  │
-│                                                    │
-│  Click a floor to travel.                          │
-│  Locked floors require the listed player level.    │
-│                                                    │
-│           [Return to Camp]                         │
-│                                                    │
-└────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────┐
+│               WAYSTONE TRAVEL                  [X]   │
+│  Your level: 8                                       │
+│                                                      │
+│  ┌────────────────────────────────────────────────┐  │
+│  │                                                │  │
+│  │  1.  Dark Cellar       Rec. 1     ✓ CLEARED   │  │
+│  │  2.  Cursed Crypt      Rec. 3     ✓ CLEARED   │  │
+│  │  3.  Molten Cavern     Rec. 6     ▶ IN PROG.  │  │
+│  │      (3/8 rooms cleared)                       │  │
+│  │  4.  Frozen Depths     Rec.10     ● NEW       │  │
+│  │  5.  Blighted Sewers   Rec.14  ⚠ ● NEW        │  │
+│  │      (Recommended Lv 14 — you are 8)           │  │
+│  │  6.  Bone Spire        Rec.18     ░ undiscovered │
+│  │  7.  Shadow Realm      Rec.23     ░ undiscovered │
+│  │  8.  Sunken Temple     Rec.28     ░ undiscovered │
+│  │  9.  Ashen Battlefield Rec.34     ░ undiscovered │
+│  │  10. The Hollow        Rec.42     ░ undiscovered │
+│  │                                                │  │
+│  └────────────────────────────────────────────────┘  │
+│                                                      │
+│  Click any discovered floor to travel.               │
+│  ⚠ = warning: floor recommended is 4+ levels above   │
+│      you. You can still travel.                      │
+│                                                      │
+│            [Return to Camp]                          │
+│                                                      │
+└──────────────────────────────────────────────────────┘
 ```
 
 ### 9.1 Floor States
@@ -713,13 +747,45 @@ Accessed at any waystone (camp or dungeon entrance rooms).
 |-------|--------|-----------|
 | **CLEARED** | Green checkmark, bright text | Yes (can revisit for farming) |
 | **IN PROGRESS** | Yellow arrow, shows rooms cleared | Yes |
-| **DISCOVERED** | White dot, normal text | Yes (discovered via stairs from previous floor) |
-| **LOCKED** | Gray lock icon, dimmed text, shows requirement | No |
+| **NEW (DISCOVERED)** | White dot, normal text | Yes (discovered via stairs from previous floor — not yet cleared) |
+| **UNDISCOVERED** | Gray dotted line, dimmed text | No (must discover by descending stairs from the previous floor) |
+
+> **There is no LOCKED state.** Once a floor is discovered, the player can travel to it from any waystone regardless of player level.
 
 ### 9.2 Travel Behavior
-- From **camp waystone**: Can travel to any non-locked floor. "Enter Dungeon" for floor 1 if first time.
+- From **camp waystone**: Can travel to any **discovered** floor. Floors not yet discovered are dimmed and unclickable.
 - From **dungeon waystone**: Shows "Return to Camp" prominently. Can also jump to other discovered floors.
 - Travel is instant (short fade-to-black transition).
+- **Undiscovered floors** must be reached by descending stairs from the previous floor (a one-time act). Once discovered, they remain accessible permanently — even after death.
+
+### 9.3 Underleveled Warning
+When the player hovers or selects a floor whose **Recommended Level** is more than 3 levels above their current level, the row shows a yellow caution icon (⚠) and a hover tooltip / inline subtitle:
+
+```
+"⚠ Recommended Lv 14 — you are Lv 8.
+ Enemies will be much stronger. Travel anyway?"
+```
+
+Clicking the row shows a confirmation dialog:
+
+```
+┌────────────────────────────────────────┐
+│   FLOOR RECOMMENDED FOR HIGHER LEVEL   │
+│                                        │
+│   Blighted Sewers — Recommended Lv 14  │
+│   Your level: 8                        │
+│                                        │
+│   Enemies on this floor are 6+ levels  │
+│   above you. They will be very tough.  │
+│                                        │
+│      [ CANCEL ]    [ TRAVEL ANYWAY ]   │
+└────────────────────────────────────────┘
+```
+
+This is a soft warning, not a block. Some players will want to climb above their level for the +50% XP multiplier (see §3.5) or to attempt a challenge run. The dialog only appears at the >3-level threshold to avoid nagging on borderline cases.
+
+### 9.4 Overleveled Travel
+There is no warning when traveling to a floor below your level. The waystone happily lets you revisit a low-level floor to complete side bosses, hunt items, etc. Note that the level-difference XP multiplier reduces XP rewards from much-lower-level enemies (see §3.5 of DESIGN_BRIEF.md) — overleveled farming is for loot, not XP.
 
 ---
 
@@ -909,14 +975,14 @@ When a trap applies a status effect, show it near the HP globe:
 
 ## 14. NOTIFICATION & FEEDBACK SYSTEMS
 
-### 13.1 Floating Combat Text
+### 14.1 Floating Combat Text
 - **Damage dealt**: Yellow numbers floating up from enemy. Crit = larger + red + "!" suffix.
 - **Damage taken**: Red numbers floating up from player.
 - **Healing**: Green "+" numbers floating up from player.
 - **XP gained**: Small purple "+12 XP" below damage numbers (only on kill).
 - **Gold picked up**: Small yellow "+5g" near player feet.
 
-### 13.2 Center Screen Notifications
+### 14.2 Center Screen Notifications
 Large text announcements for major events:
 ```
              ╔═══════════════════╗
@@ -935,7 +1001,7 @@ Large text announcements for major events:
 - Display for 2 seconds, fade out over 0.5s.
 - Queue if multiple fire simultaneously (rare).
 
-### 13.3 Resource Warnings
+### 14.3 Resource Warnings
 - **Not enough rage/mana/stamina**: Skill slot border flashes red. Resource globe pulses. Small red text "Not enough mana" near action bar.
 - **HP low (below 25%)**: HP globe pulses with red glow. Heartbeat sound effect. Red vignette on screen edges.
 - **Inventory full (on loot drop)**: Yellow warning text center-bottom: "Inventory Full — make room to pick up items".

@@ -154,12 +154,16 @@ Skills and enemies can apply status effects. STA provides resistance: **-1% stat
 
 | Status | Source | Effect | Base Duration |
 |--------|--------|--------|--------------|
-| **Frozen** | Frost Nova, Frost Lich | Cannot move or attack | 2s |
-| **Slowed** | Frost abilities, Shielder | -40% movement speed | 3s |
-| **Burning** | Fireball Lv5, Infernal Wyrm | 5 damage/sec tick | 3s |
-| **Poisoned** | Poison Arrow, Plague King | 3 damage/sec tick, -20% healing | 4s |
-| **Weakened** | Curse of Weakness (Necro), Curse Trap | +25% damage taken | 4s |
-| **Bleeding** | Spike Trap | 2 damage/sec tick | 5s |
+| **Frozen** | Frost Nova (Cryomancer), Frost Lich | Cannot move or attack | 2s |
+| **Slowed** | Frost Shard (Cryomancer), Shielder | -40% movement speed | 3s |
+| **Burning** | Flame Bolt / Fireball (Pyromancer), Infernal Wyrm | 5 damage/sec tick | 3s |
+| **Plague** | Plague Bolt / Outbreak (Plaguebringer), Plague King | 8 damage/sec tick, can spread via Contagion / Pandemic nodes | 6s |
+| **Poisoned** | Poison Trap | 3 damage/sec tick, -20% healing | 4s |
+| **Bleeding** | Hemorrhage node (Marksman), Spike Trap | 2 damage/sec tick (3+ from Hemorrhage rank), movement leaves blood trail | 5s |
+| **Weakened** | Curse Trap | +25% damage taken | 4s |
+
+> Note: **Plague** is a distinct status from **Poisoned**. Plague has a longer duration, higher tick damage, and can chain via Plaguebringer tree nodes (Wildfire / Pandemic). Both share STA resistance scaling.
+> Note: **Festering Wounds** (Plaguebringer Tier 2 node) is a *damage amplifier on plagued enemies*, not a separate status — it stacks with Plague rather than replacing it.
 
 `effectiveDuration = baseDuration * max(0.2, 1 - STA * 0.01)`
 Minimum 20% duration (status effects always apply for at least a fraction).
@@ -176,13 +180,14 @@ Minimum 20% duration (status effects always apply for at least a fraction).
 - Base mana = 80 + (INT * 2)
 - Regen = 1.5 + (INT * 0.05) per second
 - Mana potions restore 30% of max mana
-- Skills cost mana (e.g., Fireball = 15 mana, Summon Skeleton = 30 mana)
+- Secondary attacks cost mana (e.g., Fireball = 18 mana, Frost Nova = 22 mana, Outbreak = 25 mana, Raise Dead = 30 mana). See §5.4 for full attack reference.
+- Primary attacks (Flame Bolt, Frost Shard, Plague Bolt, Bone Spear) have low mana cost (5–8) so they remain spammable as the main resource generator/spender loop.
 
 ### 4.8 Stamina (Archer)
 - Base max stamina = 80 + (AGI * 1.5)
 - Regen = 5 + (AGI * 0.15) per second
-- Skills cost stamina (e.g., Evasive Roll = 25, Rain of Arrows = 40)
-- Basic attacks cost 0 stamina (free to shoot)
+- Secondary attacks cost stamina (e.g., Multishot = 18, Call Beast = 25). See §5.4 for full attack reference.
+- Primary attacks (Aimed Shot, Quick Shot) cost 0 stamina — free to spam.
 
 ---
 
@@ -248,6 +253,28 @@ All four attacks per class are available from level 1. Numbers below are **base 
 | Plaguebringer | Secondary | **Outbreak** | 25 mana | 5s | AoE cloud at target location, infects all enemies inside with Plague. |
 | Bone Lord | Primary | **Bone Spear** | 8 mana | 0.8s | Piercing projectile, passes through enemies. |
 | Bone Lord | Secondary | **Raise Dead** | 30 mana | 4s | Summons next available undead. At max count, behavior depends on tree (heals nearest pet by default; sacrifices nearest pet for AoE if **Dark Pact** is taken). |
+
+### 5.4.1 Cooldown Philosophy
+Every attack has a cooldown — there is no truly "free" spam attack. The cooldown ranges create a deliberate two-tempo combat loop:
+
+| Attack Class | Cooldown Range | Feel | UX rule |
+|--------------|---------------|------|---------|
+| **Primary** (Bash, Flame Bolt, Aimed Shot, Bone Spear, etc.) | **0.5 – 1.0s** | Spammable. Cooldown = animation/cast rate. Player click-mashes or holds LMB and the attack repeats as fast as possible. | Cooldown wipe is brief and subtle — should not interrupt the player's attack rhythm. |
+| **Secondary** (Whirlwind, Fireball, Multishot, Raise Dead, etc.) | **2 – 6s** | Punctuated. Player must time these around fights — not every-tick spam. | Cooldown wipe is prominent (full radial sweep + grayscale icon). When ready, slot border flashes class color briefly. |
+| **Capstone effects** (Aegis, Phoenix on-kill nova, etc.) | **8s+ internal cooldown** | Once-per-fight or once-per-rotation moments. | Capstone effects are passive triggers, not action bar slots, so they don't show on the LMB/RMB icons. They get a small floating "READY" indicator above the player when off cooldown (TBD in WIREFRAMES). |
+
+**Cooldown Visualization (HUD)**
+Both LMB and RMB action bar slots MUST display cooldown progress visually whenever the attack is on cooldown. The visualization is identical to the potion cooldown clock-wipe (see [WIREFRAMES §3 Skill Slots](dungeon-crawler/WIREFRAMES.md#L144)):
+1. **Radial clock-wipe** sweeping clockwise from 12 o'clock, dark overlay covering the unsweep portion
+2. **Icon desaturated** to grayscale while on cooldown
+3. **Numeric remaining time** in small white text centered on the icon (only shown if cooldown > 1.5s, to avoid clutter on primaries)
+4. **Ready flash** — when cooldown completes, a brief 150ms class-color border flash + soft "ready" tick sound (only for secondary attacks; primaries are too frequent)
+5. **Click-while-on-cooldown** — slot border pulses red briefly + soft error tick. No action consumed.
+
+**Cooldown reduction sources**
+- Tree node ranks (e.g., "Vigilant — Parry Stance cooldown -0.6s per rank")
+- Equipment affixes (future, not in v1)
+- All cooldown reductions stack additively, with a minimum cooldown floor of 0.3s for primaries and 1.0s for secondaries (so cooldown reduction can never reduce a skill below the animation duration).
 
 ### 5.5 Skill Points & Budget
 - Players gain **1 skill point per level**. Total at max level (50): **50 skill points**.
@@ -562,10 +589,12 @@ Each floor contains:
 - **Main boss room** (must defeat to unlock stairs down, no traps)
 - **Stairs** (spawn in the boss room after the main boss is defeated; player must walk to them and **press E to descend** — no auto-teleport)
 
-### 7.3 Floor Progression & Level Requirements
+### 7.3 Floor Progression & Recommended Levels
 
-| Floor | Theme | Player Lvl Req | Enemy Lvl Range | Main Boss | Side Bosses |
-|-------|-------|---------------|-----------------|-----------|-------------|
+**There are NO hard player-level locks on floors.** Once a floor has been **discovered** (by descending stairs from the previous floor), the player can travel to it from any waystone regardless of their current level. The "Recommended Level" is purely advisory — the player can ignore it if they want a challenge or are returning to farm low-level content.
+
+| Floor | Theme | Recommended Lvl | Enemy Lvl Range | Main Boss | Side Bosses |
+|-------|-------|-----------------|-----------------|-----------|-------------|
 | 1 | Dark Cellar | 1 | 1–3 | Stoneguard | 0 |
 | 2 | Cursed Crypt | 3 | 3–6 | Voidlord | 1 |
 | 3 | Molten Cavern | 6 | 6–9 | Swarmmother | 1 |
@@ -576,6 +605,12 @@ Each floor contains:
 | 8 | Sunken Temple | 28 | 28–34 | Infernal Wyrm | 2 |
 | 9 | Ashen Battlefield | 34 | 34–42 | Crimson General | 3 |
 | 10 | The Hollow | 42 | 42–50 | Hollow King | 3 |
+
+**Discovery rule**: Floor N is **discovered** the first time the player descends the stairs from Floor N-1. Floor 1 is discovered automatically on character creation. **Discovery is permanent** — once discovered, a floor remains accessible from any waystone forever (including after death and respawn).
+
+**Underleveled travel warning**: When the player attempts to travel to a floor whose Recommended Level is more than **3 levels above** their current level, the Waystone Travel UI shows a non-blocking warning ("⚠ This floor is recommended for level X. You are currently level Y. Enemies will be much stronger.") and the destination row shows a yellow caution icon. The player can still confirm and travel — the warning exists to prevent accidents, not to block exploration.
+
+**Overleveled travel**: There is no warning or penalty for traveling to floors below your level. Players may want to revisit lower floors to complete side bosses, hunt for specific items, or help a hybrid build catch up — though the level-difference XP multiplier (§3.5) heavily reduces the value of farming low-level enemies.
 
 ### 7.4 Enemy Scaling Formulas
 
@@ -599,6 +634,48 @@ Each floor contains:
 - Attack cooldown does not scale (stays fixed)
 
 **Boss scaling:** Bosses use 5x base enemy HP, 2x base enemy damage, and follow the same per-level multipliers.
+
+### 7.4.1 Enemy Threat Tiers
+In addition to type and level, every non-boss enemy has a **threat tier** that determines how dangerous the individual is. Tiers are rolled at spawn time with a per-floor weighting. This is separate from enemy level and adds variety within a room — a room can mix minions, elites, and an occasional champion.
+
+| Tier | Spawn Weight | HP Multiplier | Damage Multiplier | Affixes | XP Multiplier | Loot |
+|------|--------------|---------------|-------------------|---------|---------------|------|
+| **Minion** | ~88% | 1.0× | 1.0× | 0 | 1.0× | Regular drop table (8% item chance) |
+| **Elite** | ~10% | 1.5× | 1.25× | 1 random modifier | 1.8× | Bumped drop table (18% item chance, min Uncommon) |
+| **Champion** | ~2% | 2.5× | 1.5× | 2 random modifiers | 3.0× | Guaranteed drop (100%, min Rare), small gold shower |
+| **Boss** | scripted | 5.0× (base) | 2.0× (base) | scripted | scripted | Boss chest (see §6.6) |
+
+**Tier Modifiers (Affixes)** — drawn from a pool at spawn:
+| Modifier | Effect | Visual Tell |
+|----------|--------|------------|
+| **Vicious** | +25% damage | Red aura around sprite |
+| **Swift** | +30% move speed, +20% attack speed | Speed-lines trailing behind |
+| **Armored** | +50% armor, -20% incoming damage | Gray metallic sheen |
+| **Vampiric** | Heals for 10% of damage dealt | Dark red glow on hit |
+| **Explosive** | Deals AoE damage on death (1 enemy-tile radius) | Orange-red body glow |
+| **Frenzied** | Gains stacking attack speed when below 50% HP | Red pulse when enraged |
+| **Enchanted** | Projectile attacks; resists physical (-25%), weak to magic (+25%) | Blue magic particles |
+| **Regenerating** | Regenerates 2% HP/sec out of combat | Faint green pulse |
+
+**Tier Naming**: Elite and Champion enemies get a prefix in front of their type name based on their modifier(s):
+- Regular: `Grunt` → Elite with Vicious: `Vicious Grunt` → Champion with Vicious + Swift: `Vicious Swift Grunt` (or a curated name from a small table for flavor — e.g., "Bloodrage Grunt").
+- Champion names displayed in **gold** color in the nameplate; Elite names in **silver**.
+
+**Tier Spawn Rules**:
+- Minimum 1 Elite per combat room starting Floor 2.
+- Minimum 1 Champion per 3 combat rooms starting Floor 4.
+- Treasure rooms are guaranteed to contain at least 1 Elite as a "guardian".
+- Side boss rooms spawn 2–3 Elite guards alongside the side boss.
+- Corridors only spawn Minions (never Elite/Champion — corridors are transitional).
+
+**Tier Scaling by Floor**: Spawn weights shift as the player descends — later floors see more Elites and Champions:
+| Floor | Minion | Elite | Champion |
+|-------|--------|-------|----------|
+| 1–2 | 92% | 7% | 1% |
+| 3–5 | 88% | 10% | 2% |
+| 6–8 | 82% | 14% | 4% |
+| 9–10 | 75% | 19% | 6% |
+
 
 ### 7.5 Waystones
 - **Every floor has exactly one Way Stone**, placed in the **entrance room** (the room where the player spawns when entering or descending).
@@ -778,8 +855,10 @@ When hovering an inventory item, show side-by-side comparison with currently equ
 
 ### 10.1 Gold
 - **Earned from**: Enemy kills (auto-pickup), selling items, chest loot
-- **Spent on**: Active skills, skill upgrades, attribute/passive respec, vendor items, potions
+- **Spent on**: Skill tree respec (first free, then `level * 25g`), attribute respec (`level * 15g`), vendor equipment, potions and scrolls
 - **Death penalty**: Lose 10% on death
+
+> Note: With skill purchases removed, gold demand is significantly lower than in earlier drafts. Vendor prices, drop rates, and respec costs may need rebalancing during Phase 5.
 
 ### 10.2 Item Vendor (Camp NPC)
 - Sells a rotating stock of equipment (refreshes when returning from a dungeon run)
@@ -846,10 +925,10 @@ The Trainer no longer sells or upgrades skills. All skill progression happens in
 ### 12.2 Overlay Panels
 - **Inventory + Equipment** (I): Left side = equipment doll (6 slots), right side = 10x6 grid. Item tooltips with comparison.
 - **Character** (C): Attributes with [+] buttons, full stat breakdown.
-- **Skill Book** (K): Active skills, passive ranks, summon toggles (Necro), current LMB/RMB loadout.
+- **Skill Book** (K): Two specialization tabs with tier-gated tree nodes (Tier 1–5), action bar at top showing currently equipped LMB/RMB attacks, hover detail for any node, and skill points remaining counter. All skill progression happens here — no separate vendor.
 - **Trainer**: Respec skill tree (first free, then gold) and attribute points (gold). No skill purchases.
 - **Item Vendor**: Buy/sell split view, bulk sell junk.
-- **Waystone Travel**: Floor list with states (Cleared/In Progress/Discovered/Locked).
+- **Waystone Travel**: Floor list with states (Cleared / In Progress / New / Undiscovered). Recommended Level shown per floor; no hard locks. Warning dialog on underleveled travel (>3 levels above player).
 - Panels overlay the game (dimmed background). Only one panel open at a time. ESC closes.
 
 ### 12.3 Hotkeys
@@ -941,29 +1020,30 @@ The Trainer no longer sells or upgrades skills. All skill progression happens in
 9. **Tree Node Effect Engine**: Generic system to apply node effects to specific attacks (damage modifiers, behavior modifiers like "Fireball leaves burning patch", capstone hooks)
 
 ### Phase 3 — Items & Inventory
-9. **Item Data Model**: Item generation with rarity, affixes, iLvl, grid size, class restrictions
-10. **Grid Inventory UI**: Drag-and-drop, tooltips, comparison, junk marking
-11. **Equipment System**: 6 slots, stat bonuses applied to player, class restriction checks
-12. **Loot Drops**: World item objects, proximity auto-pickup, gold auto-pickup, drop tables
-13. **Potion System**: HP/Mana/Stamina/Rage potions, hotbar slots 1–4, shared cooldowns
-14. **Item Vendor NPC**: Buy/sell, junk bulk-sell, rotating stock, potion sales
+10. **Item Data Model**: Item generation with rarity, affixes, iLvl, grid size, class restrictions
+11. **Grid Inventory UI**: Drag-and-drop, tooltips, comparison, junk marking
+12. **Equipment System**: 6 slots, stat bonuses applied to player, class restriction checks
+13. **Loot Drops**: World item objects, proximity auto-pickup, gold auto-pickup, drop tables
+14. **Potion System**: HP/Mana/Stamina/Rage potions, hotbar slots 1–4, shared cooldowns
+15. **Item Vendor NPC**: Buy/sell, junk bulk-sell, rotating stock, potion sales
 
 ### Phase 4 — Dungeon Restructure
-15. **Single Dungeon, 10 Floors**: Replace multi-dungeon with one deep dungeon, themed floors
-16. **Floor Level Requirements**: Gate access by player level, show lock on waystone UI
-17. **Side Boss Rooms**: Optional boss encounters off critical path with better loot
-18. **Waystone System**: Per-floor fast travel, camp return, progress save
-19. **Death & Respawn**: Gold penalty, camp respawn, preserved floor state, lost ground items
-20. **Boss Chests**: Loot containers after boss defeat with rarity bonuses
-21. **Enemy Scaling**: Apply per-level HP/damage/speed formulas from section 7.4
-22. **Dungeon Traps**: 6 trap types, visibility scaling, trigger/activation, placement rules per section 7.7
+16. **Single Dungeon, 10 Floors**: Replace multi-dungeon with one deep dungeon, themed floors
+17. **Recommended Level + Discovery System**: No hard floor locks. Floor becomes accessible once discovered (descending stairs from previous floor). Display Recommended Level on waystone UI. Show non-blocking warning + confirmation dialog when traveling to a floor whose recommended level is >3 above the player's current level.
+18. **Side Boss Rooms**: Optional boss encounters off critical path with better loot
+19. **Waystone System**: Per-floor fast travel, camp return, progress save
+20. **Death & Respawn**: Gold penalty, camp respawn, preserved floor state, lost ground items
+21. **Boss Chests**: Loot containers after boss defeat with rarity bonuses
+22. **Enemy Scaling**: Apply per-level HP/damage/speed formulas from section 7.4
+23. **Dungeon Traps**: 6 trap types, visibility scaling, trigger/activation, placement rules per section 7.7
 
 ### Phase 5 — Polish & Balance
-22. **XP Tuning**: Verify XP curve feels right across all 10 floors, adjust enemy XP values
-23. **Gold Economy**: Verify gold income vs skill/item costs, adjust vendor prices
-24. **Item Balance**: Verify affix ranges don't create OP combinations at any iLvl
-25. **UI Polish**: Smooth transitions, loot pickup effects, inventory sounds, minimap fog
-26. **Audio**: New SFX for skill cast, loot drop/pickup, potion use, level up, vendor interaction
+24. **XP Tuning**: Verify XP curve feels right across all 10 floors, adjust enemy XP values
+25. **Gold Economy**: Verify gold income vs respec/item costs, adjust vendor prices and drop rates (skill purchases removed — likely needs rebalancing)
+26. **Item Balance**: Verify affix ranges don't create OP combinations at any iLvl
+27. **Spec Balance**: Tune tree node values across all 8 specs; verify capstones aren't runaway-OP; verify hybrid builds remain viable
+28. **UI Polish**: Smooth transitions, loot pickup effects, inventory sounds, minimap fog
+29. **Audio**: New SFX for spec attacks, tree node investment, capstone unlock, loot drop/pickup, potion use, level up, vendor interaction
 
 ---
 
@@ -985,10 +1065,10 @@ The Trainer no longer sells or upgrades skills. All skill progression happens in
 
 1. **Item generation is server-less** — all RNG is client-side with seeded generators for reproducibility.
 2. **Inventory uses a 2D grid array** — each cell stores null or a reference to the item occupying it. Items store their top-left grid position.
-3. **Skills are data-driven** — all skill effects defined in JSON with per-level scaling tables. `game.js` reads and applies them generically where possible.
+3. **Skills are data-driven** — every spec's primary attack, secondary attack, and tree nodes are defined in JSON. Tree nodes use a small effect-descriptor DSL (e.g. `{type: "damage_pct", target: "bash", value: 0.08}`) that the engine applies generically. Capstones and other bespoke nodes (behavior swaps, conditional triggers) register named hooks in code.
 4. **Dungeon floors are regenerated on entry** unless floor state is saved (rooms cleared, etc.). Seed = floor number + character class for consistency.
 5. **Equipment stats are computed** — base class stats + attribute bonuses + passive bonuses + all equipped item stats = final stats. Recalculated on any equip/unequip/level/respec event.
-6. **Necromancer summons are autonomous** — pet AI runs independently, summoning is automatic based on toggle state and mana availability. No action bar slot consumed.
+6. **Pets are actively summoned via the secondary attack** — Bone Lord (Necromancer) uses **Raise Dead** on RMB to summon undead; Beastmaster (Archer) uses **Call Beast** on RMB to summon companions. Pets are persistent (until killed or floor exit), have independent AI, and scale with player INT/AGI and tree investment. At max pet count, the secondary attack heals the nearest pet (default) or sacrifices it for AoE damage if the **Dark Pact** node is taken (Bone Lord only).
 7. **Item level = enemy level** (not floor number) — provides 50 granular iLvl tiers instead of 10.
 8. **Single death penalty** — gold loss only. No XP loss. Keeps progression feeling forward-moving while still punishing carelessness.
 

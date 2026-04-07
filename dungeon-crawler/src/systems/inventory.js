@@ -287,6 +287,59 @@ export class Inventory {
   }
 
   /**
+   * Count total stack of a consumable by baseType across the whole inventory.
+   * Used by the HUD to render the stack badge on bound action bar slots.
+   */
+  countByBaseType(baseType) {
+    if (!baseType) return 0;
+    let total = 0;
+    for (const item of Object.values(this.items)) {
+      if (item && item.baseType === baseType) {
+        total += (item.stackCount || 1);
+      }
+    }
+    return total;
+  }
+
+  /**
+   * Find the first stack of a consumable by baseType. Returns the item
+   * object (live ref, not a clone) or null. Used by the v3 hotbar
+   * consumable cast path so we can decrement the stack atomically.
+   */
+  findFirstByBaseType(baseType) {
+    if (!baseType) return null;
+    for (const item of Object.values(this.items)) {
+      if (item && item.baseType === baseType && (item.stackCount || 1) > 0) {
+        return item;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Consume one of a stackable item by baseType. Returns the consumed
+   * item data (clone) on success, or null if there's no stack to consume.
+   * If the stack hits 0 after consumption, the item is removed from the
+   * grid (the bound hotbar slot stays bound — auto-refill is handled by
+   * the v3 game.js when a new stack arrives).
+   */
+  consumeOneByBaseType(baseType) {
+    const item = this.findFirstByBaseType(baseType);
+    if (!item) return null;
+    const data = { ...item };
+    if (item.stackCount !== undefined && item.stackCount > 0) {
+      item.stackCount--;
+      if (item.stackCount <= 0) {
+        this.remove(item.id);
+      }
+    } else {
+      // Non-stackable: just remove
+      this.remove(item.id);
+    }
+    return data;
+  }
+
+  /**
    * Smart add: if stackable and matching stack exists with room, increment count.
    * Otherwise autoPlace. Return true/false.
    */

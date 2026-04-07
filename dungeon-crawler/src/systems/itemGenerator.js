@@ -116,6 +116,11 @@ export class ItemGenerator {
    * @param {number} [options.rarityBonus=0]    – percentage shift toward higher tiers
    * @param {string} [options.forceSlot]
    * @param {string} [options.forceRarity]
+   * @param {string} [options.forceBaseType]    – pick this exact base type id
+   *                                              (e.g. 'bow', 'sword'). Bypasses
+   *                                              the random pool. Used by starter
+   *                                              gear so the wrong class doesn't
+   *                                              get a dagger.
    * @returns {object} complete item object
    */
   generate(iLvl, playerClass, options = {}) {
@@ -124,6 +129,7 @@ export class ItemGenerator {
       rarityBonus = 0,
       forceSlot,
       forceRarity,
+      forceBaseType,
     } = options;
 
     // 1. Roll rarity
@@ -134,8 +140,8 @@ export class ItemGenerator {
       return this._generateJunk(iLvl);
     }
 
-    // 3. Pick a base that matches playerClass (and optionally forceSlot)
-    const base = this._pickBase(playerClass, forceSlot);
+    // 3. Pick a base that matches playerClass (and optionally forceSlot/forceBaseType)
+    const base = this._pickBase(playerClass, forceSlot, forceBaseType);
     if (!base) {
       // Fallback to junk if no valid base found
       return this._generateJunk(iLvl);
@@ -259,7 +265,16 @@ export class ItemGenerator {
   //  Private — base selection
   // ===========================================================
 
-  _pickBase(playerClass, forceSlot) {
+  _pickBase(playerClass, forceSlot, forceBaseType) {
+    // Direct pick by base type id (e.g. 'bow', 'sword') — used by starter
+    // gear so the random pool doesn't accidentally hand the wrong class
+    // a dagger.
+    if (forceBaseType) {
+      const direct = this.equippableBases.find(b => b._baseTypeId === forceBaseType);
+      if (direct) return direct;
+      // Fall through to normal selection if the requested base doesn't exist
+    }
+
     let pool = this.equippableBases.filter(b => {
       if (b.classReq && !b.classReq.includes(playerClass)) return false;
       if (forceSlot && b.slot !== forceSlot) return false;

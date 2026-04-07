@@ -18,7 +18,7 @@ export class Input {
     this.potionPressed = false;   // Q (potion)
     this.skillBookPressed = false; // K (skill book)
     this.characterPressed = false; // C (character panel)
-    this.hotbarPressed = [false, false, false, false]; // 1-4 (potion hotbar)
+    this.hotbarPressed = [false, false, false, false, false]; // 1-5 (unified action bar)
     this.altHeld = false;          // Alt (show loot labels, hold)
     this.helpPressed = false;      // F1 (controls help)
 
@@ -52,6 +52,7 @@ export class Input {
       if (k === '2') this.hotbarPressed[1] = true;
       if (k === '3') this.hotbarPressed[2] = true;
       if (k === '4') this.hotbarPressed[3] = true;
+      if (k === '5') this.hotbarPressed[4] = true;
       if (e.key === 'Alt') { e.preventDefault(); this.altHeld = true; }
       if (e.key === 'F1') { e.preventDefault(); this.helpPressed = true; }
       if (e.key === 'Escape' && this.onPause) this.onPause();

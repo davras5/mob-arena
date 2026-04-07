@@ -460,6 +460,15 @@ export class HUD {
     // No-op shim — cooldowns are now part of setSlots() payloads.
   }
 
+  /**
+   * v3 pet count summary for the info panel. Pass an array of
+   * { petId, icon, count } per pet type currently alive. Empty array hides
+   * the indicator.
+   */
+  setPetSummary(summary) {
+    this._petSummary = summary || [];
+  }
+
   // ========================
   // Main render method
   // ========================
@@ -1151,6 +1160,11 @@ export class HUD {
     lines.push(`Gold: ${this._gold}`);
     if (this._enemyTotal > 0) {
       lines.push(`Enemies: ${this._enemyAlive}/${this._enemyTotal}`);
+    }
+    // v3 pet count line — only shows when the player has any pets
+    if (this._petSummary && this._petSummary.length > 0) {
+      const parts = this._petSummary.map(p => `${p.icon}${p.count}`);
+      lines.push(`Pets: ${parts.join(' ')}`);
     }
 
     const boxW = 170;

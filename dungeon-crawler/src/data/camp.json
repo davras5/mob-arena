@@ -21,16 +21,16 @@
   },
   "npcs": [
     {
-      "id": "skill_vendor",
+      "id": "trainer",
       "name": "Trainer",
       "icon": "⚔",
-      "type": "skill_vendor",
+      "type": "trainer",
       "x": 300,
       "y": 350,
       "radius": 20,
       "interactionRadius": 60,
       "color": "#e67e22",
-      "description": "Buy and upgrade skills. Invest passive points. Respec attributes."
+      "description": "Respec your skill tree (first respec is free) or attribute points. Open the Skill Book (K) to spend skill points."
     },
     {
       "id": "item_vendor",

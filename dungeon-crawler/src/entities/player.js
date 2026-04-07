@@ -822,6 +822,15 @@ export class Player {
     // Invuln timer
     if (this.invulnTimer > 0) this.invulnTimer -= dt;
 
+    // Aegis capstone (Guardian T5) — tick the active reflect window
+    if ((this._aegisActiveTimer || 0) > 0) {
+      this._aegisActiveTimer -= dt;
+      if (this._aegisActiveTimer <= 0) {
+        this._aegisActiveTimer = 0;
+        this._aegisReflectAmount = 0;
+      }
+    }
+
     // Regen
     if (this.regenRate > 0) {
       this.regenAccum += this.regenRate * dt;
@@ -931,6 +940,29 @@ export class Player {
   takeDamage(amount, attackerLevel = 1, options = {}) {
     if (this.invulnTimer > 0) return 0;
 
+    // === v3 Aegis capstone (Guardian T5) ===
+    // Once per fight, when reduced below 20% HP, become invulnerable for 3s
+    // and reflect 100% damage taken back at attackers. The capstone is
+    // detected here so the player gets the benefit even on damage sources
+    // game.js doesn't run through a wrapper.
+    if (this.skillManager && this.skillManager.hasCapstone('guardian_aegis')) {
+      const wouldBeHpPct = (this.hp - amount) / this.maxHP;
+      if (wouldBeHpPct < 0.20 && !this._aegisUsedThisFight && (this._aegisActiveTimer || 0) <= 0) {
+        // Trigger Aegis: 3s invuln + reflect window
+        this._aegisActiveTimer = 3.0;
+        this._aegisUsedThisFight = true;
+        this._aegisReflectAmount = amount; // Game.js can read this and apply to attacker if available
+        if (this.skillManager._onAegisTrigger) this.skillManager._onAegisTrigger(amount);
+        return 0;
+      }
+      // While Aegis is active, all damage is absorbed and reflected
+      if ((this._aegisActiveTimer || 0) > 0) {
+        this._aegisReflectAmount = (this._aegisReflectAmount || 0) + amount;
+        if (this.skillManager._onAegisTrigger) this.skillManager._onAegisTrigger(amount);
+        return 0;
+      }
+    }
+
     const isEnvironmental = options.environmental || false;
     const isDot = options.dot || false;
 
@@ -942,6 +974,26 @@ export class Player {
     this._lastDodged = false;
 
     let remaining = amount;
+
+    // === v3 Last Stand (Guardian T4 keystone) ===
+    // Below 30% HP, take 25% less damage. Read from spec-tree triggers via
+    // the skill manager. The hpThreshold + damageTakenMult come from the
+    // tree node's effect descriptor.
+    if (this.skillManager) {
+      const triggers = this.skillManager.getTriggersForEvent('belowHPPct');
+      if (triggers && triggers.length > 0) {
+        const hpPct = this.hp / this.maxHP;
+        for (const trig of triggers) {
+          const eff = trig.effect || {};
+          if (typeof eff.hpThreshold === 'number'
+              && typeof eff.damageTakenMult === 'number'
+              && hpPct <= eff.hpThreshold) {
+            // damageTakenMult is negative for reductions (e.g. -0.25)
+            remaining *= (1 + eff.damageTakenMult);
+          }
+        }
+      }
+    }
 
     // Armor damage reduction (diminishing returns) — environmental damage ignores armor
     if (!isEnvironmental && this.totalArmor > 0) {

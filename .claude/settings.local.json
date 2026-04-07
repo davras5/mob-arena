@@ -38,7 +38,8 @@
       "Bash(cp src/systems/skillTreeEngine.js _engine.mjs)",
       "Bash(cp src/systems/skillManager.js _manager_orig.mjs)",
       "Bash(sed \"s|from './skillTreeEngine.js'|from './_engine.mjs'|\" _manager_orig.mjs)",
-      "Bash(rm _manager_orig.mjs)"
+      "Bash(rm _manager_orig.mjs)",
+      "Bash(node -e \"JSON.parse\\(require\\('fs'\\).readFileSync\\('src/data/camp.json'\\)\\)\")"
     ]
   }
 }

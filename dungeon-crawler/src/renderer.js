@@ -629,8 +629,9 @@ export class Renderer {
     const ctx = this.ctx;
     const size = 160;
     const padding = 12;
-    // Top-right corner — bottom of screen is the HUD action bar.
-    const mx = this.canvas.width - size - padding;
+    // Top-LEFT corner per WIREFRAMES §3. The HUD info panel (Floor / Lv /
+    // Gold) lives in the top-right.
+    const mx = padding;
     const my = padding;
     const scale = size / this.mapWidth;
 
@@ -859,6 +860,61 @@ export class Renderer {
         ctx.fillRect(bx, by, barW, barH);
         ctx.fillStyle = '#2e86c1';
         ctx.fillRect(bx, by, barW * (m.hp / m.maxHP), barH);
+      }
+    }
+  }
+
+  drawPets(pets) {
+    if (!pets || pets.length === 0) return;
+    const ctx = this.ctx;
+    for (const p of pets) {
+      const sx = p.x - this.camera.x;
+      const sy = p.y - this.camera.y;
+      if (sx < -40 || sx > this.canvas.width + 40 || sy < -40 || sy > this.canvas.height + 40) continue;
+
+      const drawRadius = p.radius * (p.scale || 1);
+
+      // Body
+      ctx.fillStyle = p.hitFlashTimer > 0 ? '#fff' : p.color;
+      ctx.beginPath();
+      ctx.arc(sx, sy, drawRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Outline
+      ctx.strokeStyle = p.permanent ? '#f0c040' : 'rgba(255,255,255,0.4)';
+      ctx.lineWidth = p.permanent ? 2 : 1;
+      ctx.stroke();
+
+      // Icon glyph centered
+      if (p.icon) {
+        ctx.font = `${Math.round(drawRadius * 1.3)}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#fff';
+        ctx.fillText(p.icon, sx, sy + 1);
+      }
+
+      // HP bar if damaged
+      if (p.hp < p.maxHP) {
+        const barW = drawRadius * 2.4;
+        const barH = 3;
+        const bx = sx - barW / 2;
+        const by = sy - drawRadius - 8;
+        ctx.fillStyle = '#333';
+        ctx.fillRect(bx, by, barW, barH);
+        const hpPct = p.hp / p.maxHP;
+        const hpColor = hpPct > 0.5 ? '#27ae60' : hpPct > 0.25 ? '#f39c12' : '#c0392b';
+        ctx.fillStyle = hpColor;
+        ctx.fillRect(bx, by, barW * hpPct, barH);
+      }
+
+      // Tank: draw a faint taunt ring when active
+      if (p.tauntRadius > 0 && p.tauntCooldown > 1.0) {
+        ctx.strokeStyle = 'rgba(255, 100, 60, 0.18)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(sx, sy, p.tauntRadius, 0, Math.PI * 2);
+        ctx.stroke();
       }
     }
   }

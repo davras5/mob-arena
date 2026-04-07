@@ -199,16 +199,17 @@
         "name": "Whirlwind",
         "icon": "🌀",
         "slotHint": "secondary",
-        "attackType": "channel_aoe",
+        "attackType": "melee_aoe",
         "weaponReq": ["sword", "axe", "dagger"],
-        "baseDamage": 18,
-        "baseCooldown": 6.0,
-        "baseCost": 40,
-        "duration": 2.0,
+        "baseDamage": 6,
+        "baseCooldown": 0.5,
+        "baseCost": 0,
+        "holdChannel": true,
+        "costPerSecond": 30,
         "tickInterval": 0.25,
         "radius": 100,
         "moveWithPlayer": false,
-        "description": "Spin in place for 2s, dealing AoE damage to all surrounding enemies."
+        "description": "Hold to spin and damage all surrounding enemies. Drains rage continuously — release or run out of rage to stop."
       },
       "tree": [
         {

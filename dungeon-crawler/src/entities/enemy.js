@@ -159,8 +159,87 @@ export class Enemy {
     // Stun (from warrior slam etc)
     this._stunTimer = 0;
 
+    // === v3 spec-tree status effects ===
+    // Map of status type → state object. Each entry shape:
+    //   { dps, duration, source, dotAccum }
+    // Statuses are applied via applyStatus(), ticked via tickStatuses(),
+    // queried via hasStatus(), and cleared on expiry or death.
+    //
+    // Frozen is special: while present, the enemy can't move OR attack.
+    // The dispatch in update() reads hasStatus('frozen') and returns early.
+    this.statuses = {};
+
     // Spawn animation
     this.spawnTimer = 0.3;
+  }
+
+  // === Status helpers ===
+
+  /**
+   * Apply or refresh a status. Same-source application refreshes; different
+   * sources are tracked as a single entry but the dps/duration are taken
+   * from whichever was most recently applied (simple model — no stacking).
+   *
+   * @param {string} type     'burning' | 'bleeding' | 'plagued' | 'frozen'
+   * @param {object} payload  { dps, duration, source }
+   */
+  applyStatus(type, payload) {
+    if (!type || !payload) return;
+    this.statuses[type] = {
+      dps: payload.dps || 0,
+      duration: payload.duration || 0,
+      source: payload.source || 'unknown',
+      dotAccum: 0,
+      // Optional gameplay metadata that triggers may read (e.g. spread chance)
+      spreadChancePerTick: payload.spreadChancePerTick || 0,
+      slowPct: payload.slowPct || 0,
+    };
+  }
+
+  hasStatus(type) {
+    const s = this.statuses[type];
+    return !!(s && s.duration > 0);
+  }
+
+  getStatus(type) {
+    return this.statuses[type] || null;
+  }
+
+  clearStatus(type) {
+    delete this.statuses[type];
+  }
+
+  /**
+   * Tick every active status. Returns an array of damage tick events:
+   *   [{ status, damage }] — caller (game.js) applies damage via takeDamage
+   *   so death + onKill triggers fire correctly.
+   *
+   * Frozen does NOT produce damage events but its duration ticks down.
+   * Slowed (legacy) is handled separately in update() — not in this map.
+   */
+  tickStatuses(dt) {
+    const damageTicks = [];
+    for (const type of Object.keys(this.statuses)) {
+      const s = this.statuses[type];
+      if (!s || s.duration <= 0) {
+        delete this.statuses[type];
+        continue;
+      }
+      s.duration -= dt;
+      // DoT statuses accumulate fractional damage and emit a tick when ≥1
+      if (s.dps > 0) {
+        s.dotAccum += s.dps * dt;
+        if (s.dotAccum >= 1) {
+          const dmg = Math.floor(s.dotAccum);
+          s.dotAccum -= dmg;
+          damageTicks.push({ status: type, damage: dmg });
+        }
+      }
+      if (s.duration <= 0) {
+        delete this.statuses[type];
+      }
+    }
+    return damageTicks;
   }
 
   get scale() {
@@ -171,6 +250,10 @@ export class Enemy {
     if (this.spawnTimer > 0) this.spawnTimer -= dt;
     if (this.hitFlashTimer > 0) this.hitFlashTimer -= dt;
     if (this._stunTimer > 0) { this._stunTimer -= dt; return; }
+    // v3 frozen status: complete movement + attack lockout while active.
+    // Status ticking is owned by game.js update loop (so DoT damage flows
+    // through takeDamage), but the lockout has to be checked here.
+    if (this.hasStatus('frozen')) return;
     const dx = playerX - this.x;
     const dy = playerY - this.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -302,6 +385,7 @@ export class Enemy {
   }
 
   canShoot() {
+    if (this.hasStatus('frozen')) return false;
     return this.attackRange > 0 && this.shootTimer <= 0;
   }
 

@@ -20,17 +20,38 @@ export class WaystoneUI {
       // Build floor rows
       const rows = floors.map((f) => {
         const state = this._getFloorState(f, playerLevel, persistence);
-        const isClickable = state !== 'locked';
+        // Discovered floors (and below) are always clickable; only undiscovered
+        // floors are gated. Per WIREFRAMES §9 there is no hard level lock.
+        const isClickable = state !== 'undiscovered';
         const stateHTML = this._renderBadge(state, f.floor, persistence);
+
+        // Recommended-level warning: yellow ⚠ when the floor is more than 3
+        // levels above the player. Non-blocking — the player can still travel.
+        const recLvl = f.levelReq || f.recommendedLevel || 1;
+        const overleveled = recLvl > playerLevel + 3;
+        const warnIcon = (state !== 'undiscovered' && overleveled)
+          ? `<span class="waystone-warn" title="Recommended Lv ${recLvl} — you are Lv ${playerLevel}. Enemies will be much stronger.">&#9888;</span>`
+          : '';
+
+        let subText;
+        if (state === 'undiscovered') {
+          subText = `Undiscovered &mdash; descend stairs from Floor ${f.floor - 1} to reach`;
+        } else if (overleveled) {
+          subText = `Recommended Lv ${recLvl} &mdash; you are Lv ${playerLevel}`;
+        } else {
+          subText = `Recommended Lv ${recLvl} &middot; ${f.description || ''}`;
+        }
 
         return `
           <div class="waystone-floor ${state} ${isClickable ? 'waystone-clickable' : ''}"
                data-floor="${f.floor}"
+               data-overleveled="${overleveled ? '1' : '0'}"
+               data-rec-lvl="${recLvl}"
                ${!isClickable ? 'aria-disabled="true"' : ''}>
             <span class="waystone-floor-icon">${f.icon}</span>
             <div class="waystone-floor-info">
-              <div class="waystone-floor-name"><strong>Floor ${f.floor} &mdash; ${f.name}</strong></div>
-              <div class="waystone-floor-req">${state === 'locked' ? `Requires level ${f.levelReq}` : f.description}</div>
+              <div class="waystone-floor-name"><strong>Floor ${f.floor} &mdash; ${f.name}</strong> ${warnIcon}</div>
+              <div class="waystone-floor-req">${subText}</div>
             </div>
             <div class="waystone-floor-badge">${stateHTML}</div>
           </div>
@@ -65,6 +86,19 @@ export class WaystoneUI {
         const handler = (e) => {
           e.preventDefault();
           const floorNum = parseInt(el.dataset.floor, 10);
+          const overleveled = el.dataset.overleveled === '1';
+          const recLvl = parseInt(el.dataset.recLvl, 10) || 1;
+
+          // Soft confirmation when traveling significantly above your level.
+          // Per WIREFRAMES §9.3 — non-blocking warning, player can proceed.
+          if (overleveled) {
+            const ok = window.confirm(
+              `Floor recommended for Level ${recLvl}.\n` +
+              `You are Level ${playerLevel}.\n\n` +
+              `Enemies will be much stronger. Travel anyway?`
+            );
+            if (!ok) return;
+          }
           finish({ action: 'travel', floor: floorNum });
         };
         el.addEventListener('click', handler);
@@ -90,27 +124,24 @@ export class WaystoneUI {
   }
 
   _getFloorState(floor, playerLevel, persistence) {
-    // Floor 1 is always unlocked
+    // Per WIREFRAMES §9, there is no longer a player-level LOCKED state.
+    // States: cleared, in-progress, discovered, undiscovered.
+    // Floor is reachable iff the player has descended into it from the
+    // previous floor (or it's floor 1, auto-discovered).
     const discovered = persistence.data.dungeon.discoveredFloors || [];
     const isDiscovered = floor.floor === 1 || discovered.includes(floor.floor);
+
+    if (!isDiscovered) return 'undiscovered';
 
     if (persistence.isFloorCleared(floor.floor)) {
       return 'cleared';
     }
 
-    if (isDiscovered) {
-      const floorState = persistence.getFloorState(floor.floor);
-      if (floorState && floorState.roomsCleared && floorState.roomsCleared.length > 0) {
-        return 'in-progress';
-      }
-      return 'discovered';
+    const floorState = persistence.getFloorState(floor.floor);
+    if (floorState && floorState.roomsCleared && floorState.roomsCleared.length > 0) {
+      return 'in-progress';
     }
-
-    if (playerLevel >= floor.levelReq) {
-      return 'discovered';
-    }
-
-    return 'locked';
+    return 'discovered';
   }
 
   _renderBadge(state, floorNum, persistence) {
@@ -123,9 +154,9 @@ export class WaystoneUI {
         return `<span class="badge-progress">&#9654; IN PROGRESS (${count} rooms)</span>`;
       }
       case 'discovered':
-        return '<span class="badge-discovered">&#9679; DISCOVERED</span>';
-      case 'locked':
-        return '<span class="badge-locked">&#128274; LOCKED</span>';
+        return '<span class="badge-discovered">&#9679; NEW</span>';
+      case 'undiscovered':
+        return '<span class="badge-locked">&#128274; UNDISCOVERED</span>';
       default:
         return '';
     }

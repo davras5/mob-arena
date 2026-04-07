@@ -3,12 +3,13 @@ export class DamageNumbers {
     this.numbers = [];
   }
 
-  spawn(x, y, amount, isCrit = false) {
+  spawn(x, y, amount, isCrit = false, color = null) {
     this.numbers.push({
       x: x + (Math.random() - 0.5) * 20,
       y,
-      amount: Math.round(amount),
+      amount: typeof amount === 'string' ? amount : Math.round(amount),
       isCrit,
+      color,
       timer: 0,
       duration: isCrit ? 1.0 : 0.75,
       vy: -60,
@@ -47,8 +48,8 @@ export class DamageNumbers {
       ctx.lineWidth = 3;
       ctx.strokeText(n.amount, sx, sy);
 
-      // Fill
-      ctx.fillStyle = n.isCrit ? '#e74c3c' : '#f1c40f';
+      // Fill — explicit color overrides crit/default
+      ctx.fillStyle = n.color || (n.isCrit ? '#e74c3c' : '#f1c40f');
       ctx.fillText(n.amount, sx, sy);
 
       ctx.restore();

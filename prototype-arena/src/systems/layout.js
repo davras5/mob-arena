@@ -18,10 +18,6 @@ export class LayoutManager {
     // Rooms (for linear/mixed layouts)
     this.rooms = [];
 
-    // Fog of war: true = revealed
-    this.revealed = new Array(this.rows * this.cols).fill(false);
-    this.fogEnabled = false;
-
     if (layoutData) {
       this._buildFromData(layoutData);
     }
@@ -115,7 +111,7 @@ export class LayoutManager {
   }
 
   // Clamp entity position to walkable area, sliding along walls
-  clampPosition(x, y, radius, prevX, prevY) {
+  clampPosition(x, y, radius) {
     // Basic map boundary clamp
     x = Math.max(radius, Math.min(this.mapWidth - radius, x));
     y = Math.max(radius, Math.min(this.mapHeight - radius, y));
@@ -142,7 +138,7 @@ export class LayoutManager {
         if (dist < radius && dist > 0) {
           x = nearX + (dx / dist) * radius;
           y = nearY + (dy / dist) * radius;
-        } else if (dist < 0.001) {
+        } else if (dist === 0) {
           // Inside the wall, push to nearest edge
           const distLeft = x - obs.x;
           const distRight = obs.x + obs.width - x;
@@ -157,29 +153,20 @@ export class LayoutManager {
       }
     }
 
-    // Room-based walkability check
+    // If rooms exist, check tile walkability
     if (this.rooms.length > 0 && !this.isWalkable(x, y)) {
-      // If we have a valid previous position, revert to it
-      if (prevX !== undefined && prevY !== undefined && this.isWalkable(prevX, prevY)) {
-        x = prevX;
-        y = prevY;
-      } else {
-        // Find nearest walkable tile center in 5x5 area
-        const col = Math.floor(x / this.tileSize);
-        const row = Math.floor(y / this.tileSize);
-        let bestX = x, bestY = y, bestDist = Infinity;
-        for (let dr = -2; dr <= 2; dr++) {
-          for (let dc = -2; dc <= 2; dc++) {
-            if (this.isTileWalkable(col + dc, row + dr)) {
-              const tx = (col + dc + 0.5) * this.tileSize;
-              const ty = (row + dr + 0.5) * this.tileSize;
-              const d = (tx - x) * (tx - x) + (ty - y) * (ty - y);
-              if (d < bestDist) { bestDist = d; bestX = tx; bestY = ty; }
-            }
+      // Try to find nearest walkable position
+      const col = Math.floor(x / this.tileSize);
+      const row = Math.floor(y / this.tileSize);
+      // Check neighbors
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          if (this.isTileWalkable(col + dc, row + dr)) {
+            x = (col + dc + 0.5) * this.tileSize;
+            y = (row + dr + 0.5) * this.tileSize;
+            return { x, y };
           }
         }
-        x = bestX;
-        y = bestY;
       }
     }
 
@@ -297,70 +284,5 @@ export class LayoutManager {
     }
     // Fallback
     return { x: mapWidth / 2, y: 50 };
-  }
-
-  // === FOG OF WAR ===
-  enableFog() {
-    this.fogEnabled = true;
-    this.revealed.fill(false);
-  }
-
-  revealRoom(room) {
-    const startCol = Math.floor(room.x / this.tileSize);
-    const endCol = Math.ceil((room.x + room.width) / this.tileSize);
-    const startRow = Math.floor(room.y / this.tileSize);
-    const endRow = Math.ceil((room.y + room.height) / this.tileSize);
-    for (let r = startRow; r < endRow && r < this.rows; r++) {
-      for (let c = startCol; c < endCol && c < this.cols; c++) {
-        if (r >= 0 && c >= 0) {
-          this.revealed[r * this.cols + c] = true;
-        }
-      }
-    }
-  }
-
-  revealCorridorSegment(seg) {
-    this.revealRoom(seg); // same rect logic
-  }
-
-  isRevealed(col, row) {
-    if (col < 0 || col >= this.cols || row < 0 || row >= this.rows) return false;
-    return this.revealed[row * this.cols + col];
-  }
-
-  // Reveal area around a point (radius in tiles)
-  revealAroundPoint(x, y, radiusTiles) {
-    const col = Math.floor(x / this.tileSize);
-    const row = Math.floor(y / this.tileSize);
-    for (let dr = -radiusTiles; dr <= radiusTiles; dr++) {
-      for (let dc = -radiusTiles; dc <= radiusTiles; dc++) {
-        const r = row + dr, c = col + dc;
-        if (r >= 0 && r < this.rows && c >= 0 && c < this.cols) {
-          this.revealed[r * this.cols + c] = true;
-        }
-      }
-    }
-  }
-
-  // === DYNAMIC OBSTACLE MANAGEMENT ===
-  addObstacle(obs) {
-    this.obstacles.push(obs);
-    if (obs.type === 'pillar' || obs.type === 'door_locked') {
-      if (obs.radius) this._markCircleSolid(obs.x, obs.y, obs.radius);
-    }
-    if (obs.type === 'wall' || obs.type === 'door_locked') {
-      if (obs.width) this._markRectSolid(obs.x, obs.y, obs.width, obs.height);
-    }
-  }
-
-  removeObstacle(predicate) {
-    const removed = this.obstacles.filter(predicate);
-    this.obstacles = this.obstacles.filter(o => !predicate(o));
-    // Re-carve areas that were blocked
-    for (const obs of removed) {
-      if (obs.width && obs.height) {
-        this._carveRect(obs.x, obs.y, obs.width, obs.height);
-      }
-    }
   }
 }

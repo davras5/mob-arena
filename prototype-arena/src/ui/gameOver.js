@@ -2,7 +2,7 @@ export class GameOverUI {
   constructor() {
     this.container = document.getElementById('game-over-screen');
     this.finalWave = document.getElementById('final-wave');
-    this.bestComboEl = document.getElementById('best-combo'); // may not exist
+    this.bestComboEl = document.getElementById('best-combo');
     this.finalScore = document.getElementById('final-score');
     this.killBreakdown = document.getElementById('kill-breakdown');
     this.restartBtn = document.getElementById('restart-btn');

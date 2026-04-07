@@ -6,6 +6,9 @@
     "description": "A melee powerhouse who cleaves through enemies with devastating sweeps.",
     "color": "#c0392b",
     "highlightColor": "#e74c3c",
+    "resourceType": "rage",
+    "primaryAttribute": "str",
+    "baseAttributes": { "str": 3, "int": 1, "agi": 1, "sta": 3 },
     "baseStats": {
       "radius": 18,
       "speed": 105,
@@ -13,168 +16,119 @@
       "damage": 22,
       "maxHP": 140,
       "attackRange": 80,
-      "projectileSpeed": 0
+      "armor": 5
     },
     "attackType": "melee",
     "meleeArc": 90,
-    "meleeKnockback": 15,
-    "uniqueAbility": {
-      "name": "Shield Charge",
-      "description": "Charge forward, dealing damage and knocking back enemies",
-      "cooldown": 4,
-      "duration": 0.2,
-      "speed": 600,
-      "damage": 30,
-      "knockback": 40
+    "knockback": 15,
+    "specs": ["guardian", "berserker"],
+    "attacks": {
+      "guardian":  { "primary": "warrior_guardian_bash",   "secondary": "warrior_guardian_parry" },
+      "berserker": { "primary": "warrior_berserker_cleave", "secondary": "warrior_berserker_whirlwind" }
     },
-    "excludeBlessings": ["piercing", "ricochet"],
-    "blessingWeights": {
-      "chain_lightning": 1.25,
-      "rapid_fire": 1.25,
-      "damage_up": 1.5,
-      "regen": 1.25,
-      "thorns": 1.5,
-      "max_hp": 1.25,
-      "speed_aura": 1.25,
-      "lifesteal": 1.5,
-      "crit": 1.25,
-      "frost_aura": 1.5,
-      "multishot": 0.5
-    }
+    "defaultEquippedAttacks": {
+      "leftClick":  "warrior_guardian_bash",
+      "rightClick": "warrior_berserker_whirlwind"
+    },
+    "statBars": { "hp": 5, "damage": 4, "speed": 2, "defense": 5 }
   },
   "mage": {
     "id": "mage",
     "name": "Mage",
     "icon": "🔮",
-    "description": "A glass cannon who obliterates groups with arcane explosions.",
+    "description": "A glass cannon who obliterates groups with explosive arcane magic.",
     "color": "#8e44ad",
-    "highlightColor": "#a569bd",
+    "highlightColor": "#9b59b6",
+    "resourceType": "mana",
+    "primaryAttribute": "int",
+    "baseAttributes": { "str": 1, "int": 3, "agi": 2, "sta": 1 },
     "baseStats": {
       "radius": 14,
       "speed": 115,
-      "attackCooldown": 1.4,
+      "attackCooldown": 1.0,
       "damage": 20,
       "maxHP": 75,
       "attackRange": 450,
-      "projectileSpeed": 220
+      "projectileSpeed": 220,
+      "armor": 1
     },
     "attackType": "ranged",
-    "innateExplosionRadius": 25,
-    "innateExplosionDamagePct": 0.4,
-    "projectileRadius": 6,
-    "uniqueAbility": {
-      "name": "Arcane Blink",
-      "description": "Teleport instantly, leaving a decoy that distracts enemies",
-      "cooldown": 5,
-      "distance": 100,
-      "invulnTime": 0.3,
-      "decoyDuration": 1.5,
-      "decoyRadius": 120
+    "specs": ["pyromancer", "cryomancer"],
+    "attacks": {
+      "pyromancer": { "primary": "mage_pyromancer_flame_bolt", "secondary": "mage_pyromancer_fireball" },
+      "cryomancer": { "primary": "mage_cryomancer_frost_shard", "secondary": "mage_cryomancer_frost_nova" }
     },
-    "excludeBlessings": [],
-    "blessingWeights": {
-      "multishot": 1.25,
-      "explosive": 1.5,
-      "chain_lightning": 1.25,
-      "rapid_fire": 1.5,
-      "damage_up": 1.25,
-      "shield": 1.25,
-      "regen": 1.25,
-      "max_hp": 1.25,
-      "crit": 1.25,
-      "thorns": 0.5,
-      "frost_aura": 0.5,
-      "fire_trail": 0.75
-    }
+    "defaultEquippedAttacks": {
+      "leftClick":  "mage_pyromancer_flame_bolt",
+      "rightClick": "mage_cryomancer_frost_nova"
+    },
+    "statBars": { "hp": 2, "damage": 5, "speed": 3, "defense": 1 }
   },
   "archer": {
     "id": "archer",
     "name": "Archer",
     "icon": "🏹",
-    "description": "A swift marksman who peppers enemies with a relentless barrage of arrows.",
+    "description": "A swift marksman who kites enemies with precise, rapid-fire arrows.",
     "color": "#27ae60",
     "highlightColor": "#2ecc71",
+    "resourceType": "stamina",
+    "primaryAttribute": "agi",
+    "baseAttributes": { "str": 1, "int": 1, "agi": 3, "sta": 2 },
     "baseStats": {
       "radius": 14,
       "speed": 140,
-      "attackCooldown": 0.6,
+      "attackCooldown": 0.5,
       "damage": 10,
       "maxHP": 85,
       "attackRange": 650,
-      "projectileSpeed": 450
+      "projectileSpeed": 450,
+      "armor": 2
     },
     "attackType": "ranged",
-    "innatePierce": 1,
+    "pierce": 1,
     "firstHitBonus": 0.2,
-    "projectileRadius": 3,
-    "uniqueAbility": {
-      "name": "Evasive Roll",
-      "description": "Roll quickly, firing arrows behind you",
-      "cooldown": 3,
-      "duration": 0.12,
-      "speed": 800,
-      "backwardArrows": 3,
-      "backwardDamagePct": 0.5,
-      "spreadAngle": 30
+    "specs": ["marksman", "beastmaster"],
+    "attacks": {
+      "marksman":    { "primary": "archer_marksman_aimed_shot", "secondary": "archer_marksman_multishot" },
+      "beastmaster": { "primary": "archer_beastmaster_quick_shot", "secondary": "archer_beastmaster_call_beast" }
     },
-    "excludeBlessings": [],
-    "blessingWeights": {
-      "multishot": 1.5,
-      "piercing": 1.25,
-      "ricochet": 1.25,
-      "rapid_fire": 1.25,
-      "speed_aura": 1.25,
-      "lifesteal": 1.25,
-      "crit": 1.5,
-      "thorns": 0.5,
-      "frost_aura": 0.5,
-      "damage_up": 0.75
-    }
+    "defaultEquippedAttacks": {
+      "leftClick":  "archer_marksman_aimed_shot",
+      "rightClick": "archer_beastmaster_call_beast"
+    },
+    "statBars": { "hp": 3, "damage": 3, "speed": 5, "defense": 2 }
   },
   "necromancer": {
     "id": "necromancer",
     "name": "Necromancer",
     "icon": "💀",
-    "description": "A dark summoner who raises the dead and drains the life from foes.",
+    "description": "A dark summoner who commands an army of undead to overwhelm foes.",
     "color": "#1a5276",
-    "highlightColor": "#2e86c1",
+    "highlightColor": "#2980b9",
+    "resourceType": "mana",
+    "primaryAttribute": "int",
+    "baseAttributes": { "str": 1, "int": 3, "agi": 1, "sta": 2 },
     "baseStats": {
       "radius": 15,
       "speed": 110,
-      "attackCooldown": 1.2,
+      "attackCooldown": 1.0,
       "damage": 12,
       "maxHP": 90,
       "attackRange": 400,
-      "projectileSpeed": 250
+      "projectileSpeed": 250,
+      "armor": 2
     },
     "attackType": "ranged",
-    "innateLifesteal": 0.15,
-    "summonEveryNHits": 5,
-    "maxMinions": 3,
-    "minionHP": 30,
-    "minionDamage": 5,
-    "minionSpeed": 80,
-    "minionDuration": 8,
-    "projectileRadius": 5,
-    "uniqueAbility": {
-      "name": "Soul Harvest",
-      "description": "Create a zone that drains enemies and heals you",
-      "cooldown": 8,
-      "duration": 2,
-      "radius": 100,
-      "damagePerSec": 5,
-      "slowPercent": 0.3,
-      "healPerEnemyPerSec": 2
+    "lifesteal": 0.15,
+    "specs": ["plaguebringer", "bone_lord"],
+    "attacks": {
+      "plaguebringer": { "primary": "necromancer_plaguebringer_plague_bolt", "secondary": "necromancer_plaguebringer_outbreak" },
+      "bone_lord":     { "primary": "necromancer_bone_lord_bone_spear",      "secondary": "necromancer_bone_lord_raise_dead" }
     },
-    "excludeBlessings": [],
-    "blessingWeights": {
-      "chain_lightning": 1.25,
-      "rapid_fire": 1.25,
-      "speed_aura": 1.25,
-      "lifesteal": 1.25,
-      "regen": 0.75,
-      "thorns": 0.5,
-      "fire_trail": 0.75
-    }
+    "defaultEquippedAttacks": {
+      "leftClick":  "necromancer_plaguebringer_plague_bolt",
+      "rightClick": "necromancer_bone_lord_raise_dead"
+    },
+    "statBars": { "hp": 3, "damage": 2, "speed": 3, "defense": 2 }
   }
 }

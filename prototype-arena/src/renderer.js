@@ -48,16 +48,8 @@ export class Renderer {
     this.camera.y = player.y - this.canvas.height / 2;
 
     // Clamp
-    if (this.mapWidth <= this.canvas.width) {
-      this.camera.x = (this.mapWidth - this.canvas.width) / 2;
-    } else {
-      this.camera.x = Math.max(0, Math.min(this.mapWidth - this.canvas.width, this.camera.x));
-    }
-    if (this.mapHeight <= this.canvas.height) {
-      this.camera.y = (this.mapHeight - this.canvas.height) / 2;
-    } else {
-      this.camera.y = Math.max(0, Math.min(this.mapHeight - this.canvas.height, this.camera.y));
-    }
+    this.camera.x = Math.max(0, Math.min(this.mapWidth - this.canvas.width, this.camera.x));
+    this.camera.y = Math.max(0, Math.min(this.mapHeight - this.canvas.height, this.camera.y));
   }
 
   clear() {
@@ -78,11 +70,6 @@ export class Renderer {
       for (let c = startCol; c <= endCol; c++) {
         const sx = c * this.tileSize - this.camera.x;
         const sy = r * this.tileSize - this.camera.y;
-
-        // Fog of war: skip unrevealed tiles
-        if (lm && lm.fogEnabled && !lm.isRevealed(c, r)) {
-          continue; // Leave as clear color (#111)
-        }
 
         // If room layout, only draw walkable tiles
         if (hasRooms && !lm.isTileWalkable(c, r)) {
@@ -193,121 +180,129 @@ export class Renderer {
         ctx.globalAlpha = 0.3;
         ctx.strokeRect(wx, wy, obs.width, obs.height);
         ctx.globalAlpha = 1;
-
-      } else if (obs.type === 'door_locked') {
-        // Locked door barrier
-        const wx = obs.x - this.camera.x;
-        const wy = obs.y - this.camera.y;
-        ctx.fillStyle = '#8B7355';
-        ctx.fillRect(wx, wy, obs.width, obs.height);
-        ctx.strokeStyle = '#5C4033';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(wx, wy, obs.width, obs.height);
-        // Lock icon
-        const cx = wx + obs.width / 2, cy = wy + obs.height / 2;
-        ctx.fillStyle = '#2c3e50';
-        ctx.beginPath();
-        ctx.arc(cx, cy, 5, 0, Math.PI * 2);
-        ctx.fill();
-
-      } else if (obs.type === 'stairs') {
-        // Stairs down - glowing spiral
-        ctx.save();
-        ctx.globalAlpha = 0.7 + Math.sin(Date.now() / 400) * 0.2;
-        const gradient = ctx.createRadialGradient(sx, sy, 0, sx, sy, obs.radius);
-        gradient.addColorStop(0, '#f1c40f');
-        gradient.addColorStop(0.5, '#e67e22');
-        gradient.addColorStop(1, 'rgba(243, 156, 18, 0)');
-        ctx.fillStyle = gradient;
-        ctx.beginPath();
-        ctx.arc(sx, sy, obs.radius, 0, Math.PI * 2);
-        ctx.fill();
-        // Spiral arcs
-        ctx.strokeStyle = '#fff';
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.6;
-        const t = Date.now() / 1000;
-        ctx.beginPath();
-        ctx.arc(sx, sy, obs.radius * 0.7, t, t + Math.PI);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(sx, sy, obs.radius * 0.4, t + Math.PI, t + Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-
-        // "Stairs" text
-        ctx.fillStyle = '#fff';
-        ctx.font = 'bold 11px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('STAIRS', sx, sy + obs.radius + 14);
-      } else if (obs.type === 'waystone') {
-        ctx.save();
-        ctx.globalAlpha = 0.6 + Math.sin(Date.now() / 500) * 0.2;
-        const wGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, obs.radius || 20);
-        wGrad.addColorStop(0, '#5dade2');
-        wGrad.addColorStop(0.5, '#2980b9');
-        wGrad.addColorStop(1, 'rgba(52, 152, 219, 0)');
-        ctx.fillStyle = wGrad;
-        ctx.beginPath();
-        ctx.arc(sx, sy, obs.radius || 20, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#ecf0f1';
-        ctx.beginPath();
-        ctx.arc(sx, sy, (obs.radius || 20) * 0.3, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-        ctx.fillStyle = '#3498db';
-        ctx.font = 'bold 11px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('Way Stone', sx, sy + (obs.radius || 20) + 14);
-      } else if (obs.type === 'teleport_portal') {
-        // Swirling purple/blue portal with ring
-        ctx.save();
-        const t = Date.now() / 1000;
-        const radius = obs.radius || 28;
-        // Outer glow
-        ctx.globalAlpha = 0.5 + Math.sin(t * 4) * 0.2;
-        const portalGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, radius);
-        portalGrad.addColorStop(0, '#d6a8ff');
-        portalGrad.addColorStop(0.4, '#9b59b6');
-        portalGrad.addColorStop(0.8, '#5a2880');
-        portalGrad.addColorStop(1, 'rgba(155, 89, 182, 0)');
-        ctx.fillStyle = portalGrad;
-        ctx.beginPath();
-        ctx.arc(sx, sy, radius, 0, Math.PI * 2);
-        ctx.fill();
-        // Inner spinning ring
-        ctx.globalAlpha = 0.85;
-        ctx.strokeStyle = '#e8d3ff';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        for (let i = 0; i < 8; i++) {
-          const a1 = t * 3 + i * Math.PI / 4;
-          const r1 = radius * 0.6;
-          const x1 = sx + Math.cos(a1) * r1;
-          const y1 = sy + Math.sin(a1) * r1;
-          if (i === 0) ctx.moveTo(x1, y1);
-          else ctx.lineTo(x1, y1);
-        }
-        ctx.closePath();
-        ctx.stroke();
-        // Center sparkle
-        ctx.globalAlpha = 0.9;
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(sx, sy, 3 + Math.sin(t * 6) * 1.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-        // Label
-        ctx.fillStyle = '#d6a8ff';
-        ctx.font = 'bold 11px sans-serif';
-        ctx.textAlign = 'center';
-        const label = obs._isReturnPortal ? 'Return Portal' : 'Portal';
-        ctx.fillText(label, sx, sy + radius + 14);
       }
     }
   }
 
+  drawBlessings(blessings, time) {
+    const ctx = this.ctx;
+    for (const b of blessings) {
+      const sx = b.x - this.camera.x;
+      const sy = b.y - this.camera.y;
+
+      // Bobbing
+      const bob = Math.sin(time * 3 + b.x) * 4;
+
+      // Urgency: blink faster as timer runs low
+      const urgency = b.timer < 5 ? (Math.sin(time * 10) > 0 ? 1 : 0.3) : 1;
+
+      // Glow
+      const glowRadius = 30 + Math.sin(time * 4) * 5;
+      const gradient = ctx.createRadialGradient(sx, sy + bob, 0, sx, sy + bob, glowRadius);
+      gradient.addColorStop(0, `rgba(241, 196, 15, ${0.4 * urgency})`);
+      gradient.addColorStop(1, 'rgba(241, 196, 15, 0)');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(sx, sy + bob, glowRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Core
+      ctx.globalAlpha = urgency;
+      ctx.fillStyle = '#f1c40f';
+      ctx.beginPath();
+      ctx.arc(sx, sy + bob, 10, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(sx, sy + bob, 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Timer text
+      ctx.fillStyle = b.timer < 5 ? '#e74c3c' : '#fff';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(Math.ceil(b.timer) + 's', sx, sy + bob - 18);
+
+      // Timer ring (circular countdown)
+      const timerPct = b.timer / b.maxTimer;
+      ctx.strokeStyle = b.timer < 5 ? '#e74c3c' : '#f1c40f';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(sx, sy + bob, 15, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * timerPct);
+      ctx.stroke();
+
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  drawBlessingIndicators(blessings, player) {
+    // Draw edge-of-screen arrows pointing to off-screen blessings
+    const ctx = this.ctx;
+    const margin = 40;
+    const cw = this.canvas.width;
+    const ch = this.canvas.height;
+
+    for (const b of blessings) {
+      const sx = b.x - this.camera.x;
+      const sy = b.y - this.camera.y;
+
+      // Only draw indicator if blessing is off-screen
+      if (sx >= -10 && sx <= cw + 10 && sy >= -10 && sy <= ch + 10) continue;
+
+      // Direction from screen center to blessing
+      const px = player.x - this.camera.x;
+      const py = player.y - this.camera.y;
+      const dx = sx - px;
+      const dy = sy - py;
+      const angle = Math.atan2(dy, dx);
+
+      // Position the arrow at the edge of the screen
+      let ax, ay;
+      const edgeMargin = margin;
+
+      // Find intersection with screen edges
+      const slopes = [
+        { x: cw - edgeMargin, y: py + dy * (cw - edgeMargin - px) / dx }, // Right
+        { x: edgeMargin, y: py + dy * (edgeMargin - px) / dx },          // Left
+        { x: px + dx * (ch - edgeMargin - py) / dy, y: ch - edgeMargin }, // Bottom
+        { x: px + dx * (edgeMargin - py) / dy, y: edgeMargin },          // Top
+      ];
+
+      ax = px + Math.cos(angle) * 100;
+      ay = py + Math.sin(angle) * 100;
+
+      // Clamp to screen edges
+      ax = Math.max(edgeMargin, Math.min(cw - edgeMargin, ax));
+      ay = Math.max(edgeMargin, Math.min(ch - edgeMargin, ay));
+
+      // Pulsing
+      const pulse = 0.7 + Math.sin(Date.now() / 300) * 0.3;
+
+      // Arrow triangle
+      ctx.save();
+      ctx.translate(ax, ay);
+      ctx.rotate(angle);
+      ctx.globalAlpha = pulse;
+      ctx.fillStyle = b.timer < 5 ? '#e74c3c' : '#f1c40f';
+      ctx.beginPath();
+      ctx.moveTo(12, 0);
+      ctx.lineTo(-6, -8);
+      ctx.lineTo(-6, 8);
+      ctx.closePath();
+      ctx.fill();
+
+      // Distance text
+      const dist = Math.round(Math.sqrt(dx * dx + dy * dy));
+      ctx.rotate(-angle);
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 10px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(Math.ceil(b.timer) + 's', 0, -14);
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
+  }
 
   drawPlayer(player) {
     const ctx = this.ctx;
@@ -380,29 +375,17 @@ export class Renderer {
     ctx.arc(sx - 3, sy - 3, player.radius * 0.5, 0, Math.PI * 2);
     ctx.fill();
 
-    // Aim direction indicator (ARPG style - prominent line toward cursor)
+    // Aim direction indicator
     if (player.aimAngle !== null) {
-      const a = player.aimAngle;
-      // Outer aim line
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
-      ctx.lineWidth = 2.5;
+      const indicatorLen = player.playerClass === 'archer' ? 20 : 10;
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(sx + Math.cos(a) * player.radius,
-                 sy + Math.sin(a) * player.radius);
-      ctx.lineTo(sx + Math.cos(a) * (player.radius + 18),
-                 sy + Math.sin(a) * (player.radius + 18));
+      ctx.moveTo(sx + Math.cos(player.aimAngle) * player.radius,
+                 sy + Math.sin(player.aimAngle) * player.radius);
+      ctx.lineTo(sx + Math.cos(player.aimAngle) * (player.radius + indicatorLen),
+                 sy + Math.sin(player.aimAngle) * (player.radius + indicatorLen));
       ctx.stroke();
-
-      // Small arrowhead
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-      const tipX = sx + Math.cos(a) * (player.radius + 20);
-      const tipY = sy + Math.sin(a) * (player.radius + 20);
-      ctx.beginPath();
-      ctx.moveTo(tipX, tipY);
-      ctx.lineTo(tipX - Math.cos(a - 0.5) * 6, tipY - Math.sin(a - 0.5) * 6);
-      ctx.lineTo(tipX - Math.cos(a + 0.5) * 6, tipY - Math.sin(a + 0.5) * 6);
-      ctx.closePath();
-      ctx.fill();
     }
 
     // Unique ability cooldown indicator
@@ -627,12 +610,10 @@ export class Renderer {
 
   drawMinimap(player, enemies, boss, blessings) {
     const ctx = this.ctx;
-    const size = 160;
-    const padding = 12;
-    // Top-LEFT corner per WIREFRAMES §3. The HUD info panel (Floor / Lv /
-    // Gold) lives in the top-right.
+    const size = 140;
+    const padding = 10;
     const mx = padding;
-    const my = padding;
+    const my = this.canvas.height - size - padding;
     const scale = size / this.mapWidth;
 
     ctx.save();
@@ -864,61 +845,6 @@ export class Renderer {
     }
   }
 
-  drawPets(pets) {
-    if (!pets || pets.length === 0) return;
-    const ctx = this.ctx;
-    for (const p of pets) {
-      const sx = p.x - this.camera.x;
-      const sy = p.y - this.camera.y;
-      if (sx < -40 || sx > this.canvas.width + 40 || sy < -40 || sy > this.canvas.height + 40) continue;
-
-      const drawRadius = p.radius * (p.scale || 1);
-
-      // Body
-      ctx.fillStyle = p.hitFlashTimer > 0 ? '#fff' : p.color;
-      ctx.beginPath();
-      ctx.arc(sx, sy, drawRadius, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Outline
-      ctx.strokeStyle = p.permanent ? '#f0c040' : 'rgba(255,255,255,0.4)';
-      ctx.lineWidth = p.permanent ? 2 : 1;
-      ctx.stroke();
-
-      // Icon glyph centered
-      if (p.icon) {
-        ctx.font = `${Math.round(drawRadius * 1.3)}px "Segoe UI Emoji", "Apple Color Emoji", sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#fff';
-        ctx.fillText(p.icon, sx, sy + 1);
-      }
-
-      // HP bar if damaged
-      if (p.hp < p.maxHP) {
-        const barW = drawRadius * 2.4;
-        const barH = 3;
-        const bx = sx - barW / 2;
-        const by = sy - drawRadius - 8;
-        ctx.fillStyle = '#333';
-        ctx.fillRect(bx, by, barW, barH);
-        const hpPct = p.hp / p.maxHP;
-        const hpColor = hpPct > 0.5 ? '#27ae60' : hpPct > 0.25 ? '#f39c12' : '#c0392b';
-        ctx.fillStyle = hpColor;
-        ctx.fillRect(bx, by, barW * hpPct, barH);
-      }
-
-      // Tank: draw a faint taunt ring when active
-      if (p.tauntRadius > 0 && p.tauntCooldown > 1.0) {
-        ctx.strokeStyle = 'rgba(255, 100, 60, 0.18)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.arc(sx, sy, p.tauntRadius, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-    }
-  }
-
   drawMeleeSweep(sweep, color) {
     const ctx = this.ctx;
     const sx = sweep.x - this.camera.x;
@@ -1055,320 +981,6 @@ export class Renderer {
       ctx.fill();
     }
     ctx.globalAlpha = 1;
-  }
-
-  drawNPCs(npcs, nearestNPC, time) {
-    const ctx = this.ctx;
-    for (const npc of npcs) {
-      const sx = npc.x - this.camera.x;
-      const sy = npc.y - this.camera.y;
-
-      // Interaction radius indicator for nearest NPC
-      if (npc === nearestNPC) {
-        ctx.save();
-        ctx.globalAlpha = 0.15 + Math.sin(time * 3) * 0.05;
-        ctx.fillStyle = npc.color;
-        ctx.beginPath();
-        ctx.arc(sx, sy, npc.interactRadius, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      }
-
-      // NPC glow
-      const glowR = npc.radius + 10 + Math.sin(time * 2) * 3;
-      const gradient = ctx.createRadialGradient(sx, sy, 0, sx, sy, glowR);
-      gradient.addColorStop(0, npc.color + '60');
-      gradient.addColorStop(1, npc.color + '00');
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(sx, sy, glowR, 0, Math.PI * 2);
-      ctx.fill();
-
-      // NPC body
-      ctx.fillStyle = npc.color;
-      ctx.beginPath();
-      ctx.arc(sx, sy, npc.radius, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Inner highlight
-      ctx.fillStyle = 'rgba(255,255,255,0.2)';
-      ctx.beginPath();
-      ctx.arc(sx - 2, sy - 2, npc.radius * 0.4, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Icon
-      ctx.fillStyle = '#fff';
-      ctx.font = `${npc.radius * 1.2}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(npc.icon, sx, sy);
-
-      // Name label
-      ctx.font = 'bold 12px sans-serif';
-      ctx.fillStyle = '#ecf0f1';
-      ctx.textBaseline = 'alphabetic';
-      ctx.fillText(npc.name, sx, sy - npc.radius - 10);
-
-      // Role subtitle (always visible)
-      const roleMap = {
-        trainer: 'Skills',
-        skill_vendor: 'Skills',
-        vendor: 'Items',
-        item_vendor: 'Items',
-        waystone: 'Travel',
-      };
-      const role = roleMap[npc.type];
-      if (role) {
-        ctx.font = '10px sans-serif';
-        ctx.fillStyle = 'rgba(180, 170, 140, 0.6)';
-        ctx.textAlign = 'center';
-        ctx.fillText(role, sx, sy - npc.radius - 22);
-      }
-
-      // Interact prompt for nearest NPC
-      if (npc === nearestNPC) {
-        ctx.font = 'bold 11px sans-serif';
-        ctx.fillStyle = '#f1c40f';
-        ctx.fillText('[E] Interact', sx, sy + npc.radius + 18);
-      }
-    }
-  }
-
-  drawCampfire(campfire, time) {
-    if (!campfire) return;
-    const ctx = this.ctx;
-    const sx = campfire.x - this.camera.x;
-    const sy = campfire.y - this.camera.y;
-    const r = campfire.radius;
-
-    // Warm glow
-    const pulseR = r + 30 + Math.sin(time * 4) * 8;
-    const gradient = ctx.createRadialGradient(sx, sy, 0, sx, sy, pulseR);
-    gradient.addColorStop(0, 'rgba(230, 126, 34, 0.3)');
-    gradient.addColorStop(0.5, 'rgba(243, 156, 18, 0.1)');
-    gradient.addColorStop(1, 'rgba(243, 156, 18, 0)');
-    ctx.fillStyle = gradient;
-    ctx.beginPath();
-    ctx.arc(sx, sy, pulseR, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Fire core
-    ctx.fillStyle = '#e67e22';
-    ctx.beginPath();
-    ctx.arc(sx, sy, r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#f39c12';
-    ctx.beginPath();
-    ctx.arc(sx, sy - 3, r * 0.6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#f1c40f';
-    ctx.beginPath();
-    ctx.arc(sx, sy - 5, r * 0.3, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  drawGroundItems(items, time) {
-    const ctx = this.ctx;
-    for (const gi of items) {
-      const sx = gi.x - this.camera.x;
-      const sy = gi.y - this.camera.y;
-      if (sx < -30 || sx > this.canvas.width + 30 || sy < -30 || sy > this.canvas.height + 30) continue;
-
-      const bob = Math.sin(time * 3 + gi.bobOffset) * 3;
-      const color = gi.item.rarityColor || '#fff';
-
-      // Rarity glow
-      const glowR = 14 + Math.sin(time * 4) * 3;
-      ctx.save();
-      ctx.globalAlpha = 0.4;
-      const grad = ctx.createRadialGradient(sx, sy + bob, 0, sx, sy + bob, glowR);
-      grad.addColorStop(0, color);
-      grad.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(sx, sy + bob, glowR, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-
-      // Item circle
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(sx, sy + bob, 7, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Icon
-      ctx.fillStyle = '#000';
-      ctx.font = '10px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(gi.item.icon || '?', sx, sy + bob);
-    }
-  }
-
-  drawGoldDrops(drops) {
-    const ctx = this.ctx;
-    for (const g of drops) {
-      const sx = g.x - this.camera.x;
-      const sy = g.y - this.camera.y;
-      if (sx < -20 || sx > this.canvas.width + 20 || sy < -20 || sy > this.canvas.height + 20) continue;
-
-      ctx.fillStyle = '#f1c40f';
-      ctx.beginPath();
-      ctx.arc(sx, sy, 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#f39c12';
-      ctx.beginPath();
-      ctx.arc(sx - 1, sy - 1, 2, 0, Math.PI * 2);
-      ctx.fill();
-    }
-  }
-
-  drawBossChest(chest, time) {
-    if (!chest || chest.opened) return;
-    const ctx = this.ctx;
-    const sx = chest.x - this.camera.x;
-    const sy = chest.y - this.camera.y;
-
-    // Glow
-    const pulse = 0.5 + Math.sin(time * 3) * 0.2;
-    ctx.save();
-    ctx.globalAlpha = pulse;
-    const grad = ctx.createRadialGradient(sx, sy, 0, sx, sy, 40);
-    grad.addColorStop(0, 'rgba(241, 196, 15, 0.4)');
-    grad.addColorStop(1, 'rgba(241, 196, 15, 0)');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(sx, sy, 40, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    // Chest body
-    ctx.fillStyle = '#8B7355';
-    ctx.fillRect(sx - 16, sy - 12, 32, 24);
-    ctx.strokeStyle = '#5C4033';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(sx - 16, sy - 12, 32, 24);
-    // Lock
-    ctx.fillStyle = '#f1c40f';
-    ctx.beginPath();
-    ctx.arc(sx, sy, 4, 0, Math.PI * 2);
-    ctx.fill();
-    // Label
-    ctx.fillStyle = '#f1c40f';
-    ctx.font = 'bold 11px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('[E] Open', sx, sy + 24);
-  }
-
-  drawDungeonMinimap(player, dungeon, dungeonManager, enemies, boss) {
-    const ctx = this.ctx;
-    const size = 180;
-    const padding = 12;
-    // Top-right corner — the bottom of the screen is occupied by the HUD action bar.
-    const mx = this.canvas.width - size - padding;
-    const my = padding;
-    const scale = size / Math.max(dungeon.mapWidth, dungeon.mapHeight);
-
-    ctx.save();
-
-    // Background
-    ctx.globalAlpha = 0.4;
-    ctx.fillStyle = '#000';
-    ctx.fillRect(mx, my, size, size * (dungeon.mapHeight / dungeon.mapWidth));
-
-    ctx.globalAlpha = 0.7;
-
-    // Draw corridors
-    for (const c of dungeon.corridors) {
-      const fromRoom = dungeon.rooms.find(r => r.id === c.fromRoomId);
-      const toRoom = dungeon.rooms.find(r => r.id === c.toRoomId);
-      if (!fromRoom || !toRoom) continue;
-      if (!fromRoom.revealed && !toRoom.revealed) continue;
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
-      for (const seg of c.segments) {
-        ctx.fillRect(mx + seg.x * scale, my + seg.y * scale, Math.max(1, seg.width * scale), Math.max(1, seg.height * scale));
-      }
-    }
-
-    // Draw rooms
-    for (const room of dungeon.rooms) {
-      if (!room.revealed) continue;
-      const rx = mx + room.x * scale;
-      const ry = my + room.y * scale;
-      const rw = Math.max(2, room.width * scale);
-      const rh = Math.max(2, room.height * scale);
-
-      // Fill based on state
-      if (room.visited) {
-        ctx.fillStyle = room.cleared ? 'rgba(46, 204, 113, 0.15)' : 'rgba(231, 76, 60, 0.15)';
-      } else {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
-      }
-      ctx.fillRect(rx, ry, rw, rh);
-
-      // Outline
-      const isCurrent = dungeonManager && dungeonManager.currentRoom === room;
-      ctx.strokeStyle = isCurrent ? '#f1c40f' : '#444';
-      ctx.lineWidth = isCurrent ? 2 : 0.5;
-      ctx.strokeRect(rx, ry, rw, rh);
-
-      // Room type indicators
-      const rcx = rx + rw / 2, rcy = ry + rh / 2;
-      if (room.type === 'boss' || room.id === dungeon.exitRoomId) {
-        ctx.fillStyle = '#e74c3c';
-        ctx.beginPath();
-        ctx.arc(rcx, rcy, 3, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (room.type === 'safe') {
-        ctx.fillStyle = '#2ecc71';
-        ctx.beginPath();
-        ctx.arc(rcx, rcy, 2, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (room.type === 'shop') {
-        ctx.fillStyle = '#f1c40f';
-        ctx.beginPath();
-        ctx.arc(rcx, rcy, 2, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (room.type === 'treasure') {
-        ctx.fillStyle = '#f39c12';
-        ctx.beginPath();
-        ctx.arc(rcx, rcy, 1.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    // Enemies in current room
-    if (enemies) {
-      ctx.fillStyle = '#e74c3c';
-      for (const e of enemies) {
-        if (e.dead) continue;
-        ctx.beginPath();
-        ctx.arc(mx + e.x * scale, my + e.y * scale, 1.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    // Boss
-    if (boss && !boss.dead) {
-      ctx.fillStyle = '#9b59b6';
-      ctx.beginPath();
-      ctx.arc(mx + boss.x * scale, my + boss.y * scale, 3, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    // Player
-    ctx.fillStyle = player.color || '#3498db';
-    ctx.beginPath();
-    ctx.arc(mx + player.x * scale, my + player.y * scale, 3, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Border
-    ctx.globalAlpha = 0.5;
-    ctx.strokeStyle = '#555';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(mx, my, size, size * (dungeon.mapHeight / dungeon.mapWidth));
-
-    ctx.restore();
   }
 
   drawGravitonOrbs(orbs) {

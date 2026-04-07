@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
-  <title>Dungeon Crawler</title>
+  <title>Wave Survival</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -13,17 +13,12 @@
       <div id="hp-bar"></div>
       <span id="hp-text">100 / 100</span>
     </div>
-    <div id="resource-bar-container">
-      <div id="resource-bar"></div>
-      <span id="resource-text">100</span>
-    </div>
     <div id="xp-bar-container">
       <div id="xp-bar"></div>
       <span id="xp-text">Lv.1</span>
     </div>
-    <div id="wave-counter">Floor 1</div>
+    <div id="wave-counter">Wave 1</div>
     <div id="level-name"></div>
-    <div id="gold-display">Gold: 0</div>
     <div id="score-display">Score: 0</div>
     <div id="enemy-counter">Enemies: 0</div>
     <div id="boss-hp-container" class="hidden">
@@ -31,42 +26,33 @@
       <div id="boss-hp-bar"></div>
     </div>
     <div id="ability-icons"></div>
-    <div id="skill-slots">
-      <div id="skill-slot-left" class="skill-slot"><span class="slot-label">LMB</span></div>
-      <div id="skill-slot-right" class="skill-slot"><span class="slot-label">RMB</span></div>
-    </div>
     <div id="wave-countdown" class="hidden"></div>
   </div>
   <button id="pause-btn">| |</button>
   <div id="pause-overlay" class="hidden">
     <h2>PAUSED</h2>
     <button id="resume-btn">Resume</button>
-    <button id="camp-btn" style="margin-top:12px;background:linear-gradient(135deg,#555,#333);">Return to Camp</button>
   </div>
   <div id="menu-screen">
-    <div class="menu-logo">&#x2694;</div>
-    <h1>Shattered Shore</h1>
-    <p class="menu-tagline">A shipwreck. A strange island. A dungeon that goes deeper than it should.</p>
-    <button id="start-btn">Begin Journey</button>
-    <button id="continue-btn" class="hidden" style="margin-top:8px;">Continue</button>
-    <p class="controls-hint">Move: WASD &nbsp;|&nbsp; Aim: Mouse &nbsp;|&nbsp; Attack: LMB / RMB &nbsp;|&nbsp; Interact: E<br>Character: C &nbsp;|&nbsp; Skills: K &nbsp;|&nbsp; Inventory: I &nbsp;|&nbsp; Potions: 1-4</p>
+    <h1>Wave Survival</h1>
+    <p>Survive endless waves of enemies. Collect blessings to grow stronger.</p>
+    <button id="start-btn">Start Game</button>
+    <p class="controls-hint">Move: WASD / Left joystick<br>Aim: Auto / Right tap</p>
   </div>
-  <div id="skill-tree-panel" class="hidden"></div>
-  <div id="skill-book-panel" class="hidden"></div>
-  <div id="inventory-panel" class="hidden"></div>
-  <div id="waystone-panel" class="hidden"></div>
-  <div id="shop-panel" class="hidden"></div>
-  <div id="intro-screen" class="hidden"></div>
+  <div id="blessing-picker" class="hidden">
+    <h2>Choose a Blessing</h2>
+    <div id="blessing-cards"></div>
+  </div>
   <div id="game-over-screen" class="hidden">
-    <h2>You Have Fallen</h2>
-    <p id="final-wave">Floor 1</p>
+    <h2>Game Over</h2>
+    <p id="final-wave">You reached Wave 1</p>
     <p id="final-score"></p>
     <p id="best-combo"></p>
     <div id="kill-breakdown"></div>
-    <button id="restart-btn">Return to Camp</button>
+    <button id="restart-btn">Play Again</button>
   </div>
   <div id="level-clear-screen" class="hidden">
-    <h2 id="level-clear-title">Dungeon Cleared!</h2>
+    <h2 id="level-clear-title">Level Clear!</h2>
     <div id="level-clear-stats">
       <div class="clear-stat">
         <span class="clear-stat-label">Score</span>
@@ -89,7 +75,7 @@
     <button id="continue-btn">Continue</button>
   </div>
   <div id="class-picker" class="hidden">
-    <h2>Among the wreckage, you find...</h2>
+    <h2>Choose Your Class</h2>
     <div id="class-cards"></div>
   </div>
   <div id="world-map" class="hidden">

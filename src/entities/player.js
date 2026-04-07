@@ -7,6 +7,12 @@ export class Player {
     this.playerClass = classConfig ? classConfig.id : null;
     this.classConfig = classConfig || null;
 
+    // Attributes (ARPG system)
+    this.attributes = { str: 0, int: 0, agi: 0, sta: 0 };
+    this.baseAttributes = classConfig.baseAttributes || { str: 1, int: 1, agi: 1, sta: 1 };
+    this.attributePointsAvailable = 0;
+    this.primaryAttribute = classConfig.primaryAttribute || 'str';
+
     // Base stats (overridden by class)
     const base = classConfig ? classConfig.baseStats : {};
     this.radius = base.radius || 16;
@@ -23,6 +29,32 @@ export class Player {
     this.projectileSpeed = base.projectileSpeed || 300;
     this.aimAngle = 0;
     this.abilities = []; // { id, level }
+
+    // Resource system (mana/rage/stamina)
+    this.resourceType = null;
+    this.resourceName = '';
+    this.resource = 0;
+    this.maxResource = 100;
+    this.baseResourceRegen = 0;
+    this.resourceRegen = 0;
+    this.resourceDecay = 0;
+    this.resourceDecayDelay = 0;
+    this.resourceDecayTimer = 0;
+    this.resourceRegenPause = 0;
+    this.resourceRegenPauseTimer = 0;
+    this.resourceOnHitDeal = 0;
+    this.resourceOnHitTake = 0;
+    this.resourceOnKill = 0;
+    this.resourceOnMinionKill = 0;
+    this.resourceColor = '#3498db';
+    this.resourceBarGradient = ['#3498db', '#3498db'];
+
+    // Weapon damage (from equipment)
+    this.weaponDamageMin = base.damage || 15;
+    this.weaponDamageMax = base.damage || 15;
+
+    // Armor (from equipment)
+    this.totalArmor = 0;
     this.shieldHP = 0;
     this.shieldMaxHP = 0;
     this.shieldCooldown = 0;
@@ -35,6 +67,16 @@ export class Player {
     this.dashVy = 0;
     this.dashRemaining = 0;
     this.invulnTimer = 0;
+
+    // Equipment slots (ARPG system)
+    this.equipment = {
+      mainHand: null,
+      offHand: null,
+      chest: null,
+      legs: null,
+      belt: null,
+      boots: null
+    };
 
     // Class visual
     this.color = classConfig ? classConfig.color : '#3498db';
@@ -56,6 +98,7 @@ export class Player {
     this.magnetRange = 40;
     this.lifestealPercent = 0;
     this.critChance = 0;
+    this.critDamageMultiplier = 1.5; // Base 1.5x crit damage
     this.frostAuraRadius = 0;
     this.frostSlowPercent = 0;
     this.fireTrailDamage = 0;
@@ -202,6 +245,25 @@ export class Player {
     this.xp = 0;
     this.level = 1;
     this.xpToNext = 50;
+
+    // === Spec-tree skill system (v3) ===
+    // Owned by skillManager but stored on player so persistence is straightforward.
+    this.skillTree = {};                    // { "warrior_guardian": { "iron_hide": 3, ... }, ... }
+    this.skillPointsAvailable = 0;          // gained 1 per level
+    this.freeRespecUsed = false;            // first skill respec is free
+    this.hotbar = {                         // 7-slot unified action bar
+      leftClick: null,
+      rightClick: null,
+      slot1: null, slot2: null, slot3: null, slot4: null, slot5: null,
+    };
+    // Reference to the active SkillManager — assigned by game.js after construction
+    // so player.recalcAllStats() can pull resolved player_stat bonuses from the engine.
+    this.skillManager = null;
+
+    this.gold = 0;
+    this.potions = 0;
+    this.maxPotions = 3;
+    this.potionHeal = 40;
   }
 
   addXP(amount) {
@@ -210,9 +272,16 @@ export class Player {
     while (this.xp >= this.xpToNext) {
       this.xp -= this.xpToNext;
       this.level++;
-      this.xpToNext = Math.round(50 * Math.pow(1.3, this.level - 1));
+      this.attributePointsAvailable++;
+      this.skillPointsAvailable++;        // 1 skill point per level (replaces passive points)
+      this.xpToNext = Math.floor(100 * Math.pow(this.level, 1.5));
       this.hp = Math.min(this.maxHP, this.hp + this.maxHP * 0.2);
       leveled = true;
+    }
+    if (leveled) {
+      // Single consolidator: invalidates skillManager caches AND recalcs
+      // player stats so any level-scaling tree effects flow through.
+      this.onProgressionChanged();
     }
     return leveled;
   }
@@ -233,6 +302,18 @@ export class Player {
   }
 
   recalcAllStats(allAbilityData) {
+    // Reset spec-tree derived bonuses (re-aggregated from skillManager.getPlayerStatBag()).
+    // These fields are written by the bag-application block AND read elsewhere
+    // in this method (armorPct multiplier below), in _updateResourceFromAttributes
+    // (resource max bonus), and by combat code (parry/immune flags).
+    this._treeArmorMult = 1;          // multiplicative — applied to totalArmor at the end
+    this._treeMaxResourceBonus = 0;   // additive — read by _updateResourceFromAttributes
+    this.parryDurationBonus = 0;
+    this.parryReflectBonus = 0;
+    this.immuneSlow = false;
+    this.immuneRoot = false;
+    this.flatDamageReduction = 0;
+
     // Reset computed stats to base
     this.extraProjectiles = 0;
     this.spreadAngle = 0;
@@ -249,6 +330,8 @@ export class Player {
     this.magnetRange = 40;
     this.lifestealPercent = 0;
     this.critChance = 0;
+    this.critDamageMultiplier = 1.5; // Base crit multiplier
+    // Note: Overcharge passive and gear bonuses add to this in their respective apply methods
     this.frostAuraRadius = 0;
     this.frostSlowPercent = 0;
     this.fireTrailDamage = 0;
@@ -364,12 +447,139 @@ export class Player {
       this._applyLevelData(lvlData);
     }
 
+    // Attribute bonuses
+    const totalStr = this.baseAttributes.str + this.attributes.str;
+    const totalInt = this.baseAttributes.int + this.attributes.int;
+    const totalAgi = this.baseAttributes.agi + this.attributes.agi;
+    const totalSta = this.baseAttributes.sta + this.attributes.sta;
+
+    // STR: +melee damage, +armor
+    this.damageBonus += (this.primaryAttribute === 'str') ? totalStr * 0.01 * this.baseDamage : 0;
+    this.totalArmor += totalStr * 0.5;
+
+    // INT: +spell damage, +mana pool
+    if (this.primaryAttribute === 'int') {
+      this.damageBonus += totalInt * 0.01 * this.baseDamage;
+    }
+
+    // AGI: +dodge, +crit, +move speed
+    this.dodgeChance += totalAgi * 0.003;
+    if (this.dodgeChance > 0.30) this.dodgeChance = 0.30; // cap
+    this.critChance += 0.02 + totalAgi * 0.002;
+    this.speedMult += totalAgi * 0.002;
+    this.attackSpeedMult += totalAgi * 0.002; // AGI also gives attack speed per DESIGN_BRIEF
+
+    // STA: +max HP, +HP regen
+    this.maxHPBonus += totalSta * 10;
+    this.regenRate += totalSta * 0.1;
+
+    // Reset weapon damage to class base each frame so unequipping reverts properly
+    const baseDmg = (this.classConfig && this.classConfig.baseStats && this.classConfig.baseStats.damage) || 15;
+    this.weaponDamageMin = baseDmg;
+    this.weaponDamageMax = baseDmg;
+
+    // Apply equipped main-hand weapon damage range (replaces base, doesn't add)
+    const mainHand = this.equipment.mainHand;
+    if (mainHand && mainHand.damageMin && mainHand.damageMax) {
+      this.weaponDamageMin = mainHand.damageMin;
+      this.weaponDamageMax = mainHand.damageMax;
+    }
+
+    // Equipment stat aggregation
+    for (const slot of Object.values(this.equipment)) {
+      if (!slot) continue;
+      const item = slot;
+      // Base equipment stats
+      if (item.armor) this.totalArmor += item.armor;
+      // Off-hand weapons (quiver, etc.) add to damage bonus, main hand handled above
+      if (item !== mainHand && item.damageMin && item.damageMax) {
+        this.damageBonus += Math.floor((item.damageMin + item.damageMax) / 2);
+      }
+      if (item.spellDamage) this.damageBonus += item.spellDamage;
+      // item.manaBonus is handled in _updateResourceFromAttributes()
+      // Affix stats
+      if (item.affixes) {
+        for (const affix of item.affixes) {
+          if (affix.statKey === 'maxHPBonus') this.maxHPBonus += affix.value;
+          else if (affix.statKey === 'armorBonus') this.totalArmor += affix.value;
+          else if (affix.statKey === 'damageBonus') this.damageBonus += affix.value;
+          else if (affix.statKey === 'critChanceBonus') this.critChance += affix.value;
+          else if (affix.statKey === 'attackSpeedPercent') this.attackSpeedMult += affix.value;
+          else if (affix.statKey === 'moveSpeedPercent') this.speedMult += affix.value;
+          else if (affix.statKey === 'lifestealPercent') this.lifestealPercent += affix.value;
+          else if (affix.statKey === 'damageReductionPercent') this.flatDamageReduction += affix.value;
+          else if (affix.statKey === 'critDamageBonus') this.critDamageMultiplier += affix.value;
+          else if (affix.statKey === 'dodgeChanceBonus') this.dodgeChance += affix.value;
+          else if (affix.statKey === 'str') this.damageBonus += (this.primaryAttribute === 'str') ? affix.value * 0.01 * this.baseDamage : 0;
+          else if (affix.statKey === 'int') { if (this.primaryAttribute === 'int') this.damageBonus += affix.value * 0.01 * this.baseDamage; }
+          else if (affix.statKey === 'agi') { this.dodgeChance += affix.value * 0.003; this.critChance += affix.value * 0.002; }
+          else if (affix.statKey === 'sta') { this.maxHPBonus += affix.value * 10; }
+        }
+      }
+    }
+    // Re-cap dodge after equipment
+    if (this.dodgeChance > 0.30) this.dodgeChance = 0.30;
+
+    // Apply spec-tree player_stat effects (replaces the old passiveSkills loop).
+    // The skillManager exposes a flat stat bag aggregated from both spec trees.
+    // Each known key is folded into one of the existing player stat fields so
+    // the rest of combat code (which reads the existing fields) automatically
+    // sees the tree bonuses without needing to know about the bag.
+    if (this.skillManager) {
+      const bag = this.skillManager.getPlayerStatBag();
+      if (bag) {
+        // HP
+        if (bag.maxHP)    this.maxHPBonus += bag.maxHP;
+        if (bag.maxHPPct) this.maxHPBonus += (this.classConfig?.baseStats?.maxHP || 100) * bag.maxHPPct;
+
+        // Armor — multiplicative. Stash in _treeArmorMult so we can apply it
+        // AFTER the equipment armor sum is finalized (right before the end
+        // of recalcAllStats).
+        if (bag.armorPct) this._treeArmorMult *= (1 + bag.armorPct);
+
+        // Damage / crit / lifesteal
+        if (bag.lifestealPct)    this.lifestealPercent     += bag.lifestealPct;
+        if (bag.critChancePct)   this.critChance           += bag.critChancePct;
+        if (bag.critDamageBonus) this.critDamageMultiplier += bag.critDamageBonus;
+        if (bag.damagePct)       this.damageBonus          += this.baseDamage * bag.damagePct;
+
+        // Damage reduction (flat percent, applied after armor in takeDamage)
+        if (bag.damageReductionPct != null) this.flatDamageReduction += bag.damageReductionPct;
+
+        // Resource pool — both maxStamina and maxMana fold into the single
+        // _treeMaxResourceBonus field, which _updateResourceFromAttributes
+        // reads after computing the attribute-scaled max. We don't gate on
+        // class because cross-class hybrid hypothetical: bag will only ever
+        // contain the key that matches the player's class anyway (e.g.
+        // Quiver only exists in archer trees, Glacial Will only in mage).
+        if (bag.maxStamina) this._treeMaxResourceBonus += bag.maxStamina;
+        if (bag.maxMana)    this._treeMaxResourceBonus += bag.maxMana;
+
+        // Spec-specific flags — read by combat code (parry handler, status system)
+        if (bag.parryDurationBonus != null) this.parryDurationBonus = bag.parryDurationBonus;
+        if (bag.parryReflectBonus  != null) this.parryReflectBonus  = bag.parryReflectBonus;
+        if (bag.immuneSlow) this.immuneSlow = true;
+        if (bag.immuneRoot) this.immuneRoot = true;
+        // Unknown keys: silently ignored. Future tree nodes can add new ones.
+      }
+    }
+
+    // Apply tree armor multiplier AFTER all additive armor (equipment + affixes
+    // + STR). This means a maxed Iron Hide multiplies the FINAL armor pool by
+    // (1 + 0.15) rather than just multiplying base equipment armor.
+    if (this._treeArmorMult !== 1) {
+      this.totalArmor = Math.round(this.totalArmor * this._treeArmorMult);
+    }
+
     const baseMaxHP = this.classConfig ? this.classConfig.baseStats.maxHP : 100;
     this.maxHP = baseMaxHP + this.maxHPBonus;
     this.hp = Math.min(this.hp, this.maxHP);
     this.speed = this.baseSpeed * this.speedMult;
     this.attackCooldown = this.baseAttackCooldown * this.attackSpeedMult;
     this.damage = this.baseDamage + this.damageBonus;
+
+    // Update resource pools based on new attribute values + tree bonuses
+    this._updateResourceFromAttributes();
 
     // Necromancer max minions
     if (this.classConfig) {
@@ -380,6 +590,28 @@ export class Player {
   recalcStats(singleAbilityData) {
     // Quick path: just recalc everything from stored abilities
     // We need all ability data though, so this is called from game
+  }
+
+  // applyPassiveEffects() removed in v3 spec-tree refactor.
+  // Tree node player_stat effects are now applied inside recalcAllStats() via
+  // the skillManager.getPlayerStatBag() pull. See the spec-tree section there.
+
+  /**
+   * Single consolidator called whenever progression state changes:
+   *   - point spent in tree
+   *   - tree respec
+   *   - level up
+   *   - equipment equipped/unequipped
+   *   - save loaded
+   *
+   * Order: skillManager invalidates its caches, then we recompute player stats
+   * which now folds in the fresh stat bag.
+   */
+  onProgressionChanged() {
+    if (this.skillManager) {
+      this.skillManager.recomputeResolved();
+    }
+    this.recalcAllStats();
   }
 
   _applyLevelData(d) {
@@ -527,6 +759,12 @@ export class Player {
         currentSpeed *= this.berserkSpeedMult;
       }
 
+      // Freeze ray slow (boss debuff, frame-based)
+      if (this._freezeSlowTimer > 0) {
+        this._freezeSlowTimer -= dt;
+        currentSpeed *= (1 - (this._freezeSlowPct || 0));
+      }
+
       // Necromancer corpse walk speed
       if (this.corpseSpeedTimer > 0) {
         currentSpeed *= this.corpseSpeedBuff;
@@ -584,6 +822,15 @@ export class Player {
     // Invuln timer
     if (this.invulnTimer > 0) this.invulnTimer -= dt;
 
+    // Aegis capstone (Guardian T5) — tick the active reflect window
+    if ((this._aegisActiveTimer || 0) > 0) {
+      this._aegisActiveTimer -= dt;
+      if (this._aegisActiveTimer <= 0) {
+        this._aegisActiveTimer = 0;
+        this._aegisReflectAmount = 0;
+      }
+    }
+
     // Regen
     if (this.regenRate > 0) {
       this.regenAccum += this.regenRate * dt;
@@ -593,6 +840,9 @@ export class Player {
         this.regenAccum -= heal;
       }
     }
+
+    // Resource system update
+    this.updateResource(dt);
 
     // Fire trail timer
     if (this.fireTrailDamage > 0) {
@@ -687,26 +937,78 @@ export class Player {
     return true; // game.js handles the specific ability logic
   }
 
-  takeDamage(amount) {
+  takeDamage(amount, attackerLevel = 1, options = {}) {
     if (this.invulnTimer > 0) return 0;
 
-    // Dodge chance
-    if (this.dodgeChance > 0 && Math.random() < this.dodgeChance) {
+    // === v3 Aegis capstone (Guardian T5) ===
+    // Once per fight, when reduced below 20% HP, become invulnerable for 3s
+    // and reflect 100% damage taken back at attackers. The capstone is
+    // detected here so the player gets the benefit even on damage sources
+    // game.js doesn't run through a wrapper.
+    if (this.skillManager && this.skillManager.hasCapstone('guardian_aegis')) {
+      const wouldBeHpPct = (this.hp - amount) / this.maxHP;
+      if (wouldBeHpPct < 0.20 && !this._aegisUsedThisFight && (this._aegisActiveTimer || 0) <= 0) {
+        // Trigger Aegis: 3s invuln + reflect window
+        this._aegisActiveTimer = 3.0;
+        this._aegisUsedThisFight = true;
+        this._aegisReflectAmount = amount; // Game.js can read this and apply to attacker if available
+        if (this.skillManager._onAegisTrigger) this.skillManager._onAegisTrigger(amount);
+        return 0;
+      }
+      // While Aegis is active, all damage is absorbed and reflected
+      if ((this._aegisActiveTimer || 0) > 0) {
+        this._aegisReflectAmount = (this._aegisReflectAmount || 0) + amount;
+        if (this.skillManager._onAegisTrigger) this.skillManager._onAegisTrigger(amount);
+        return 0;
+      }
+    }
+
+    const isEnvironmental = options.environmental || false;
+    const isDot = options.dot || false;
+
+    // Dodge check (not for AoE, environmental, or DoT)
+    if (!isEnvironmental && !isDot && !options.isAoE && this.dodgeChance > 0 && Math.random() < this.dodgeChance) {
       this._lastDodged = true;
-      return 0; // Dodged!
+      return 0;
     }
     this._lastDodged = false;
 
     let remaining = amount;
 
-    // Iron skin: flat damage reduction (shared blessing)
-    if (this.flatDamageReduction > 0) {
-      remaining = Math.max(1, remaining - this.flatDamageReduction);
+    // === v3 Last Stand (Guardian T4 keystone) ===
+    // Below 30% HP, take 25% less damage. Read from spec-tree triggers via
+    // the skill manager. The hpThreshold + damageTakenMult come from the
+    // tree node's effect descriptor.
+    if (this.skillManager) {
+      const triggers = this.skillManager.getTriggersForEvent('belowHPPct');
+      if (triggers && triggers.length > 0) {
+        const hpPct = this.hp / this.maxHP;
+        for (const trig of triggers) {
+          const eff = trig.effect || {};
+          if (typeof eff.hpThreshold === 'number'
+              && typeof eff.damageTakenMult === 'number'
+              && hpPct <= eff.hpThreshold) {
+            // damageTakenMult is negative for reductions (e.g. -0.25)
+            remaining *= (1 + eff.damageTakenMult);
+          }
+        }
+      }
     }
 
-    // Warrior: class damage reduction (armor plates)
+    // Armor damage reduction (diminishing returns) — environmental damage ignores armor
+    if (!isEnvironmental && this.totalArmor > 0) {
+      const armorDR = this.totalArmor / (this.totalArmor + 50 + attackerLevel * 5);
+      remaining *= (1 - armorDR);
+    }
+
+    // Flat damage reduction from passives (Toughness, etc.)
+    if (this.flatDamageReduction > 0) {
+      remaining *= (1 - this.flatDamageReduction);
+    }
+
+    // Warrior: class damage reduction
     if (this.damageReduction > 0) {
-      remaining = Math.max(1, remaining - this.damageReduction);
+      remaining *= (1 - this.damageReduction);
     }
 
     // Mage: mana shield absorb
@@ -726,11 +1028,9 @@ export class Player {
       }
     }
 
-    // Necromancer: soul link redirect to minions (handled in game.js since it needs minion array)
-    // The soulLinkPercent is checked in game.js before calling this
-
+    remaining = Math.max(0, remaining);
     this.hp -= remaining;
-    this.invulnTimer = 0.2;
+    if (!isDot) this.invulnTimer = 0.2;
     return remaining;
   }
 
@@ -777,5 +1077,208 @@ export class Player {
       range += this.windWalkRangeBonus * pct;
     }
     return range;
+  }
+
+  // Old skill tree methods removed — replaced by ARPG skill system in Stage 2
+  // investSkill(skillId) { ... }
+  // respecSkills() { ... }
+  // applySkillTree(skillTreeData) { ... }
+
+  _applySkillStat(key, value) {
+    // Map skill stat keys to player properties
+    // This is additive for most stats
+    switch (key) {
+      case 'maxHPBonus': this.maxHPBonus += value; break;
+      case 'flatDamageReduction': this.flatDamageReduction += value; break;
+      case 'damageReduction': this.damageReduction += value; break;
+      case 'reflectPercent': this.thornsDamage = Math.max(this.thornsDamage, value); break;
+      case 'sweepAngleBonus': this.sweepAngle += value; break;
+      case 'baseDamageBonus': this.damageBonus += value; break;
+      case 'moveSpeedBonus': this.speedMult *= (1 + value); break;
+      case 'attackSpeedBonusBelowHP': this.berserkThreshold = 0.6; this.berserkDamageMult = 1; this.berserkSpeedMult = 1 + value; break;
+      case 'bleedDamage': this.poisonDamage = Math.max(this.poisonDamage, value); break;
+      case 'bleedDuration': this.poisonDuration = Math.max(this.poisonDuration, value); break;
+      case 'killHeal': this.corpseHeal = Math.max(this.corpseHeal, value); break;
+      case 'lifestealPercent': this.lifestealPercent = Math.max(this.lifestealPercent, value); break;
+      case 'critChance': this.critChance = Math.max(this.critChance, value); break;
+      case 'tripleChance': this.critChance = Math.max(this.critChance, value); break;
+      case 'echoChance': this.echoChance = Math.max(this.echoChance, value); break;
+      case 'echoDamagePct': this.echoDamageMult = Math.max(this.echoDamageMult, value); break;
+      case 'regenRate': this.regenRate = Math.max(this.regenRate, value); break;
+      case 'igniteDPS': this.poisonDamage = Math.max(this.poisonDamage, value); break;
+      case 'igniteDuration': this.poisonDuration = Math.max(this.poisonDuration, value); break;
+      case 'splitCount': this.splitCount = Math.max(this.splitCount, value); break;
+      case 'splitDamagePct': this.splitDamagePct = Math.max(this.splitDamagePct, value); break;
+      case 'maxMinionBonus': this.maxMinionBonus += value; break;
+      case 'minionDamageBonus': this.minionDamageBonus += value; break;
+      case 'minionHPBonus': this.minionHPBonus += value; break;
+      case 'firstHitBonusAdd': /* handled in attack calc */ break;
+      case 'explosionRadius': this.explosionRadius = Math.max(this.explosionRadius, value); break;
+      case 'explosionDamage': this.explosionDamage = Math.max(this.explosionDamage, value); break;
+      // Store other stats generically
+      default:
+        if (!this._skillStats) this._skillStats = {};
+        this._skillStats[key] = value;
+    }
+  }
+
+  getSkillStat(key, defaultValue) {
+    if (this._skillStats && this._skillStats[key] !== undefined) return this._skillStats[key];
+    return defaultValue || 0;
+  }
+
+  // === POTION ===
+  // === RESOURCE SYSTEM ===
+  initResource(resourceConfig) {
+    if (!resourceConfig) return;
+    this.resourceType = resourceConfig.type;
+    this.resourceName = resourceConfig.displayName;
+    this.maxResource = resourceConfig.base + (resourceConfig.perLevel || 0) * (this.level - 1);
+    this.resource = this.resourceType === 'rage' ? 0 : this.maxResource; // Rage starts empty
+    this.baseResourceRegen = resourceConfig.regen || 0;
+    this.resourceRegen = this.baseResourceRegen + (resourceConfig.regenPerLevel || 0) * (this.level - 1);
+    this.resourceDecay = resourceConfig.decay || 0;
+    this.resourceDecayDelay = resourceConfig.decayDelay || 0;
+    this.resourceDecayTimer = 0;
+    this.resourceRegenPause = resourceConfig.regenPause || 0;
+    this.resourceRegenPauseTimer = 0;
+    this.resourceOnHitDeal = resourceConfig.onHitDeal || 0;
+    this.resourceOnHitTake = resourceConfig.onHitTake || 0;
+    this.resourceOnKill = resourceConfig.onKill || 0;
+    this.resourceOnMinionKill = resourceConfig.onMinionKill || 0;
+    this.resourceColor = resourceConfig.colors?.text || resourceConfig.color || '#3498db';
+    this.resourceBarGradient = resourceConfig.colors?.bar || resourceConfig.barGradient || ['#3498db', '#3498db'];
+    this._resourceConfig = resourceConfig;
+    // Apply attribute-based scaling
+    this._updateResourceFromAttributes();
+  }
+
+  _updateResourceFromAttributes() {
+    const cfg = this._resourceConfig;
+    if (!cfg) return;
+
+    // Get the scaling attribute value
+    let scalingValue = 0;
+    if (cfg.scalingStat) {
+      const totalAttr = (this.baseAttributes[cfg.scalingStat] || 0) + (this.attributes[cfg.scalingStat] || 0);
+      scalingValue = totalAttr;
+    }
+
+    // Max resource = base + (scalingPerPoint * attribute) + tree bonus.
+    // _treeMaxResourceBonus is set in recalcAllStats() from the spec-tree
+    // stat bag (Quiver, Glacial Will, etc.). Falls back to 0 if no skillManager.
+    this.maxResource = cfg.base + (cfg.scalingPerPoint || 0) * scalingValue + (this._treeMaxResourceBonus || 0);
+
+    // Regen = baseRegen + (regenScalingPerPoint * attribute)
+    let regenScaling = 0;
+    if (cfg.regenScalingStat) {
+      const totalRegenAttr = (this.baseAttributes[cfg.regenScalingStat] || 0) + (this.attributes[cfg.regenScalingStat] || 0);
+      regenScaling = totalRegenAttr;
+    }
+    this.resourceRegen = (cfg.regen || 0) + (cfg.regenScalingPerPoint || 0) * regenScaling;
+
+    // Floor start value for rage
+    if (cfg.floorStartValue > 0) {
+      this._floorStartResource = cfg.floorStartValue;
+    }
+
+    // Basic attack generation (rage)
+    this.basicAttackResourceGen = cfg.basicAttackGeneration || 0;
+  }
+
+  updateResource(dt) {
+    // Resource scaling applied in recalcAllStats(), not per-frame
+
+    // Regen pause (stamina)
+    if (this.resourceRegenPauseTimer > 0) {
+      this.resourceRegenPauseTimer -= dt;
+    }
+
+    // Passive regen (mana, stamina)
+    if (this.resourceRegen > 0 && this.resourceRegenPauseTimer <= 0) {
+      this.resource = Math.min(this.maxResource, this.resource + this.resourceRegen * dt);
+    }
+
+    // Rage decay
+    if (this.resourceDecay > 0) {
+      this.resourceDecayTimer -= dt;
+      if (this.resourceDecayTimer <= 0 && this.resource > 0) {
+        this.resource = Math.max(0, this.resource - this.resourceDecay * dt);
+      }
+    }
+  }
+
+  spendResource(amount) {
+    if (this.resource < amount) return false;
+    this.resource -= amount;
+    // Pause regen (stamina)
+    if (this.resourceRegenPause > 0) {
+      this.resourceRegenPauseTimer = this.resourceRegenPause;
+    }
+    return true;
+  }
+
+  gainResource(amount) {
+    this.resource = Math.min(this.maxResource, this.resource + amount);
+    // Reset rage decay timer
+    if (this.resourceDecay > 0) {
+      this.resourceDecayTimer = this.resourceDecayDelay;
+    }
+  }
+
+  hasResource(amount) {
+    return this.resource >= amount;
+  }
+
+  getWeaponDamage() {
+    return this.weaponDamageMin + Math.random() * (this.weaponDamageMax - this.weaponDamageMin);
+  }
+
+  usePotion() {
+    if (this.potions <= 0) return false;
+    if (this.hp >= this.maxHP) return false;
+    this.potions--;
+    this.hp = Math.min(this.maxHP, this.hp + this.potionHeal);
+    return true;
+  }
+
+  // === LOAD STATE FROM PERSISTENCE ===
+  loadFromSave(saveData) {
+    if (!saveData) return;
+    this.level = saveData.level || 1;
+    this.xp = saveData.xp || 0;
+    this.xpToNext = Math.floor(100 * Math.pow(this.level, 1.5));
+    const data = saveData;
+      if (data.attributes) this.attributes = { ...data.attributes };
+      if (data.attributePointsAvailable !== undefined) this.attributePointsAvailable = data.attributePointsAvailable;
+      // === v3 spec-tree skill state ===
+      if (data.skillTree) this.skillTree = JSON.parse(JSON.stringify(data.skillTree));
+      if (data.skillPointsAvailable !== undefined) this.skillPointsAvailable = data.skillPointsAvailable;
+      if (data.freeRespecUsed !== undefined) this.freeRespecUsed = !!data.freeRespecUsed;
+      if (data.hotbar) this.hotbar = JSON.parse(JSON.stringify(data.hotbar));
+      // ===================================
+      if (data.hp !== undefined) this.hp = data.hp;
+      if (data.gold !== undefined) this.gold = data.gold;
+      if (data.potions !== undefined) this.potions = data.potions;
+      if (data.equipment) this.equipment = JSON.parse(JSON.stringify(data.equipment));
+  }
+
+  getSaveData() {
+    return {
+      level: this.level,
+      xp: this.xp,
+      attributes: { ...this.attributes },
+      attributePointsAvailable: this.attributePointsAvailable,
+      // === v3 spec-tree skill state ===
+      skillTree: JSON.parse(JSON.stringify(this.skillTree || {})),
+      skillPointsAvailable: this.skillPointsAvailable || 0,
+      freeRespecUsed: !!this.freeRespecUsed,
+      hotbar: JSON.parse(JSON.stringify(this.hotbar || {})),
+      // ===================================
+      hp: this.hp,
+      gold: this.gold,
+      potions: this.potions,
+      equipment: JSON.parse(JSON.stringify(this.equipment)),
+    };
   }
 }

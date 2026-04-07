@@ -2,34 +2,34 @@ const ENEMY_TYPES = {
   grunt: {
     color: '#e74c3c',
     radius: 12,
-    baseHP: 30,
-    baseSpeed: 70,
-    damage: 5,
+    baseHP: 20,
+    baseSpeed: 50,
+    damage: 10,
     xp: 10,
   },
   rusher: {
     color: '#e67e22',
     radius: 10,
-    baseHP: 20,
-    baseSpeed: 120,
-    damage: 4,
+    baseHP: 12,
+    baseSpeed: 100,
+    damage: 8,
     xp: 12,
   },
   brute: {
     color: '#8e44ad',
     radius: 18,
-    baseHP: 80,
-    baseSpeed: 45,
-    damage: 12,
-    xp: 18,
+    baseHP: 60,
+    baseSpeed: 35,
+    damage: 20,
+    xp: 25,
   },
   ranged: {
     color: '#27ae60',
     radius: 11,
-    baseHP: 25,
-    baseSpeed: 60,
-    damage: 6,
-    xp: 14,
+    baseHP: 15,
+    baseSpeed: 40,
+    damage: 12,
+    xp: 15,
     attackRange: 200,
     shootCooldown: 2.0,
     projectileSpeed: 180,
@@ -37,9 +37,9 @@ const ENEMY_TYPES = {
   splitter: {
     color: '#f39c12',
     radius: 14,
-    baseHP: 35,
-    baseSpeed: 65,
-    damage: 5,
+    baseHP: 25,
+    baseSpeed: 45,
+    damage: 8,
     xp: 15,
     splitsInto: 'grunt',
     splitCount: 2,
@@ -47,10 +47,10 @@ const ENEMY_TYPES = {
   necromancer_enemy: {
     color: '#6c3483',
     radius: 13,
-    baseHP: 40,
-    baseSpeed: 55,
-    damage: 7,
-    xp: 16,
+    baseHP: 18,
+    baseSpeed: 35,
+    damage: 10,
+    xp: 20,
     attackRange: 180,
     shootCooldown: 2.5,
     projectileSpeed: 160,
@@ -59,36 +59,35 @@ const ENEMY_TYPES = {
   burrower: {
     color: '#784212',
     radius: 12,
-    baseHP: 35,
-    baseSpeed: 75,
-    damage: 8,
-    xp: 16,
+    baseHP: 30,
+    baseSpeed: 60,
+    damage: 15,
+    xp: 18,
     burrowCycle: 3.0,
   },
   shielder: {
     color: '#5d6d7e',
     radius: 16,
-    baseHP: 50,
-    baseSpeed: 50,
-    damage: 6,
-    xp: 18,
+    baseHP: 45,
+    baseSpeed: 30,
+    damage: 12,
+    xp: 22,
     shieldAngle: true,
   },
   bomber: {
     color: '#c0392b',
     radius: 10,
-    baseHP: 15,
-    baseSpeed: 80,
-    damage: 3,
-    xp: 12,
+    baseHP: 10,
+    baseSpeed: 70,
+    damage: 25,
+    xp: 15,
     explodeOnDeath: true,
     explosionRadius: 50,
-    explosionDamage: 25,
   },
 };
 
 export class Enemy {
-  constructor(type, x, y, level) {
+  constructor(type, x, y, wave) {
     const def = ENEMY_TYPES[type];
     this.type = type;
     this.x = x;
@@ -100,15 +99,10 @@ export class Enemy {
     this.damage = def.damage;
     this.xp = def.xp;
 
-    // Level scaling (DESIGN_BRIEF 7.4)
-    this.level = level || 1;
-    const lvl = this.level;
-    this.maxHP = Math.round(def.baseHP * (1 + 0.12 * (lvl - 1)));
+    // Scale by wave
+    const hpMult = Math.pow(1.1, wave - 1);
+    this.maxHP = Math.round(def.baseHP * hpMult);
     this.hp = this.maxHP;
-    this.damage = Math.round(this.damage * (1 + 0.10 * (lvl - 1)));
-    this.speed = this.speed * (1 + 0.01 * (lvl - 1));
-    // XP scales with level
-    this.xp = Math.round(this.xp * lvl);
 
     this.attackRange = def.attackRange || 0;
     this.shootCooldown = def.shootCooldown || 0;
@@ -148,10 +142,6 @@ export class Enemy {
     // Bomber
     this.explodeOnDeath = def.explodeOnDeath || false;
     this.explosionRadius = def.explosionRadius || 0;
-    this.explosionDamage = def.explosionDamage || 0;
-    if (this.explosionDamage) {
-      this.explosionDamage = Math.round(this.explosionDamage * (1 + 0.10 * (lvl - 1)));
-    }
 
     // Necromancer enemy resurrects
     this.resurrects = def.resurrects || false;
@@ -159,87 +149,8 @@ export class Enemy {
     // Stun (from warrior slam etc)
     this._stunTimer = 0;
 
-    // === v3 spec-tree status effects ===
-    // Map of status type → state object. Each entry shape:
-    //   { dps, duration, source, dotAccum }
-    // Statuses are applied via applyStatus(), ticked via tickStatuses(),
-    // queried via hasStatus(), and cleared on expiry or death.
-    //
-    // Frozen is special: while present, the enemy can't move OR attack.
-    // The dispatch in update() reads hasStatus('frozen') and returns early.
-    this.statuses = {};
-
     // Spawn animation
     this.spawnTimer = 0.3;
-  }
-
-  // === Status helpers ===
-
-  /**
-   * Apply or refresh a status. Same-source application refreshes; different
-   * sources are tracked as a single entry but the dps/duration are taken
-   * from whichever was most recently applied (simple model — no stacking).
-   *
-   * @param {string} type     'burning' | 'bleeding' | 'plagued' | 'frozen'
-   * @param {object} payload  { dps, duration, source }
-   */
-  applyStatus(type, payload) {
-    if (!type || !payload) return;
-    this.statuses[type] = {
-      dps: payload.dps || 0,
-      duration: payload.duration || 0,
-      source: payload.source || 'unknown',
-      dotAccum: 0,
-      // Optional gameplay metadata that triggers may read (e.g. spread chance)
-      spreadChancePerTick: payload.spreadChancePerTick || 0,
-      slowPct: payload.slowPct || 0,
-    };
-  }
-
-  hasStatus(type) {
-    const s = this.statuses[type];
-    return !!(s && s.duration > 0);
-  }
-
-  getStatus(type) {
-    return this.statuses[type] || null;
-  }
-
-  clearStatus(type) {
-    delete this.statuses[type];
-  }
-
-  /**
-   * Tick every active status. Returns an array of damage tick events:
-   *   [{ status, damage }] — caller (game.js) applies damage via takeDamage
-   *   so death + onKill triggers fire correctly.
-   *
-   * Frozen does NOT produce damage events but its duration ticks down.
-   * Slowed (legacy) is handled separately in update() — not in this map.
-   */
-  tickStatuses(dt) {
-    const damageTicks = [];
-    for (const type of Object.keys(this.statuses)) {
-      const s = this.statuses[type];
-      if (!s || s.duration <= 0) {
-        delete this.statuses[type];
-        continue;
-      }
-      s.duration -= dt;
-      // DoT statuses accumulate fractional damage and emit a tick when ≥1
-      if (s.dps > 0) {
-        s.dotAccum += s.dps * dt;
-        if (s.dotAccum >= 1) {
-          const dmg = Math.floor(s.dotAccum);
-          s.dotAccum -= dmg;
-          damageTicks.push({ status: type, damage: dmg });
-        }
-      }
-      if (s.duration <= 0) {
-        delete this.statuses[type];
-      }
-    }
-    return damageTicks;
   }
 
   get scale() {
@@ -250,10 +161,6 @@ export class Enemy {
     if (this.spawnTimer > 0) this.spawnTimer -= dt;
     if (this.hitFlashTimer > 0) this.hitFlashTimer -= dt;
     if (this._stunTimer > 0) { this._stunTimer -= dt; return; }
-    // v3 frozen status: complete movement + attack lockout while active.
-    // Status ticking is owned by game.js update loop (so DoT damage flows
-    // through takeDamage), but the lockout has to be checked here.
-    if (this.hasStatus('frozen')) return;
     const dx = playerX - this.x;
     const dy = playerY - this.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -385,7 +292,6 @@ export class Enemy {
   }
 
   canShoot() {
-    if (this.hasStatus('frozen')) return false;
     return this.attackRange > 0 && this.shootTimer <= 0;
   }
 
